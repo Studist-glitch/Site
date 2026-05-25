@@ -10,7 +10,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
             background: #0a0a0f;
             color: #d0d0e0;
@@ -20,12 +19,10 @@
             display: flex;
             justify-content: center;
         }
-
         .container {
             width: 100%;
             max-width: 650px;
         }
-
         h1 {
             font-size: 2.8rem;
             font-weight: 800;
@@ -38,7 +35,6 @@
         h1 span {
             color: #c44eff;
         }
-
         h2 {
             font-size: 1rem;
             text-transform: uppercase;
@@ -47,14 +43,11 @@
             margin-bottom: 0.4rem;
             font-weight: 600;
         }
-
-        p,
-        li {
+        p, li {
             color: #b0b0c0;
             font-size: 0.9rem;
             max-width: 60ch;
         }
-
         .card {
             background: rgba(18, 18, 26, 0.8);
             backdrop-filter: blur(8px);
@@ -68,7 +61,6 @@
         .card:hover {
             border-color: rgba(196, 78, 255, 0.4);
         }
-
         .video-stretch {
             width: 100%;
             height: 180px;
@@ -83,7 +75,6 @@
             object-fit: cover;
             display: block;
         }
-
         .specs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -99,7 +90,6 @@
             color: #c0c0d0;
             border: 1px solid rgba(196, 78, 255, 0.1);
         }
-
         .links {
             display: flex;
             flex-wrap: wrap;
@@ -107,7 +97,6 @@
             justify-content: center;
             margin: 1.2rem 0 0.3rem;
         }
-
         a {
             display: inline-block;
             background: #c44eff;
@@ -131,47 +120,28 @@
         a.alt:hover {
             background: rgba(196, 78, 255, 0.08);
         }
-
         footer {
             margin-top: 1.8rem;
             font-size: 0.7rem;
             color: #555;
             text-align: center;
         }
-        footer a {
+        footer a, footer button {
             background: none;
             padding: 0;
             margin: 0;
             color: #c44eff;
             font-weight: 400;
             box-shadow: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.7rem;
         }
-        footer a:hover {
-            background: none;
-            box-shadow: none;
+        footer a:hover, footer button:hover {
             color: #e0a0ff;
         }
 
-        /* Неприметная кнопка мини-игр */
-        .mini-games-btn {
-            background: none;
-            border: none;
-            color: #555;
-            font-size: 0.7rem;
-            cursor: pointer;
-            padding: 0 0.5rem;
-            transition: color 0.2s;
-            font-family: inherit;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .mini-games-btn:hover {
-            color: #c44eff;
-            box-shadow: none;
-            background: none;
-        }
-
-        /* Модальное окно мини-игр */
+        /* Модалка */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -179,7 +149,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0,0,0,0.7);
             z-index: 100;
             justify-content: center;
             align-items: center;
@@ -187,44 +157,46 @@
         .modal-overlay.active {
             display: flex;
         }
-
         .modal-content {
             background: #12121a;
-            border: 1px solid rgba(196, 78, 255, 0.4);
-            border-radius: 16px;
-            padding: 1.2rem;
+            border: 1px solid rgba(196,78,255,0.4);
+            border-radius: 12px;
+            padding: 1rem;
             width: 90%;
-            max-width: 420px;
+            max-width: 380px;
             text-align: center;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
-            transition: all 0.2s;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+            font-size: 0.85rem;
+            max-height: 80vh;
+            overflow-y: auto;
         }
-
         .modal-content h3 {
             color: #c44eff;
-            margin-bottom: 0.8rem;
-            font-size: 1.1rem;
+            margin-bottom: 0.6rem;
+            font-size: 1rem;
         }
-
-        .game-select-btn {
+        .game-btn {
             display: block;
             width: 100%;
-            margin: 0.4rem 0;
-            padding: 0.5rem;
-            background: rgba(196, 78, 255, 0.15);
-            border: 1px solid rgba(196, 78, 255, 0.3);
+            margin: 0.3rem 0;
+            padding: 0.45rem;
+            background: rgba(196,78,255,0.15);
+            border: 1px solid rgba(196,78,255,0.3);
             color: #d0d0e0;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             transition: background 0.2s;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
-        .game-select-btn:hover {
-            background: rgba(196, 78, 255, 0.3);
+        .game-btn:hover {
+            background: rgba(196,78,255,0.3);
         }
-
+        .game-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
         .back-btn {
-            margin-top: 0.8rem;
+            margin-top: 0.6rem;
             background: none;
             border: none;
             color: #888;
@@ -239,185 +211,189 @@
         .clicker-stats {
             display: flex;
             justify-content: space-between;
-            margin: 0.5rem 0;
-            font-size: 0.85rem;
+            margin: 0.4rem 0;
+            font-size: 0.8rem;
         }
         .clicker-main-btn {
             background: #c44eff;
             color: white;
             border: none;
             border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            font-size: 1rem;
+            width: 70px;
+            height: 70px;
+            font-size: 0.9rem;
             font-weight: bold;
             cursor: pointer;
-            margin: 0.8rem auto;
+            margin: 0.5rem auto;
             display: block;
             transition: 0.1s;
-            box-shadow: 0 0 20px rgba(196, 78, 255, 0.5);
+            box-shadow: 0 0 18px rgba(196,78,255,0.5);
         }
         .clicker-main-btn:active {
             transform: scale(0.95);
-            box-shadow: 0 0 30px rgba(196, 78, 255, 0.9);
+            box-shadow: 0 0 28px rgba(196,78,255,0.9);
         }
         .upgrade-btn {
-            background: rgba(196, 78, 255, 0.2);
-            border: 1px solid rgba(196, 78, 255, 0.3);
+            background: rgba(196,78,255,0.2);
+            border: 1px solid rgba(196,78,255,0.3);
             color: #d0d0e0;
-            border-radius: 6px;
-            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
+            padding: 0.25rem 0.5rem;
             cursor: pointer;
-            font-size: 0.75rem;
-            margin: 0.2rem;
+            font-size: 0.7rem;
+            margin: 0.15rem;
             transition: 0.2s;
         }
         .upgrade-btn:hover {
-            background: rgba(196, 78, 255, 0.4);
+            background: rgba(196,78,255,0.4);
         }
         .upgrade-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
         .challenge-box {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 6px;
-            padding: 0.5rem;
-            margin: 0.6rem 0;
-            font-size: 0.75rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 5px;
+            padding: 0.4rem;
+            margin: 0.5rem 0;
+            font-size: 0.7rem;
         }
         .event-popup {
             background: #c44eff;
             color: #000;
-            padding: 0.2rem 0.6rem;
+            padding: 0.15rem 0.5rem;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             display: inline-block;
-            margin: 0.3rem;
+            margin: 0.15rem;
             animation: fadeOut 2s forwards;
         }
         @keyframes fadeOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; display: none; }
+            0% { opacity:1; }
+            100% { opacity:0; display:none; }
         }
 
         /* Тетрис */
         .tetris-container {
-            display: none;
             text-align: center;
-        }
-        .tetris-container.active {
-            display: block;
         }
         canvas {
             border: 1px solid #c44eff;
-            border-radius: 8px;
+            border-radius: 6px;
             margin: 0.3rem auto;
             display: block;
         }
         .tetris-score {
             color: #c44eff;
             font-weight: 600;
-            margin: 0.3rem 0;
+            margin: 0.2rem 0;
+            font-size: 0.8rem;
         }
         .tetris-controls {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #888;
         }
 
         @media (max-width: 500px) {
-            .video-stretch {
-                height: 140px;
-            }
-            h1 {
-                font-size: 2.2rem;
-            }
-            .card {
-                padding: 1rem;
-            }
+            .video-stretch { height: 140px; }
+            h1 { font-size: 2.2rem; }
+            .card { padding: 1rem; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>STARVE<br><span>NEON</span></h1>
-
-        <div class="video-stretch">
-            <video src="images/video1.webm" autoplay loop muted playsinline></video>
-        </div>
-
-        <div class="card">
-            <h2>🌑 О проекте</h2>
-            <p>
-                <strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, 
-                где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.
-            </p>
-        </div>
-
-        <div class="video-stretch">
-            <video src="images/video2.webm" autoplay loop muted playsinline></video>
-        </div>
-
-        <div class="card">
-            <h2>⚡ Особенности</h2>
-            <ul style="list-style: none; padding-left: 0; margin: 0;">
-                <li>Полный цикл крафта (от копья до минигана)</li>
-                <li>Броня, модули, генетические улучшения</li>
-                <li>Фракции, клановые войны, рейды</li>
-                <li>Приручение существ и PvP-арена</li>
-                <li>Кроссплатформенность: Windows и Android</li>
-            </ul>
-        </div>
-
-        <div class="card">
-            <h2>💻 Системные требования</h2>
-            <div class="specs-grid">
-                <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
-                <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
-                <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
-            </div>
-        </div>
-
-        <div class="links">
-            <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Сайт</a>
-            <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
-        </div>
-
-        <footer>
-            © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
-            · <button class="mini-games-btn" id="openMiniGames">мини-игры</button>
-        </footer>
+<div class="container">
+    <h1>STARVE<br><span>NEON</span></h1>
+    <div class="video-stretch">
+        <video src="images/video1.webm" autoplay loop muted playsinline></video>
     </div>
-
-    <!-- Единое модальное окно игр -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content" id="modalInner">
-            <!-- Содержимое будет заменяться динамически -->
+    <div class="card">
+        <h2>🌑 О проекте</h2>
+        <p><strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.</p>
+    </div>
+    <div class="video-stretch">
+        <video src="images/video2.webm" autoplay loop muted playsinline></video>
+    </div>
+    <div class="card">
+        <h2>⚡ Особенности</h2>
+        <ul style="list-style: none; padding-left: 0; margin: 0;">
+            <li>Полный цикл крафта (от копья до минигана)</li>
+            <li>Броня, модули, генетические улучшения</li>
+            <li>Фракции, клановые войны, рейды</li>
+            <li>Приручение существ и PvP-арена</li>
+            <li>Кроссплатформенность: Windows и Android</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>💻 Системные требования</h2>
+        <div class="specs-grid">
+            <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
+            <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
+            <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
         </div>
     </div>
+    <div class="links">
+        <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Сайт</a>
+        <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
+    </div>
+    <footer>
+        © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
+        · <button id="openMiniGames">мини-игры</button>
+    </footer>
+</div>
 
-    <script>
-        // === DOM-элементы модалки ===
+<!-- Модальное окно -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content" id="modalInner"></div>
+</div>
+
+<script>
+    (function() {
+        // DOM
         const modalOverlay = document.getElementById('modalOverlay');
         const modalInner = document.getElementById('modalInner');
         const openBtn = document.getElementById('openMiniGames');
 
-        // === Переключение видов игр ===
-        function showGameSelection() {
+        // Состояния игр
+        let clickerState = null;
+        let clickerInterval = null;
+        let tetrisInterval = null;
+        let tetrisActive = false;
+
+        // Начальное состояние кликера
+        function getInitialClickerState() {
+            return {
+                score: 0,
+                perClick: 1,
+                perSec: 0,
+                upgrades: {
+                    auto: { level: 0, cost: 10, effect: 1, name: 'Автоклик' },
+                    power: { level: 0, cost: 25, effect: 1, name: 'Сила клика' },
+                    crit: { level: 0, cost: 40, effect: 3, name: 'Крит (шанс 20%)' },
+                    magnet: { level: 0, cost: 60, effect: 2, name: 'Магнит (+2/сек)' }
+                },
+                challenge: { active: false, startScore: 0, target: 0, reward: 0 },
+                events: []
+            };
+        }
+
+        // === Модальное окно ===
+        function showSelection() {
             modalInner.innerHTML = `
                 <h3>🎮 Мини-игры</h3>
-                <button class="game-select-btn" id="playClicker">⚡ Кликер</button>
-                <button class="game-select-btn" id="playTetris">🧱 Тетрис</button>
-                <button class="game-select-btn" disabled style="opacity:0.4;">Скоро: Змейка</button>
-                <button class="game-select-btn" disabled style="opacity:0.4;">Скоро: Арканоид</button>
-                <button class="back-btn" id="closeModalFromGames">Закрыть</button>
+                <button class="game-btn" id="playClicker">⚡ Кликер</button>
+                <button class="game-btn" id="playTetris">🧱 Тетрис</button>
+                <button class="game-btn" disabled>🚀 Скоро: Змейка</button>
+                <button class="game-btn" disabled>🕹️ Скоро: Арканоид</button>
+                <button class="back-btn" id="closeModalBtn">Закрыть</button>
             `;
             document.getElementById('playClicker').addEventListener('click', showClicker);
             document.getElementById('playTetris').addEventListener('click', showTetris);
-            document.getElementById('closeModalFromGames').addEventListener('click', closeModal);
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
         }
 
         function showClicker() {
+            if (!clickerState) clickerState = getInitialClickerState();
             modalInner.innerHTML = `
                 <h3>⚡ Кликер</h3>
                 <div class="clicker-stats">
@@ -425,200 +401,182 @@
                     <span>⚡/сек: <span id="clickerPerSec">0</span></span>
                 </div>
                 <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
-                <div id="clickerUpgrades"></div>
+                <div id="clickerUpgrades" style="margin:0.4rem 0;"></div>
                 <div class="challenge-box" id="challengeBox">🎯 Челлендж: нет активных</div>
-                <div id="eventLog"></div>
-                <button class="back-btn" id="backToGamesFromClicker">← Назад к играм</button>
+                <div id="eventLog" style="min-height:1.2em;"></div>
+                <button class="back-btn" id="backClicker">← Назад</button>
             `;
-            initClicker();
-            document.getElementById('backToGamesFromClicker').addEventListener('click', showGameSelection);
+            document.getElementById('clickerBtn').addEventListener('click', handleClick);
+            document.getElementById('backClicker').addEventListener('click', () => {
+                // не сбрасываем состояние, просто показываем выбор
+                showSelection();
+            });
+            updateClickerUI();
+            renderUpgrades();
+            generateChallenge();
+            if (!clickerInterval) {
+                clickerInterval = setInterval(autoTick, 1000);
+            }
         }
 
         function showTetris() {
+            stopTetris(); // на всякий случай
             modalInner.innerHTML = `
                 <h3>🧱 Тетрис</h3>
-                <div class="tetris-container active">
-                    <canvas id="tetrisCanvas" width="240" height="400"></canvas>
+                <div class="tetris-container">
+                    <canvas id="tetrisCanvas" width="180" height="360"></canvas>
                     <div class="tetris-score" id="tetrisScore">Счёт: 0</div>
-                    <div class="tetris-controls">← → двигать &nbsp; ↑ вращать &nbsp; ↓ уронить</div>
+                    <div class="tetris-controls">← → ↓ &nbsp; ↑ вращать &nbsp; пробел уронить</div>
                 </div>
-                <button class="back-btn" id="backToGamesFromTetris">← Назад к играм</button>
+                <button class="back-btn" id="backTetris">← Назад</button>
             `;
             startTetris();
-            document.getElementById('backToGamesFromTetris').addEventListener('click', () => {
+            document.getElementById('backTetris').addEventListener('click', () => {
                 stopTetris();
-                showGameSelection();
+                showSelection();
             });
         }
 
         function closeModal() {
             modalOverlay.classList.remove('active');
-            // Остановить игры, если активны
-            if (window.clickerInterval) clearInterval(window.clickerInterval);
-            if (window.tetrisActive) stopTetris();
+            // Интервал кликера оставляем (можно и останавливать, но так прогресс сохраняется пока страница открыта)
         }
 
-        // Открытие и закрытие
+        // Переключение окон
         openBtn.addEventListener('click', () => {
             modalOverlay.classList.add('active');
-            showGameSelection();
+            showSelection();
         });
-
         modalOverlay.addEventListener('click', (e) => {
             if (e.target === modalOverlay) closeModal();
         });
 
         // ========== КЛИКЕР ==========
-        let clickerState = {
-            score: 0,
-            perClick: 1,
-            perSec: 0,
-            upgrades: {
-                auto: { level: 0, cost: 10, effect: 1 },
-                power: { level: 0, cost: 25, effect: 1 },
-                multiplier: { level: 0, cost: 50, effect: 2 }
-            },
-            challenge: { active: false, target: 0, progress: 0, reward: 0 },
-            events: []
-        };
-
-        function initClicker() {
-            // Восстановить или начать новое
-            if (!window.clickerInitialized) {
-                window.clickerState = JSON.parse(JSON.stringify(clickerState));
-                window.clickerInterval = setInterval(autoTick, 1000);
-                window.clickerInitialized = true;
-            } else {
-                // если уже был запущен, ничего не делаем
-            }
-            updateClickerUI();
-            document.getElementById('clickerBtn').addEventListener('click', handleClick);
-            renderUpgrades();
-            generateChallenge();
-        }
-
         function handleClick() {
-            const state = window.clickerState;
-            state.score += state.perClick;
-            // случайное событие с шансом 10%
-            if (Math.random() < 0.1) triggerRandomEvent();
+            const s = clickerState;
+            let gain = s.perClick;
+            // критический удар
+            if (s.upgrades.crit.level > 0 && Math.random() < 0.2) {
+                gain *= s.upgrades.crit.effect;
+            }
+            s.score += gain;
+            if (Math.random() < 0.08) triggerEvent();
             updateClickerUI();
             checkChallenge();
+            renderUpgrades(); // обновить доступность кнопок
         }
 
         function autoTick() {
-            const state = window.clickerState;
-            state.score += state.perSec;
-            updateClickerUI();
-            checkChallenge();
-            // Обновление событий (удаление старых)
-            const log = document.getElementById('eventLog');
-            if (log) {
-                log.innerHTML = state.events.map(e => `<span class="event-popup">${e}</span>`).join('');
-                state.events = [];
+            const s = clickerState;
+            if (s.perSec > 0) {
+                s.score += s.perSec;
+                updateClickerUI();
+                checkChallenge();
             }
+            // очистка старых событий
+            const log = document.getElementById('eventLog');
+            if (log) log.innerHTML = s.events.map(e => `<span class="event-popup">${e}</span>`).join('');
+            s.events = [];
         }
 
         function updateClickerUI() {
-            const state = window.clickerState;
             const scoreEl = document.getElementById('clickerScore');
             const perSecEl = document.getElementById('clickerPerSec');
-            if (scoreEl) scoreEl.textContent = Math.floor(state.score);
-            if (perSecEl) perSecEl.textContent = Math.floor(state.perSec);
+            if (scoreEl) scoreEl.textContent = Math.floor(clickerState.score);
+            if (perSecEl) perSecEl.textContent = Math.floor(clickerState.perSec);
         }
 
         function renderUpgrades() {
             const container = document.getElementById('clickerUpgrades');
             if (!container) return;
-            const state = window.clickerState;
             container.innerHTML = '';
-            for (let key in state.upgrades) {
-                const up = state.upgrades[key];
+            for (let key in clickerState.upgrades) {
+                const up = clickerState.upgrades[key];
                 const btn = document.createElement('button');
                 btn.className = 'upgrade-btn';
-                let name = '';
-                if (key === 'auto') name = 'Автоклик';
-                else if (key === 'power') name = 'Сила клика';
-                else if (key === 'multiplier') name = 'Множитель';
-                btn.textContent = `${name} ур.${up.level} (${up.cost}💎)`;
-                btn.disabled = state.score < up.cost;
+                btn.textContent = `${up.name} ур.${up.level} (${up.cost}💎)`;
+                btn.disabled = clickerState.score < up.cost;
                 btn.addEventListener('click', () => buyUpgrade(key));
                 container.appendChild(btn);
             }
         }
 
         function buyUpgrade(key) {
-            const state = window.clickerState;
-            const up = state.upgrades[key];
-            if (state.score < up.cost) return;
-            state.score -= up.cost;
+            const s = clickerState;
+            const up = s.upgrades[key];
+            if (s.score < up.cost) return;
+            s.score -= up.cost;
             if (key === 'auto') {
-                state.perSec += up.effect;
+                s.perSec += up.effect;
             } else if (key === 'power') {
-                state.perClick += up.effect;
-            } else if (key === 'multiplier') {
-                state.perClick *= up.effect;
-                state.perSec *= up.effect;
+                s.perClick += up.effect;
+            } else if (key === 'crit') {
+                // эффект применяется в handleClick, level просто растет
+            } else if (key === 'magnet') {
+                s.perSec += up.effect;
             }
             up.level++;
-            up.cost = Math.floor(up.cost * 1.6);
+            up.cost = Math.floor(up.cost * 1.5);
             updateClickerUI();
             renderUpgrades();
         }
 
-        function triggerRandomEvent() {
-            const state = window.clickerState;
+        function triggerEvent() {
+            const s = clickerState;
             const r = Math.random();
             let msg = '';
             if (r < 0.3) {
-                const bonus = Math.floor(state.perClick * 5) + 10;
-                state.score += bonus;
-                msg = `+${bonus}💎 (бонус)`;
+                const bonus = Math.floor(s.perClick * 10) + 20;
+                s.score += bonus;
+                msg = `+${bonus}💎`;
             } else if (r < 0.5) {
-                const loss = Math.floor(state.score * 0.1);
-                state.score = Math.max(0, state.score - loss);
-                msg = `-${loss}💎 (кража)`;
+                const loss = Math.floor(s.score * 0.05);
+                s.score = Math.max(0, s.score - loss);
+                msg = `-${loss}💎`;
             } else {
-                msg = 'Ничего не произошло';
+                msg = '✨ Близко!';
             }
-            state.events.push(msg);
+            s.events.push(msg);
         }
 
         function generateChallenge() {
-            const state = window.clickerState;
-            if (state.challenge.active) return;
-            const base = 50 + Math.floor(state.perSec * 10) + state.perClick * 5;
-            state.challenge = {
+            const s = clickerState;
+            if (s.challenge.active) return;
+            const base = 30 + s.perClick * 3 + s.perSec * 2;
+            s.challenge = {
                 active: true,
-                target: Math.max(20, base),
-                progress: 0,
-                reward: Math.floor(base * 0.8)
+                startScore: s.score,
+                target: Math.floor(base),
+                reward: Math.floor(base * 0.7)
             };
             const box = document.getElementById('challengeBox');
-            if (box) box.textContent = `🎯 Челлендж: набери ${state.challenge.target}💎 (награда ${state.challenge.reward}💎)`;
+            if (box) box.textContent = `🎯 Набери ещё ${s.challenge.target}💎 (награда ${s.challenge.reward}💎)`;
         }
 
         function checkChallenge() {
-            const state = window.clickerState;
-            if (!state.challenge.active) return;
-            state.challenge.progress = state.score; // упрощенно: прогресс равен текущему счёту
-            if (state.score >= state.challenge.target) {
-                state.score += state.challenge.reward;
-                state.challenge.active = false;
+            const s = clickerState;
+            if (!s.challenge.active) return;
+            const progress = s.score - s.challenge.startScore;
+            if (progress >= s.challenge.target) {
+                s.score += s.challenge.reward;
+                s.challenge.active = false;
                 const box = document.getElementById('challengeBox');
-                if (box) box.textContent = '✅ Челлендж выполнен! Награда получена.';
+                if (box) box.textContent = '✅ Челлендж выполнен!';
+                updateClickerUI();
                 setTimeout(() => {
                     if (box) box.textContent = '🎯 Челлендж: нет активных';
                     generateChallenge();
-                }, 2000);
-                updateClickerUI();
+                }, 1800);
+            } else {
+                const box = document.getElementById('challengeBox');
+                if (box) box.textContent = `🎯 Набери ещё ${s.challenge.target - progress}💎 (награда ${s.challenge.reward}💎)`;
             }
         }
 
         // ========== ТЕТРИС ==========
-        let tetrisBoard, tetrisPiece, tetrisInterval, tetrisScore, tetrisActive;
+        const COLS = 10, ROWS = 20, BLOCK = 18; // 18px блок
+        let board, piece, scoreTetris;
 
-        const COLS = 10, ROWS = 20, BLOCK_SIZE = 24;
         const PIECES = [
             { shape: [[1,1,1,1]], color: '#c44eff' },
             { shape: [[1,1],[1,1]], color: '#ffcc00' },
@@ -629,164 +587,161 @@
             { shape: [[1,1,0],[0,1,1]], color: '#ff4444' }
         ];
 
-        function createTetrisPiece() {
+        function randomPiece() {
             const idx = Math.floor(Math.random() * PIECES.length);
             const p = PIECES[idx];
             return {
-                shape: p.shape.map(row => [...row]),
+                shape: p.shape.map(r => [...r]),
                 color: p.color,
                 x: Math.floor((COLS - p.shape[0].length) / 2),
                 y: 0
             };
         }
 
-        function initTetrisBoard() {
-            tetrisBoard = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        function initBoard() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
         }
 
-        function drawTetris() {
+        function draw() {
             const canvas = document.getElementById('tetrisCanvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
-                    if (tetrisBoard[r][c]) {
-                        ctx.fillStyle = tetrisBoard[r][c];
-                        ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+                    if (board[r][c]) {
+                        ctx.fillStyle = board[r][c];
+                        ctx.fillRect(c*BLOCK, r*BLOCK, BLOCK-1, BLOCK-1);
                     }
                 }
             }
-            if (tetrisPiece) {
-                tetrisPiece.shape.forEach((row, dy) => {
+            if (piece) {
+                piece.shape.forEach((row, dy) => {
                     row.forEach((val, dx) => {
                         if (val) {
-                            ctx.fillStyle = tetrisPiece.color;
-                            ctx.fillRect((tetrisPiece.x + dx) * BLOCK_SIZE, (tetrisPiece.y + dy) * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+                            ctx.fillStyle = piece.color;
+                            ctx.fillRect((piece.x+dx)*BLOCK, (piece.y+dy)*BLOCK, BLOCK-1, BLOCK-1);
                         }
                     });
                 });
             }
         }
 
-        function tetrisCollision(shape, x, y) {
-            for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[0].length; c++) {
+        function collide(shape, x, y) {
+            for (let r=0; r<shape.length; r++) {
+                for (let c=0; c<shape[0].length; c++) {
                     if (shape[r][c]) {
-                        const bx = x + c, by = y + r;
-                        if (bx < 0 || bx >= COLS || by >= ROWS) return true;
-                        if (by >= 0 && tetrisBoard[by][bx]) return true;
+                        const bx = x+c, by = y+r;
+                        if (bx<0 || bx>=COLS || by>=ROWS) return true;
+                        if (by>=0 && board[by][bx]) return true;
                     }
                 }
             }
             return false;
         }
 
-        function lockTetrisPiece() {
-            tetrisPiece.shape.forEach((row, dy) => {
+        function lock() {
+            piece.shape.forEach((row, dy) => {
                 row.forEach((val, dx) => {
                     if (val) {
-                        const bx = tetrisPiece.x + dx, by = tetrisPiece.y + dy;
-                        if (by >= 0 && by < ROWS && bx >= 0 && bx < COLS) {
-                            tetrisBoard[by][bx] = tetrisPiece.color;
-                        }
+                        const bx = piece.x+dx, by = piece.y+dy;
+                        if (by>=0 && by<ROWS && bx>=0 && bx<COLS) board[by][bx] = piece.color;
                     }
                 });
             });
-            clearTetrisLines();
-            tetrisPiece = createTetrisPiece();
-            if (tetrisCollision(tetrisPiece.shape, tetrisPiece.x, tetrisPiece.y)) {
+            clearLines();
+            piece = randomPiece();
+            if (collide(piece.shape, piece.x, piece.y)) {
                 gameOverTetris();
             }
         }
 
-        function clearTetrisLines() {
+        function clearLines() {
             let lines = 0;
-            for (let r = ROWS-1; r >= 0; r--) {
-                if (tetrisBoard[r].every(cell => cell !== 0)) {
-                    tetrisBoard.splice(r, 1);
-                    tetrisBoard.unshift(Array(COLS).fill(0));
+            for (let r=ROWS-1; r>=0; r--) {
+                if (board[r].every(cell => cell)) {
+                    board.splice(r,1);
+                    board.unshift(Array(COLS).fill(0));
                     r++;
                     lines++;
                 }
             }
-            if (lines > 0) {
-                tetrisScore += lines * 100;
-                document.getElementById('tetrisScore').textContent = `Счёт: ${tetrisScore}`;
+            if (lines) {
+                scoreTetris += lines * 100;
+                document.getElementById('tetrisScore').textContent = 'Счёт: ' + scoreTetris;
             }
         }
 
-        function moveTetris(dx, dy) {
+        function move(dx, dy) {
             if (!tetrisActive) return;
-            if (!tetrisCollision(tetrisPiece.shape, tetrisPiece.x + dx, tetrisPiece.y + dy)) {
-                tetrisPiece.x += dx;
-                tetrisPiece.y += dy;
-                drawTetris();
+            if (!collide(piece.shape, piece.x+dx, piece.y+dy)) {
+                piece.x += dx;
+                piece.y += dy;
+                draw();
             } else if (dy === 1) {
-                lockTetrisPiece();
-                drawTetris();
+                lock();
+                draw();
             }
         }
 
-        function rotateTetris() {
+        function rotate() {
             if (!tetrisActive) return;
-            const shape = tetrisPiece.shape;
+            const shape = piece.shape;
             const rotated = shape[0].map((_, idx) => shape.map(row => row[idx]).reverse());
-            if (!tetrisCollision(rotated, tetrisPiece.x, tetrisPiece.y)) {
-                tetrisPiece.shape = rotated;
-                drawTetris();
+            if (!collide(rotated, piece.x, piece.y)) {
+                piece.shape = rotated;
+                draw();
             }
         }
 
-        function dropTetris() {
+        function drop() {
             if (!tetrisActive) return;
-            while (!tetrisCollision(tetrisPiece.shape, tetrisPiece.x, tetrisPiece.y + 1)) {
-                tetrisPiece.y++;
-            }
-            lockTetrisPiece();
-            drawTetris();
+            while (!collide(piece.shape, piece.x, piece.y+1)) piece.y++;
+            lock();
+            draw();
         }
 
         function gameOverTetris() {
             tetrisActive = false;
             clearInterval(tetrisInterval);
-            alert('Game Over! Счёт: ' + tetrisScore);
+            alert('Game Over! Счёт: ' + scoreTetris);
             stopTetris();
-            showGameSelection();
+            showSelection();
         }
 
         function startTetris() {
-            if (tetrisActive) return;
-            initTetrisBoard();
-            tetrisScore = 0;
+            initBoard();
+            scoreTetris = 0;
             document.getElementById('tetrisScore').textContent = 'Счёт: 0';
-            tetrisPiece = createTetrisPiece();
+            piece = randomPiece();
             tetrisActive = true;
-            drawTetris();
-            tetrisInterval = setInterval(() => moveTetris(0, 1), 500);
-            window.tetrisActive = true;
+            draw();
+            tetrisInterval = setInterval(() => move(0,1), 500);
         }
 
         function stopTetris() {
             tetrisActive = false;
-            if (tetrisInterval) clearInterval(tetrisInterval);
-            window.tetrisActive = false;
+            if (tetrisInterval) {
+                clearInterval(tetrisInterval);
+                tetrisInterval = null;
+            }
         }
 
         document.addEventListener('keydown', (e) => {
             if (!tetrisActive) return;
-            if (e.key === 'ArrowLeft') moveTetris(-1, 0);
-            else if (e.key === 'ArrowRight') moveTetris(1, 0);
-            else if (e.key === 'ArrowDown') moveTetris(0, 1);
-            else if (e.key === 'ArrowUp') rotateTetris();
-            else if (e.key === ' ') { e.preventDefault(); dropTetris(); }
+            if (e.key === 'ArrowLeft') move(-1,0);
+            else if (e.key === 'ArrowRight') move(1,0);
+            else if (e.key === 'ArrowDown') move(0,1);
+            else if (e.key === 'ArrowUp') rotate();
+            else if (e.key === ' ') { e.preventDefault(); drop(); }
         });
 
-        // Очистка при закрытии модалки
+        // Очистка при закрытии страницы
         window.addEventListener('beforeunload', () => {
+            if (clickerInterval) clearInterval(clickerInterval);
             if (tetrisInterval) clearInterval(tetrisInterval);
-            if (window.clickerInterval) clearInterval(window.clickerInterval);
         });
-    </script>
+    })();
+</script>
 </body>
 </html>
