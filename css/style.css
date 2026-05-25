@@ -272,64 +272,156 @@ footer a:hover, footer button:hover {
     color: white;
     border: none;
     border-radius: 50%;
-    width: 65px; height: 65px;
-    font-size: 0.85rem;
+    width: 70px; height: 70px;
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
-    margin: 0.4rem auto;
+    margin: 0.5rem auto;
     display: block;
-    box-shadow: 0 0 15px rgba(196,78,255,0.5);
+    box-shadow: 0 0 20px rgba(196,78,255,0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
 }
 .clicker-main-btn:active {
     transform: scale(0.95);
-    box-shadow: 0 0 25px rgba(196,78,255,0.9);
+    box-shadow: 0 0 30px rgba(196,78,255,0.9);
 }
-.upgrade-btn {
-    background: rgba(196,78,255,0.2);
-    border: 1px solid rgba(196,78,255,0.3);
+.clicker-main-btn.animated {
+    animation: pulse 0.5s ease-in-out;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 20px rgba(196,78,255,0.5); }
+    50% { box-shadow: 0 0 40px rgba(196,78,255,1); }
+    100% { box-shadow: 0 0 20px rgba(196,78,255,0.5); }
+}
+
+/* Всплывающие числа при клике */
+.float-number {
+    position: absolute;
+    color: #ffcc00;
+    font-weight: bold;
+    font-size: 1rem;
+    animation: floatUp 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 0 8px #ffcc00;
+}
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-40px); }
+}
+
+/* События - большое всплывающее окно */
+.event-big-popup {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    border: 2px solid #c44eff;
+    border-radius: 16px;
+    padding: 1rem 2rem;
+    color: #fff;
+    font-size: 1.5rem;
+    z-index: 300;
+    text-align: center;
+    animation: eventPop 2.5s ease-out forwards;
+    box-shadow: 0 0 30px rgba(196,78,255,0.8);
+}
+@keyframes eventPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    40% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+/* Список улучшений */
+.upgrades-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.5rem 0;
+}
+.upgrade-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(196,78,255,0.1);
+    border: 1px solid rgba(196,78,255,0.2);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    transition: background 0.2s;
+}
+.upgrade-item.locked {
+    opacity: 0.5;
+    background: rgba(255,255,255,0.02);
+}
+.upgrade-item .info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.upgrade-item .icon {
+    font-size: 1.2rem;
+}
+.upgrade-item .details {
+    text-align: left;
+}
+.upgrade-item .name {
+    font-size: 0.8rem;
+    font-weight: bold;
     color: #d0d0e0;
-    border-radius: 4px;
-    padding: 0.2rem 0.5rem;
+}
+.upgrade-item .effect {
+    font-size: 0.65rem;
+    color: #aaa;
+}
+.upgrade-item .cost {
+    color: #ffcc00;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+.upgrade-item .buy-btn {
+    background: #c44eff;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 0.3rem 0.8rem;
     cursor: pointer;
     font-size: 0.7rem;
-    margin: 0.12rem;
+    transition: background 0.2s;
 }
-.upgrade-btn:hover { background: rgba(196,78,255,0.4); }
-.upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.challenge-box {
-    background: rgba(255,255,255,0.03);
-    border-radius: 4px;
-    padding: 0.3rem;
-    margin: 0.4rem 0;
-    font-size: 0.7rem;
+.upgrade-item .buy-btn:hover {
+    background: #da80ff;
 }
-.event-popup {
-    background: #c44eff;
-    color: #000;
-    padding: 0.1rem 0.4rem;
-    border-radius: 15px;
-    font-size: 0.65rem;
-    display: inline-block;
-    margin: 0.1rem;
-    animation: fadeOut 2s forwards;
+.upgrade-item .buy-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
 }
-@keyframes fadeOut {
-    0% { opacity:1; }
-    100% { opacity:0; }
+
+/* Босс */
+.boss-container {
+    background: rgba(30,30,40,0.9);
+    border-radius: 10px;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ff4444;
 }
 .boss-bar-container {
     width: 100%;
     height: 10px;
     background: #333;
     border-radius: 5px;
-    margin: 0.4rem 0 0.2rem;
     overflow: hidden;
+    margin: 0.3rem 0;
 }
 .boss-bar {
     height: 100%;
-    background: #ff4444;
-    transition: width 0.1s;
+    background: linear-gradient(90deg, #ff4444, #ff8844);
+    transition: width 0.3s;
 }
+
 canvas {
     border: 1px solid #c44eff;
     border-radius: 4px;
@@ -352,52 +444,4 @@ canvas {
     justify-content: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-}
-
-/* Всплывающие числа */
-.float-number {
-    position: absolute;
-    color: #c44eff;
-    font-weight: bold;
-    font-size: 0.8rem;
-    animation: floatUp 1s ease-out forwards;
-    pointer-events: none;
-}
-@keyframes floatUp {
-    0% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-30px); }
-}
-/* Иконки в улучшениях */
-.upgrade-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-    padding: 0.3rem 0.6rem;
-    margin: 0.15rem;
-    font-size: 0.7rem;
-    border-radius: 20px;
-    background: rgba(196,78,255,0.15);
-    border: 1px solid rgba(196,78,255,0.3);
-    color: #d0d0e0;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.upgrade-btn:hover { background: rgba(196,78,255,0.3); }
-.upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.upgrade-btn .cost { color: #ffcc00; margin-left: 0.2rem; }
-
-/* Полоска босса */
-.boss-bar-container {
-    width: 100%;
-    height: 8px;
-    background: #333;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 0.3rem 0;
-}
-.boss-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4444, #ff8844);
-    transition: width 0.3s;
 }

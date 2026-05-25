@@ -26,23 +26,28 @@
                 <span>💎 <span id="clickerScore">0</span></span>
                 <span>⚡/сек: <span id="clickerPerSec">0</span></span>
             </div>
-            <div id="bossContainer" style="display:none; margin:0.4rem 0; background:#1a1a24; border-radius:8px; padding:0.4rem;">
+            <div id="bossContainer" class="boss-container" style="display:none;">
                 <div style="color:#ff5555; font-weight:bold; font-size:0.8rem;" id="bossName">Босс</div>
                 <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
                 <div style="font-size:0.65rem; color:#ccc;" id="bossHealthText"></div>
             </div>
-            <div id="clickerArea" style="position:relative; min-height:60px;">
+            <div id="clickerArea" style="position:relative; min-height:70px;">
                 <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
             </div>
-            <div id="clickerUpgrades" style="margin:0.3rem 0; display:flex; flex-wrap:wrap; justify-content:center;"></div>
-            <div class="challenge-box" id="challengeBox">🎯 Челлендж: нет активных</div>
-            <div id="eventLog" style="min-height:1.2em; margin-top:0.3rem;"></div>
+            <div id="clickerUpgrades" class="upgrades-list"></div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
-        document.getElementById('clickerBtn').onclick = () => window.clicker.handleClick();
-        document.getElementById('backClicker').onclick = () => { activeGame = null; showSelection(); };
+        document.getElementById('clickerBtn').onclick = function() {
+            window.clicker.handleClick();
+            this.classList.add('animated');
+            setTimeout(() => this.classList.remove('animated'), 500);
+        };
+        document.getElementById('backClicker').onclick = function() {
+            activeGame = null;
+            showSelection();
+        };
         window.clicker.updateUI();
-        window.clicker.renderUpgrades();
+        window.clicker.renderUpgradesList();
         window.clicker.generateChallenge();
         window.clicker.updateBossUI();
     }
@@ -57,12 +62,15 @@
             <button class="game-btn" id="startTetrisBtn">Старт</button>
             <button class="back-btn" id="backTetrisMode">← Назад</button>
         `;
-        document.getElementById('startTetrisBtn').onclick = () => {
+        document.getElementById('startTetrisBtn').onclick = function() {
             const mode = document.querySelector('input[name="tetrisMode"]:checked').value;
             if (mode === 'single') showTetrisSingle();
             else showTetrisMulti();
         };
-        document.getElementById('backTetrisMode').onclick = () => { activeGame = null; showSelection(); };
+        document.getElementById('backTetrisMode').onclick = function() {
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function showTetrisSingle() {
@@ -75,7 +83,11 @@
         `;
         window.tetris.init(1);
         activeGame = 'tetris';
-        document.getElementById('backTetris').onclick = () => { window.tetris.stop(); activeGame = null; showSelection(); };
+        document.getElementById('backTetris').onclick = function() {
+            window.tetris.stop();
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function showTetrisMulti() {
@@ -90,7 +102,11 @@
         `;
         window.tetris.init(2);
         activeGame = 'tetris';
-        document.getElementById('backTetrisMulti').onclick = () => { window.tetris.stop(); activeGame = null; showSelection(); };
+        document.getElementById('backTetrisMulti').onclick = function() {
+            window.tetris.stop();
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function showSnakeMode() {
@@ -103,12 +119,15 @@
             <button class="game-btn" id="startSnakeBtn">Старт</button>
             <button class="back-btn" id="backSnakeMode">← Назад</button>
         `;
-        document.getElementById('startSnakeBtn').onclick = () => {
+        document.getElementById('startSnakeBtn').onclick = function() {
             const mode = document.querySelector('input[name="snakeMode"]:checked').value;
             if (mode === 'single') showSnakeSingle();
             else showSnakeMulti();
         };
-        document.getElementById('backSnakeMode').onclick = () => { activeGame = null; showSelection(); };
+        document.getElementById('backSnakeMode').onclick = function() {
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function showSnakeSingle() {
@@ -121,7 +140,11 @@
         `;
         window.snake.init(1);
         activeGame = 'snake';
-        document.getElementById('backSnake').onclick = () => { window.snake.stop(); activeGame = null; showSelection(); };
+        document.getElementById('backSnake').onclick = function() {
+            window.snake.stop();
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function showSnakeMulti() {
@@ -135,7 +158,11 @@
         `;
         window.snake.init(2);
         activeGame = 'snake';
-        document.getElementById('backSnakeMulti').onclick = () => { window.snake.stop(); activeGame = null; showSelection(); };
+        document.getElementById('backSnakeMulti').onclick = function() {
+            window.snake.stop();
+            activeGame = null;
+            showSelection();
+        };
     }
 
     function closeModal() {
@@ -143,18 +170,17 @@
         activeGame = null;
     }
 
-    document.getElementById('openMiniGames').onclick = () => {
+    document.getElementById('openMiniGames').onclick = function() {
         modalOverlay.classList.add('active');
         showSelection();
     };
-    modalOverlay.onclick = (e) => {
+    modalOverlay.onclick = function(e) {
         if (e.target === modalOverlay) closeModal();
     };
 
     // Расширенная обработка клавиатуры с поддержкой русской раскладки
     document.addEventListener('keydown', function(e) {
         const key = e.key;
-        // Блокируем стандартное поведение для игровых клавиш
         const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
                           'w','a','s','d','W','A','S','D',
                           'ц','ф','ы','в','Ц','Ф','Ы','В'];
@@ -165,7 +191,6 @@
         if (activeGame === 'tetris' && window.tetris.active) {
             const t = window.tetris;
             const bSize = t.players === 1 ? 18 : 15;
-            // Приводим русские символы к латинским аналогам
             let mappedKey = key;
             if (key === 'ц' || key === 'Ц') mappedKey = 'w';
             else if (key === 'ф' || key === 'Ф') mappedKey = 'a';
