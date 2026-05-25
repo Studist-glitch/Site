@@ -3,333 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Starve Neon — Выживание в неоновом мире</title>
+    <title>Starve Neon</title>
     <style>
-        /* === Сброс и базовые стили === */
-        *,
-        *::before,
-        *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg: #0a0a0f;
-            --surface: #12121a;
-            --text: #e0e0e0;
-            --text-dim: #8888aa;
-            --accent: #c44eff;
-            --accent-glow: #e084ff;
-            --border: rgba(196, 78, 255, 0.2);
-            --radius: 12px;
-            --gap: clamp(1.5rem, 4vw, 3rem);
-            --max-width: 860px;
-            --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-        }
-
-        html {
-            font-size: 16px;
-            scroll-behavior: smooth;
-            background: var(--bg);
-            color: var(--text);
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            line-height: 1.7;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem 1.5rem;
-            background:
-                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(196, 78, 255, 0.08), transparent),
-                radial-gradient(ellipse 50% 50% at 80% 80%, rgba(120, 40, 200, 0.06), transparent);
-            background-attachment: fixed;
-        }
-
-        /* === Основной контейнер === */
-        .container {
-            width: 100%;
-            max-width: var(--max-width);
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap);
-        }
-
-        /* === Типографика === */
-        h1 {
-            font-size: clamp(2.4rem, 7vw, 4rem);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-            color: #ffffff;
-            text-align: center;
-        }
-
-        h1 .accent {
-            color: var(--accent);
-            text-shadow: 0 0 48px rgba(196, 78, 255, 0.4);
-        }
-
-        h2 {
-            font-size: 1.4rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 0.5rem;
-        }
-
-        p, li {
-            color: var(--text-dim);
-            font-size: 1rem;
-            max-width: 68ch;
-        }
-
-        a {
-            color: var(--accent);
-            text-decoration: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s, color 0.2s;
-        }
-
-        a:hover {
-            color: var(--accent-glow);
-            border-bottom-color: var(--accent-glow);
-        }
-
-        /* === Карточки === */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: clamp(1.5rem, 3vw, 2.2rem);
-            backdrop-filter: blur(6px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .card:hover {
-            border-color: rgba(196, 78, 255, 0.45);
-            box-shadow: 0 8px 40px rgba(196, 78, 255, 0.08);
-        }
-
-        .card p + p {
-            margin-top: 0.75rem;
-        }
-
-        /* === Сетка требований === */
-        .req-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-            margin-top: 1.2rem;
-        }
-
-        .req-item {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            padding: 1rem;
-            text-align: center;
-        }
-
-        .req-item .label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--accent);
-            margin-bottom: 0.3rem;
-        }
-
-        .req-item .value {
-            font-family: var(--font-mono);
-            font-size: 0.95rem;
+            margin: 0;
+            padding: 2rem 1rem;
+            background: #0b0b12;
             color: #d0d0e0;
-        }
-
-        /* === Кнопка === */
-        .btn {
-            display: inline-block;
-            background: var(--accent);
-            color: #fff;
-            font-weight: 600;
-            padding: 0.85rem 2.2rem;
-            border-radius: 40px;
-            text-align: center;
-            text-decoration: none;
-            border: none;
-            letter-spacing: 0.02em;
-            transition: background 0.25s, box-shadow 0.25s, transform 0.15s;
-            box-shadow: 0 4px 20px rgba(196, 78, 255, 0.35);
-            align-self: flex-start;
-        }
-
-        .btn:hover {
-            background: #d16fff;
-            box-shadow: 0 6px 28px rgba(196, 78, 255, 0.55);
-            transform: translateY(-2px);
-            border-bottom: none;
-        }
-
-        .btn-container {
+            font-family: system-ui, -apple-system, sans-serif;
             display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-top: 0.5rem;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
-
-        /* === Разделитель === */
-        hr {
-            border: none;
-            height: 1px;
-            background: var(--border);
-            margin: 0.5rem 0 1.2rem;
-        }
-
-        /* === Футер === */
-        .footer {
-            margin-top: auto;
-            padding-top: 2rem;
-            font-size: 0.8rem;
-            color: #555;
+        main {
+            max-width: 500px;
             text-align: center;
-            width: 100%;
         }
-
-        .footer a {
-            color: #8888aa;
-            border-bottom: none;
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #fff;
+            margin: 0 0 0.3rem;
         }
-
-        .footer a:hover {
-            color: var(--accent-glow);
+        h1 span {
+            color: #c44eff;
         }
-
-        /* === Адаптивность === */
-        @media (max-width: 600px) {
-            body {
-                padding: 1.5rem 1rem;
-            }
-
-            .btn {
-                width: 100%;
-                text-align: center;
-            }
-
-            .btn-container {
-                flex-direction: column;
-            }
+        p {
+            line-height: 1.6;
+            margin: 0.8rem 0;
+            color: #aaa;
+        }
+        .links {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            align-items: center;
+        }
+        a {
+            display: inline-block;
+            background: #c44eff;
+            color: #fff;
+            text-decoration: none;
+            padding: 0.75rem 1.8rem;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: background 0.2s;
+            width: fit-content;
+        }
+        a:hover {
+            background: #da80ff;
+        }
+        a.alt {
+            background: transparent;
+            border: 1px solid #c44eff;
+            color: #c44eff;
+        }
+        a.alt:hover {
+            background: rgba(196,78,255,0.1);
+        }
+        .specs {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 1.5rem;
         }
     </style>
 </head>
 <body>
-    <main class="container">
-
-        <!-- Заголовок -->
-        <header style="text-align: center;">
-            <h1>
-                STARVE<br><span class="accent">NEON</span>
-            </h1>
-            <p style="font-size: 1.15rem; margin-top: 0.8rem; color: #b0b0cc;">
-                Выживание в жестоком неоновом мире • 2184 год
-            </p>
-        </header>
-
-        <!-- Описание -->
-        <section class="card">
-            <h2>🌑 Что такое Starve Neon?</h2>
-            <p>
-                <strong>Starve Neon</strong> — это брутальная хардкорная игра на выживание в 
-                постапокалиптическом будущем. Ты — <em>Starver</em>, один из немногих, кто 
-                осмелился бросить вызов безжалостной среде.
-            </p>
-            <p>
-                Никто не будет держать тебя за руку. Только базовый туториал, а дальше — 
-                полагайся на свои инстинкты, собирай ресурсы, создавай оружие и снаряжение, 
-                объединяйся с фракциями или дерись против всех.
-            </p>
-        </section>
-
-        <!-- Ключевые особенности -->
-        <section class="card">
-            <h2>⚡ Особенности</h2>
-            <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.7rem;">
-                <li>🔹 Полная система развития: от копий и мечей до минигана</li>
-                <li>🔹 Броня для разных биомов, модули и генетика (как в RimWorld)</li>
-                <li>🔹 Союзы с фракциями, клановые рейды в стиле Rust</li>
-                <li>🔹 Приручение животных и PvP-арена</li>
-                <li>🔹 Кроссплатформенный мультиплеер (ПК / Android)</li>
-                <li>🔹 Ранний доступ — активная разработка и обновления</li>
-            </ul>
-        </section>
-
-        <!-- Системные требования -->
-        <section class="card">
-            <h2>💻 Системные требования</h2>
-            <div class="req-grid">
-                <div class="req-item">
-                    <div class="label">Мин. (40–60 FPS)</div>
-                    <div class="value">Xeon E5‑2650 v2<br>GT 730 4GB</div>
-                </div>
-                <div class="req-item">
-                    <div class="label">Оптим. (120–180 FPS)</div>
-                    <div class="value">Athlon X4 840<br>GT 1030 2GB</div>
-                </div>
-                <div class="req-item">
-                    <div class="label">Макс. (600–1000 FPS)</div>
-                    <div class="value">Ryzen 7 7435HS<br>RTX 3050 4GB</div>
-                </div>
-                <div class="req-item">
-                    <div class="label">Потребление</div>
-                    <div class="value">VRAM 512–1024 МБ<br>RAM 512–1024 МБ</div>
-                </div>
-            </div>
-            <p style="margin-top: 1rem; font-size: 0.85rem;">
-                ОС: Windows 10+ (32 бит) / Android 7+
-            </p>
-        </section>
-
-        <!-- Призыв к действию -->
-        <section style="text-align: center; margin-top: 0.5rem;">
-            <div class="btn-container" style="justify-content: center;">
-                <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" class="btn" target="_blank" rel="noopener">
-                    🎮 Играть / Подробнее
-                </a>
-                <a href="https://github.com/NeonShadowYT/NeonImperium" class="btn" target="_blank" rel="noopener" style="background: #2a2a3a; box-shadow: 0 4px 16px rgba(100, 100, 140, 0.2);">
-                    📁 Исходный код (GitHub)
-                </a>
-            </div>
-        </section>
-
-        <hr>
-
-        <!-- Видео / Трейлер -->
-        <section style="text-align: center;">
-            <p style="margin-bottom: 0.6rem; color: var(--accent); font-weight: 600;">
-                🎬 Трейлер и контент сообщества
-            </p>
-            <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border);">
-                <iframe
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-                    src="https://www.youtube.com/embed?listType=playlist&list=PLQ0pgEgv9KtT89f0LdAjlm8M3QhZAvH9k"
-                    title="Starve Neon Video"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen>
-                </iframe>
-            </div>
-        </section>
-
-    </main>
-
-    <footer class="footer">
-        <p>
-            © 2026 Neon Shadow · 
-            <a href="https://neonshadowyt.github.io/license.html" target="_blank" rel="noopener">Лицензионное соглашение</a> · 
-            Сделано с ⚡ в духе минимализма
+    <main>
+        <h1>STARVE<br><span>NEON</span></h1>
+        <p>Хардкорное выживание в мире.</p>
+        
+        <p style="font-size: 0.9rem; color: #999;">
+            Сбор ресурсов, крафт, фракции, PvP.<br>
+            Windows / Android · Ранний доступ
         </p>
-    </footer>
+
+        <div class="links">
+            <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Подробнее</a>
+            <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 Исходный код</a>
+        </div>
+
+        <div class="specs">
+            Мин.: Xeon E5‑2650 v2 + GT 730<br>
+            Оптим.: Ryzen 7 7435HS + RTX 3050
+        </div>
+    </main>
 </body>
 </html>
