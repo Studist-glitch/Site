@@ -19,6 +19,7 @@
             padding: 1.5rem 1rem;
             display: flex;
             justify-content: center;
+            position: relative;
         }
 
         .container {
@@ -151,6 +152,112 @@
             color: #e0a0ff;
         }
 
+        /* Неприметная кнопка мини-игр */
+        .mini-games-btn {
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 0.7rem;
+            cursor: pointer;
+            padding: 0 0.5rem;
+            transition: color 0.2s;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .mini-games-btn:hover {
+            color: #c44eff;
+            box-shadow: none;
+            background: none;
+        }
+
+        /* Модальное окно мини-игр */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #12121a;
+            border: 1px solid rgba(196, 78, 255, 0.4);
+            border-radius: 16px;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content h3 {
+            color: #c44eff;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .game-select-btn {
+            display: block;
+            width: 100%;
+            margin: 0.6rem 0;
+            padding: 0.6rem;
+            background: rgba(196, 78, 255, 0.15);
+            border: 1px solid rgba(196, 78, 255, 0.3);
+            color: #d0d0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+        }
+        .game-select-btn:hover {
+            background: rgba(196, 78, 255, 0.3);
+        }
+
+        .close-btn {
+            margin-top: 1rem;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        /* Тетрис-окно */
+        .tetris-container {
+            display: none;
+            text-align: center;
+        }
+        .tetris-container.active {
+            display: block;
+        }
+        canvas {
+            border: 1px solid #c44eff;
+            border-radius: 8px;
+            margin: 0.5rem auto;
+            display: block;
+        }
+        .tetris-score {
+            color: #c44eff;
+            font-weight: 600;
+            margin: 0.3rem 0;
+        }
+        .tetris-controls {
+            font-size: 0.7rem;
+            color: #888;
+        }
+
         @media (max-width: 500px) {
             .video-stretch {
                 height: 140px;
@@ -211,7 +318,249 @@
 
         <footer>
             © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
+            · <button class="mini-games-btn" id="openMiniGames">мини-игры</button>
         </footer>
     </div>
+
+    <!-- Модальное окно выбора игры -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <h3>🎮 Мини-игры</h3>
+            <button class="game-select-btn" id="playTetris">Тетрис</button>
+            <button class="game-select-btn" disabled style="opacity:0.4;">Скоро: Змейка</button>
+            <button class="game-select-btn" disabled style="opacity:0.4;">Скоро: Арканоид</button>
+            <button class="close-btn" id="closeModal">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Тетрис поверх всего -->
+    <div class="modal-overlay" id="tetrisOverlay">
+        <div class="modal-content tetris-container" id="tetrisContainer">
+            <h3>🧱 Тетрис</h3>
+            <canvas id="tetrisCanvas" width="240" height="400"></canvas>
+            <div class="tetris-score" id="tetrisScore">Счёт: 0</div>
+            <div class="tetris-controls">← → двигать &nbsp; ↑ вращать &nbsp; ↓ уронить</div>
+            <button class="close-btn" id="closeTetris">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        // === Управление модалками ===
+        const openBtn = document.getElementById('openMiniGames');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const closeModal = document.getElementById('closeModal');
+        const playTetrisBtn = document.getElementById('playTetris');
+        const tetrisOverlay = document.getElementById('tetrisOverlay');
+        const closeTetris = document.getElementById('closeTetris');
+
+        openBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('active');
+        });
+
+        closeModal.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+        });
+
+        playTetrisBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+            tetrisOverlay.classList.add('active');
+            startTetris();
+        });
+
+        closeTetris.addEventListener('click', () => {
+            tetrisOverlay.classList.remove('active');
+            stopTetris();
+        });
+
+        // === Простой Тетрис ===
+        const canvas = document.getElementById('tetrisCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('tetrisScore');
+
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = canvas.width / COLS; // 24px
+
+        let board = [];
+        let currentPiece = null;
+        let gameInterval = null;
+        let score = 0;
+        let gameActive = false;
+
+        // Фигуры
+        const PIECES = [
+            { shape: [[1,1,1,1]], color: '#c44eff' }, // I
+            { shape: [[1,1],[1,1]], color: '#ffcc00' }, // O
+            { shape: [[0,1,0],[1,1,1]], color: '#ff44cc' }, // T
+            { shape: [[1,0,0],[1,1,1]], color: '#44ccff' }, // J
+            { shape: [[0,0,1],[1,1,1]], color: '#ff8844' }, // L
+            { shape: [[0,1,1],[1,1,0]], color: '#44ff44' }, // S
+            { shape: [[1,1,0],[0,1,1]], color: '#ff4444' }  // Z
+        ];
+
+        function createPiece() {
+            const idx = Math.floor(Math.random() * PIECES.length);
+            const piece = PIECES[idx];
+            return {
+                shape: piece.shape.map(row => [...row]),
+                color: piece.color,
+                x: Math.floor((COLS - piece.shape[0].length) / 2),
+                y: 0
+            };
+        }
+
+        function initBoard() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Сетка
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c]) {
+                        ctx.fillStyle = board[r][c];
+                        ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+                    }
+                }
+            }
+            // Текущая фигура
+            if (currentPiece) {
+                currentPiece.shape.forEach((row, dy) => {
+                    row.forEach((val, dx) => {
+                        if (val) {
+                            ctx.fillStyle = currentPiece.color;
+                            ctx.fillRect((currentPiece.x + dx) * BLOCK_SIZE, (currentPiece.y + dy) * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+                        }
+                    });
+                });
+            }
+        }
+
+        function collision(shape, x, y) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c]) {
+                        const boardX = x + c;
+                        const boardY = y + r;
+                        if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return true;
+                        if (boardY >= 0 && board[boardY][boardX]) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function lockPiece() {
+            currentPiece.shape.forEach((row, dy) => {
+                row.forEach((val, dx) => {
+                    if (val) {
+                        const boardY = currentPiece.y + dy;
+                        const boardX = currentPiece.x + dx;
+                        if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS) {
+                            board[boardY][boardX] = currentPiece.color;
+                        }
+                    }
+                });
+            });
+            clearLines();
+            currentPiece = createPiece();
+            if (collision(currentPiece.shape, currentPiece.x, currentPiece.y)) {
+                gameOver();
+            }
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(cell => cell !== 0)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    r++; // проверить ту же строку снова
+                    linesCleared++;
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                scoreSpan.textContent = `Счёт: ${score}`;
+            }
+        }
+
+        function movePiece(dx, dy) {
+            if (!currentPiece || !gameActive) return;
+            if (!collision(currentPiece.shape, currentPiece.x + dx, currentPiece.y + dy)) {
+                currentPiece.x += dx;
+                currentPiece.y += dy;
+                drawBoard();
+            } else if (dy === 1) {
+                lockPiece();
+                drawBoard();
+            }
+        }
+
+        function rotatePiece() {
+            if (!currentPiece || !gameActive) return;
+            const shape = currentPiece.shape;
+            const rotated = shape[0].map((_, idx) => shape.map(row => row[idx]).reverse());
+            if (!collision(rotated, currentPiece.x, currentPiece.y)) {
+                currentPiece.shape = rotated;
+                drawBoard();
+            }
+        }
+
+        function dropPiece() {
+            if (!currentPiece || !gameActive) return;
+            while (!collision(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+                currentPiece.y++;
+            }
+            lockPiece();
+            drawBoard();
+        }
+
+        function gameOver() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            alert('Game Over! Счёт: ' + score);
+            stopTetris();
+        }
+
+        function startTetris() {
+            if (gameActive) return;
+            initBoard();
+            score = 0;
+            scoreSpan.textContent = 'Счёт: 0';
+            currentPiece = createPiece();
+            gameActive = true;
+            drawBoard();
+            gameInterval = setInterval(() => movePiece(0, 1), 500);
+        }
+
+        function stopTetris() {
+            gameActive = false;
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+            }
+            tetrisOverlay.classList.remove('active');
+        }
+
+        // Управление клавиатурой
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.key === 'ArrowLeft') movePiece(-1, 0);
+            else if (e.key === 'ArrowRight') movePiece(1, 0);
+            else if (e.key === 'ArrowDown') movePiece(0, 1);
+            else if (e.key === 'ArrowUp') rotatePiece();
+            else if (e.key === ' ') { e.preventDefault(); dropPiece(); }
+        });
+
+        // Закрытие по клику на фон
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+        });
+        tetrisOverlay.addEventListener('click', (e) => {
+            if (e.target === tetrisOverlay) stopTetris();
+        });
+    </script>
 </body>
 </html>
