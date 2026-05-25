@@ -16,15 +16,19 @@
             color: #d0d0e0;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             line-height: 1.7;
-            padding: 2rem 1.5rem;
+            padding: 2rem 1.5rem 1rem;
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow-x: hidden;
         }
 
         .container {
             width: 100%;
             max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         h1 {
@@ -33,68 +37,59 @@
             letter-spacing: 2px;
             text-align: center;
             color: #fff;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.1;
         }
         h1 span {
             color: #c44eff;
         }
 
         h2 {
-            font-size: 1.3rem;
+            font-size: 1.15rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             color: #c44eff;
-            margin: 2rem 0 0.8rem;
+            margin-bottom: 0.6rem;
+            font-weight: 600;
         }
 
         p, li {
-            color: #aaa;
+            color: #b0b0c0;
             max-width: 60ch;
         }
 
-        a {
-            display: inline-block;
-            background: #c44eff;
-            color: #fff;
-            text-decoration: none;
-            padding: 0.8rem 2rem;
-            border-radius: 40px;
-            font-weight: 600;
-            transition: background 0.2s, box-shadow 0.2s;
-            margin-top: 1rem;
-        }
-        a:hover {
-            background: #da80ff;
-            box-shadow: 0 0 24px rgba(196, 78, 255, 0.5);
-        }
-        a.alt {
-            background: transparent;
-            border: 1px solid #c44eff;
-            color: #c44eff;
-            margin-left: 0.8rem;
-        }
-        a.alt:hover {
-            background: rgba(196, 78, 255, 0.08);
-        }
-
-        .links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.8rem;
-            justify-content: center;
+        /* Карточки секций */
+        .card {
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(196, 78, 255, 0.18);
+            border-radius: 16px;
+            padding: 1.8rem;
             margin: 1.5rem 0;
+            width: 100%;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: border-color 0.3s;
+        }
+        .card:hover {
+            border-color: rgba(196, 78, 255, 0.4);
         }
 
-        /* Видео-вставки */
-        .video-stretch {
-            width: 100%;
-            height: 320px;
-            margin: 2rem 0;
-            border-radius: 12px;
+        /* Видео на всю ширину, ниже по высоте */
+        .video-full {
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+            height: 220px;
+            margin-top: 1.8rem;
+            margin-bottom: 1.8rem;
             overflow: hidden;
-            border: 1px solid rgba(196, 78, 255, 0.25);
+            border-top: 1px solid rgba(196, 78, 255, 0.25);
+            border-bottom: 1px solid rgba(196, 78, 255, 0.25);
         }
-        .video-stretch video {
+        .video-full video {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -103,28 +98,82 @@
 
         .specs-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 0.8rem;
-            margin: 1rem 0;
+            margin-top: 0.8rem;
         }
         .specs-grid div {
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
             padding: 0.8rem;
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            color: #c0c0d0;
+            border: 1px solid rgba(196, 78, 255, 0.1);
+        }
+
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            justify-content: center;
+            margin: 1.8rem 0 0.5rem;
+        }
+
+        a {
+            display: inline-block;
+            background: #c44eff;
+            color: #fff;
+            text-decoration: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: background 0.2s, box-shadow 0.2s;
+            font-size: 0.95rem;
+        }
+        a:hover {
+            background: #da80ff;
+            box-shadow: 0 0 24px rgba(196, 78, 255, 0.6);
+        }
+        a.alt {
+            background: transparent;
+            border: 1px solid #c44eff;
+            color: #c44eff;
+        }
+        a.alt:hover {
+            background: rgba(196, 78, 255, 0.08);
         }
 
         footer {
-            margin-top: 3rem;
-            font-size: 0.8rem;
+            margin-top: 2.5rem;
+            font-size: 0.75rem;
             color: #555;
             text-align: center;
+            width: 100%;
+        }
+        footer a {
+            background: none;
+            padding: 0;
+            margin: 0;
+            color: #c44eff;
+            font-weight: 400;
+            box-shadow: none;
+        }
+        footer a:hover {
+            background: none;
+            box-shadow: none;
+            color: #e0a0ff;
         }
 
         @media (max-width: 500px) {
-            .video-stretch {
-                height: 200px;
+            .video-full {
+                height: 160px;
+            }
+            h1 {
+                font-size: 2.6rem;
+            }
+            .card {
+                padding: 1.2rem;
             }
         }
     </style>
@@ -132,42 +181,47 @@
 <body>
     <div class="container">
         <h1>STARVE<br><span>NEON</span></h1>
-        <p style="text-align: center; font-size: 1.15rem; color: #b0b0cc;">
-            Хардкорное выживание в мире 2184 года
+        <p style="text-align: center; font-size: 1.1rem; color: #b0b0cc; margin-bottom: 0.2rem;">
+            Хардкорное выживание
         </p>
 
-        <!-- Первое видео -->
-        <div class="video-stretch">
+        <!-- Первое видео (широкое, низкое) -->
+        <div class="video-full">
             <video src="images/video1.webm" autoplay loop muted playsinline></video>
         </div>
 
-        <h2>🌑 О проекте</h2>
-        <p>
-            <strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, 
-            где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища 
-            и сражайся за место под неоном.
-        </p>
+        <div class="card">
+            <h2>🌑 О проекте</h2>
+            <p>
+                <strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, 
+                где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища 
+                и сражайся.
+            </p>
+        </div>
 
         <!-- Второе видео -->
-        <div class="video-stretch">
+        <div class="video-full">
             <video src="images/video2.webm" autoplay loop muted playsinline></video>
         </div>
 
-        <h2>⚡ Особенности</h2>
-        <ul style="list-style: none; padding-left: 0;">
-            <li>— Полный цикл крафта (от копья до минигана)</li>
-            <li>— Броня, модули, генетические улучшения</li>
-            <li>— Фракции, клановые войны, рейды</li>
-            <li>— Приручение существ и PvP-арена</li>
-            <li>— Кроссплатформенность: Windows и Android</li>
-        </ul>
+        <div class="card">
+            <h2>⚡ Особенности</h2>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>— Полный цикл крафта (от копья до минигана)</li>
+                <li>— Броня, модули, генетические улучшения</li>
+                <li>— Фракции, клановые войны, рейды</li>
+                <li>— Приручение существ и PvP-арена</li>
+                <li>— Кроссплатформенность: Windows и Android</li>
+            </ul>
+        </div>
 
-        <h2>💻 Системные требования</h2>
-        <div class="specs-grid">
-            <div>Мин.<br>Xeon E5‑2650 v2<br>GT 730</div>
-            <div>Оптим.<br>Athlon X4 840<br>GT 1030</div>
-            <div>Макс.<br>Ryzen 7 7435HS<br>RTX 3050</div>
-            <div>VRAM<br>512–1024 МБ</div>
+        <div class="card">
+            <h2>💻 Системные требования</h2>
+            <div class="specs-grid">
+                <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
+                <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
+                <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
+            </div>
         </div>
 
         <div class="links">
@@ -176,7 +230,7 @@
         </div>
 
         <footer>
-            © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/license.html" style="background:none; color:#c44eff; padding:0; margin:0;">Лицензия</a>
+            © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
         </footer>
     </div>
 </body>
