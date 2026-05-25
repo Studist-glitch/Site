@@ -26,15 +26,17 @@
                 <span>💎 <span id="clickerScore">0</span></span>
                 <span>⚡/сек: <span id="clickerPerSec">0</span></span>
             </div>
-            <div id="bossContainer" style="display:none; margin:0.3rem 0;">
-                <div style="font-size:0.7rem; color:#ff4444;">Босс</div>
+            <div id="bossContainer" style="display:none; margin:0.4rem 0; background:#1a1a24; border-radius:8px; padding:0.4rem;">
+                <div style="color:#ff5555; font-weight:bold; font-size:0.8rem;" id="bossName">Босс</div>
                 <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
-                <div style="font-size:0.65rem;" id="bossHealthText"></div>
+                <div style="font-size:0.65rem; color:#ccc;" id="bossHealthText"></div>
             </div>
-            <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
-            <div id="clickerUpgrades" style="margin:0.3rem 0;"></div>
+            <div id="clickerArea" style="position:relative; min-height:60px;">
+                <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
+            </div>
+            <div id="clickerUpgrades" style="margin:0.3rem 0; display:flex; flex-wrap:wrap; justify-content:center;"></div>
             <div class="challenge-box" id="challengeBox">🎯 Челлендж: нет активных</div>
-            <div id="eventLog" style="min-height:1em;"></div>
+            <div id="eventLog" style="min-height:1.2em; margin-top:0.3rem;"></div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
         document.getElementById('clickerBtn').onclick = () => window.clicker.handleClick();
