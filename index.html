@@ -16,19 +16,14 @@
             color: #d0d0e0;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             line-height: 1.7;
-            padding: 2rem 1.5rem 1rem;
+            padding: 2rem 1.5rem;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
+            justify-content: center;
         }
 
         .container {
             width: 100%;
             max-width: 700px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
 
         h1 {
@@ -66,7 +61,6 @@
             border-radius: 16px;
             padding: 1.8rem;
             margin: 1.5rem 0;
-            width: 100%;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
             transition: border-color 0.3s;
         }
@@ -74,22 +68,16 @@
             border-color: rgba(196, 78, 255, 0.4);
         }
 
-        /* Видео на всю ширину, ниже по высоте */
-        .video-full {
-            width: 100vw;
-            position: relative;
-            left: 50%;
-            right: 50%;
-            margin-left: -50vw;
-            margin-right: -50vw;
-            height: 220px;
-            margin-top: 1.8rem;
-            margin-bottom: 1.8rem;
+        /* Видео: вытянутые, внутри контейнера, с обрезкой */
+        .video-stretch {
+            width: 100%;
+            height: 200px;
+            margin: 1.8rem 0;
+            border-radius: 12px;
             overflow: hidden;
-            border-top: 1px solid rgba(196, 78, 255, 0.25);
-            border-bottom: 1px solid rgba(196, 78, 255, 0.25);
+            border: 1px solid rgba(196, 78, 255, 0.25);
         }
-        .video-full video {
+        .video-stretch video {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -149,7 +137,6 @@
             font-size: 0.75rem;
             color: #555;
             text-align: center;
-            width: 100%;
         }
         footer a {
             background: none;
@@ -166,8 +153,8 @@
         }
 
         @media (max-width: 500px) {
-            .video-full {
-                height: 160px;
+            .video-stretch {
+                height: 150px;
             }
             h1 {
                 font-size: 2.6rem;
@@ -185,8 +172,8 @@
             Хардкорное выживание
         </p>
 
-        <!-- Первое видео (широкое, низкое) -->
-        <div class="video-full">
+        <!-- Видео 1: вытянутое, но не на всю страницу -->
+        <div class="video-stretch">
             <video src="images/video1.webm" autoplay loop muted playsinline></video>
         </div>
 
@@ -199,8 +186,8 @@
             </p>
         </div>
 
-        <!-- Второе видео -->
-        <div class="video-full">
+        <!-- Видео 2 -->
+        <div class="video-stretch">
             <video src="images/video2.webm" autoplay loop muted playsinline></video>
         </div>
 
