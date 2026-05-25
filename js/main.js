@@ -26,6 +26,11 @@
                 <span>💎 <span id="clickerScore">0</span></span>
                 <span>⚡/сек: <span id="clickerPerSec">0</span></span>
             </div>
+            <div id="bossContainer" style="display:none; margin:0.3rem 0;">
+                <div style="font-size:0.7rem; color:#ff4444;">Босс</div>
+                <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
+                <div style="font-size:0.65rem;" id="bossHealthText"></div>
+            </div>
             <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
             <div id="clickerUpgrades" style="margin:0.3rem 0;"></div>
             <div class="challenge-box" id="challengeBox">🎯 Челлендж: нет активных</div>
@@ -37,6 +42,7 @@
         window.clicker.updateUI();
         window.clicker.renderUpgrades();
         window.clicker.generateChallenge();
+        window.clicker.updateBossUI();
     }
 
     function showTetrisMode() {
@@ -77,7 +83,7 @@
                 <div><canvas id="tetrisCanvasP1" width="150" height="300"></canvas><div class="game-score" id="tetrisScoreP1">Игрок 1: 0</div></div>
                 <div><canvas id="tetrisCanvasP2" width="150" height="300"></canvas><div class="game-score" id="tetrisScoreP2">Игрок 2: 0</div></div>
             </div>
-            <div class="game-controls">P1: WASD, пробел &nbsp; P2: ←↑↓→, Enter</div>
+            <div class="game-controls">P1: WASD (ЦФЫВ), пробел &nbsp; P2: ←↑↓→, Enter</div>
             <button class="back-btn" id="backTetrisMulti">← Назад</button>
         `;
         window.tetris.init(2);
@@ -108,7 +114,7 @@
             <h3>🐍 Змейка</h3>
             <canvas id="snakeCanvas" width="200" height="200"></canvas>
             <div class="game-score" id="snakeScore">Счёт: 0</div>
-            <div class="game-controls">← → ↑ ↓</div>
+            <div class="game-controls">← → ↑ ↓ (стрелки)</div>
             <button class="back-btn" id="backSnake">← Назад</button>
         `;
         window.snake.init(1);
@@ -122,7 +128,7 @@
             <canvas id="snakeCanvas" width="200" height="200"></canvas>
             <div class="game-score" id="snakeScoreP1">Игрок 1: 0</div>
             <div class="game-score" id="snakeScoreP2">Игрок 2: 0</div>
-            <div class="game-controls">P1: WASD &nbsp; P2: ←↑↓→</div>
+            <div class="game-controls">P1: WASD (ЦФЫВ) &nbsp; P2: ←↑↓→</div>
             <button class="back-btn" id="backSnakeMulti">← Назад</button>
         `;
         window.snake.init(2);
@@ -143,48 +149,67 @@
         if (e.target === modalOverlay) closeModal();
     };
 
+    // Расширенная обработка клавиатуры с поддержкой русской раскладки
     document.addEventListener('keydown', function(e) {
         const key = e.key;
-        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter','w','a','s','d','W','A','S','D'].includes(key)) {
+        // Блокируем стандартное поведение для игровых клавиш
+        const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
+                          'w','a','s','d','W','A','S','D',
+                          'ц','ф','ы','в','Ц','Ф','Ы','В'];
+        if (gameKeys.includes(key)) {
             e.preventDefault();
         }
+
         if (activeGame === 'tetris' && window.tetris.active) {
             const t = window.tetris;
             const bSize = t.players === 1 ? 18 : 15;
+            // Приводим русские символы к латинским аналогам
+            let mappedKey = key;
+            if (key === 'ц' || key === 'Ц') mappedKey = 'w';
+            else if (key === 'ф' || key === 'Ф') mappedKey = 'a';
+            else if (key === 'ы' || key === 'Ы') mappedKey = 's';
+            else if (key === 'в' || key === 'В') mappedKey = 'd';
+
             if (t.players === 1) {
-                if (key === 'ArrowLeft') t.move(0, -1, 0, bSize);
-                else if (key === 'ArrowRight') t.move(0, 1, 0, bSize);
-                else if (key === 'ArrowDown') t.move(0, 0, 1, bSize);
-                else if (key === 'ArrowUp') t.rotate(0, bSize);
-                else if (key === ' ') t.drop(0, bSize);
+                if (mappedKey === 'ArrowLeft') t.move(0, -1, 0, bSize);
+                else if (mappedKey === 'ArrowRight') t.move(0, 1, 0, bSize);
+                else if (mappedKey === 'ArrowDown') t.move(0, 0, 1, bSize);
+                else if (mappedKey === 'ArrowUp') t.rotate(0, bSize);
+                else if (mappedKey === ' ') t.drop(0, bSize);
             } else {
-                if (key === 'a' || key === 'A') t.move(0, -1, 0, bSize);
-                else if (key === 'd' || key === 'D') t.move(0, 1, 0, bSize);
-                else if (key === 's' || key === 'S') t.move(0, 0, 1, bSize);
-                else if (key === 'w' || key === 'W') t.rotate(0, bSize);
-                else if (key === ' ') t.drop(0, bSize);
-                else if (key === 'ArrowLeft') t.move(1, -1, 0, bSize);
-                else if (key === 'ArrowRight') t.move(1, 1, 0, bSize);
-                else if (key === 'ArrowDown') t.move(1, 0, 1, bSize);
-                else if (key === 'ArrowUp') t.rotate(1, bSize);
-                else if (key === 'Enter') t.drop(1, bSize);
+                if (mappedKey === 'a') t.move(0, -1, 0, bSize);
+                else if (mappedKey === 'd') t.move(0, 1, 0, bSize);
+                else if (mappedKey === 's') t.move(0, 0, 1, bSize);
+                else if (mappedKey === 'w') t.rotate(0, bSize);
+                else if (mappedKey === ' ') t.drop(0, bSize);
+                else if (mappedKey === 'ArrowLeft') t.move(1, -1, 0, bSize);
+                else if (mappedKey === 'ArrowRight') t.move(1, 1, 0, bSize);
+                else if (mappedKey === 'ArrowDown') t.move(1, 0, 1, bSize);
+                else if (mappedKey === 'ArrowUp') t.rotate(1, bSize);
+                else if (mappedKey === 'Enter') t.drop(1, bSize);
             }
         } else if (activeGame === 'snake' && window.snake.active) {
             const s = window.snake;
+            let mappedKey = key;
+            if (key === 'ц' || key === 'Ц') mappedKey = 'w';
+            else if (key === 'ф' || key === 'Ф') mappedKey = 'a';
+            else if (key === 'ы' || key === 'Ы') mappedKey = 's';
+            else if (key === 'в' || key === 'В') mappedKey = 'd';
+
             if (s.players === 1) {
-                if (key === 'ArrowLeft' && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
-                else if (key === 'ArrowUp' && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
-                else if (key === 'ArrowRight' && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
-                else if (key === 'ArrowDown' && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
+                if (mappedKey === 'ArrowLeft' && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
+                else if (mappedKey === 'ArrowUp' && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
+                else if (mappedKey === 'ArrowRight' && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
+                else if (mappedKey === 'ArrowDown' && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
             } else {
-                if ((key==='a'||key==='A') && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
-                else if ((key==='w'||key==='W') && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
-                else if ((key==='d'||key==='D') && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
-                else if ((key==='s'||key==='S') && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
-                if (key==='ArrowLeft' && s.dirs[1].x!==1) s.nextDirs[1] = {x:-1,y:0};
-                else if (key==='ArrowUp' && s.dirs[1].y!==1) s.nextDirs[1] = {x:0,y:-1};
-                else if (key==='ArrowRight' && s.dirs[1].x!==-1) s.nextDirs[1] = {x:1,y:0};
-                else if (key==='ArrowDown' && s.dirs[1].y!==-1) s.nextDirs[1] = {x:0,y:1};
+                if (mappedKey === 'a' && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
+                else if (mappedKey === 'w' && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
+                else if (mappedKey === 'd' && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
+                else if (mappedKey === 's' && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
+                if (mappedKey === 'ArrowLeft' && s.dirs[1].x!==1) s.nextDirs[1] = {x:-1,y:0};
+                else if (mappedKey === 'ArrowUp' && s.dirs[1].y!==1) s.nextDirs[1] = {x:0,y:-1};
+                else if (mappedKey === 'ArrowRight' && s.dirs[1].x!==-1) s.nextDirs[1] = {x:1,y:0};
+                else if (mappedKey === 'ArrowDown' && s.dirs[1].y!==-1) s.nextDirs[1] = {x:0,y:1};
             }
         }
     });

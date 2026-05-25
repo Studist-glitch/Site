@@ -8,6 +8,7 @@ window.clicker = {
     goldRushActive: false,
     goldRushMult: 1,
     goldRushTimer: 0,
+    boss: { active: false, health: 0, maxHealth: 0, reward: 0 },
     upgrades: {
         auto: { level: 0, cost: 15, name: 'Автоклик', effect: () => { window.clicker.perSec += 1; } },
         power: { level: 0, cost: 10, name: 'Сила клика', effect: () => { window.clicker.perClick += 1; } },
@@ -27,8 +28,19 @@ window.clicker = {
         if (this.goldRushActive) gain *= this.goldRushMult;
         if (Math.random() < this.critChance) gain *= this.critMult;
         if (this.doubleClickChance > 0 && Math.random() < this.doubleClickChance) gain *= 2;
-        this.score += gain;
-        if (Math.random() < 0.12) this.triggerEvent();
+
+        if (this.boss.active) {
+            this.boss.health -= gain;
+            if (this.boss.health <= 0) {
+                this.score += this.boss.reward;
+                this.events.push(`Босс повержен! +${this.boss.reward}💎`);
+                this.boss.active = false;
+                this.updateBossUI();
+            }
+        } else {
+            this.score += gain;
+            if (Math.random() < 0.12) this.triggerEvent();
+        }
         this.updateUI();
         this.checkChallenge();
         this.renderUpgrades();
@@ -37,7 +49,17 @@ window.clicker = {
         if (this.perSec > 0) {
             let add = this.perSec;
             if (this.goldRushActive) add *= this.goldRushMult;
-            this.score += add;
+            if (this.boss.active) {
+                this.boss.health -= add;
+                if (this.boss.health <= 0) {
+                    this.score += this.boss.reward;
+                    this.events.push(`Босс повержен! +${this.boss.reward}💎`);
+                    this.boss.active = false;
+                }
+                this.updateBossUI();
+            } else {
+                this.score += add;
+            }
             this.updateUI();
             this.checkChallenge();
         }
@@ -45,12 +67,32 @@ window.clicker = {
             this.goldRushTimer--;
             if (this.goldRushTimer <= 0) {
                 this.goldRushActive = false;
-                document.getElementById('eventLog').innerHTML += '<span class="event-popup">Лихорадка кончилась</span>';
+                this.events.push('Лихорадка кончилась');
             }
         }
+        if (!this.boss.active && Math.random() < 0.02) this.spawnBoss(); // 2% шанс в секунду
         const log = document.getElementById('eventLog');
         if (log) log.innerHTML = this.events.map(e => `<span class="event-popup">${e}</span>`).join('');
         this.events = [];
+    },
+    spawnBoss: function() {
+        this.boss.active = true;
+        this.boss.maxHealth = Math.floor(50 + this.score * 0.1);
+        this.boss.health = this.boss.maxHealth;
+        this.boss.reward = Math.floor(this.boss.maxHealth * 2);
+        this.events.push('Босс появился!');
+        this.updateBossUI();
+    },
+    updateBossUI: function() {
+        const container = document.getElementById('bossContainer');
+        if (!container) return;
+        if (this.boss.active) {
+            container.style.display = 'block';
+            document.getElementById('bossHealthBar').style.width = (this.boss.health / this.boss.maxHealth * 100) + '%';
+            document.getElementById('bossHealthText').textContent = `${Math.ceil(this.boss.health)} / ${this.boss.maxHealth}`;
+        } else {
+            container.style.display = 'none';
+        }
     },
     updateUI: function() {
         const scoreEl = document.getElementById('clickerScore');

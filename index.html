@@ -5,66 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starve Neon</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        .video-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1.5rem 0;
-            table-layout: fixed;
-        }
-        .video-table td {
-            padding: 0.5rem;
-            vertical-align: top;
-            text-align: center;
-            width: 25%;
-        }
-        .video-table .vid-cell video {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-            border: 1px solid rgba(196,78,255,0.3);
-            display: block;
-        }
-        .video-table .desc-cell {
-            font-size: 0.75rem;
-            color: #b0b0c0;
-            line-height: 1.4;
-            padding-top: 0.3rem;
-        }
-        .video-table .desc-cell strong {
-            color: #c44eff;
-            display: block;
-            margin-bottom: 0.2rem;
-            font-size: 0.8rem;
-        }
-        .mini-games-float {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            background: rgba(196,78,255,0.9);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(196,78,255,0.6);
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .mini-games-float:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 25px rgba(196,78,255,0.9);
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <h1>STARVE<br><span>NEON</span></h1>
+
+        <!-- Вытянутое видео 1 -->
+        <div class="video-stretch">
+            <video src="images/video1.webm" autoplay loop muted playsinline></video>
+        </div>
+
+        <div class="card">
+            <h2>🌑 О проекте</h2>
+            <p><strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.</p>
+        </div>
+
+        <!-- Вытянутое видео 2 -->
+        <div class="video-stretch">
+            <video src="images/video2.webm" autoplay loop muted playsinline></video>
+        </div>
+
+        <div class="card">
+            <h2>⚡ Особенности</h2>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                <li>Полный цикл крафта (от копья до минигана)</li>
+                <li>Броня, модули, генетические улучшения</li>
+                <li>Фракции, клановые войны, рейды</li>
+                <li>Приручение существ и PvP-арена</li>
+                <li>Кроссплатформенность: Windows и Android</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>💻 Системные требования</h2>
+            <div class="specs-grid">
+                <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
+                <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
+                <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
+            </div>
+        </div>
+
+        <div class="links">
+            <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Сайт</a>
+            <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
+        </div>
 
         <!-- Таблица с 4 видео и описаниями -->
         <table class="video-table">
@@ -102,40 +86,15 @@
             </tr>
         </table>
 
-        <!-- Остальной контент -->
-        <div class="card">
-            <h2>🌑 О проекте</h2>
-            <p><strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.</p>
-        </div>
-        <div class="card">
-            <h2>⚡ Особенности</h2>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-                <li>Полный цикл крафта (от копья до минигана)</li>
-                <li>Броня, модули, генетические улучшения</li>
-                <li>Фракции, клановые войны, рейды</li>
-                <li>Приручение существ и PvP-арена</li>
-                <li>Кроссплатформенность: Windows и Android</li>
-            </ul>
-        </div>
-        <div class="card">
-            <h2>💻 Системные требования</h2>
-            <div class="specs-grid">
-                <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
-                <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
-                <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
-            </div>
-        </div>
-        <div class="links">
-            <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Сайт</a>
-            <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
-        </div>
         <footer>
             © 2026 Neon Shadow · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
         </footer>
     </div>
 
+    <!-- Кнопка мини-игр в углу экрана -->
     <button class="mini-games-float" id="openMiniGames" title="Мини-игры">🎮</button>
 
+    <!-- Модальное окно -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content" id="modalInner"></div>
     </div>
