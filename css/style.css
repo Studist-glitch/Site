@@ -445,3 +445,24 @@ canvas {
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+
+/* Сообщения событий в кликере */
+#eventsContainer {
+    text-align: left;
+    padding: 0.2rem;
+    max-height: 4em;
+    overflow-y: auto;
+}
+.event-message {
+    background: rgba(196,78,255,0.2);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    margin-bottom: 0.2rem;
+    animation: fadeInOut 3s ease-in-out forwards;
+}
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}
