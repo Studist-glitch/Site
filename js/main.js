@@ -75,6 +75,7 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
+    // --- Кликер (без изменений) ---
     function showClicker() {
         window.clicker.init();
         window.clicker.load();
@@ -238,6 +239,7 @@
         `;
     }
 
+    // --- Тетрис ---
     function showTetrisMode() {
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
@@ -262,6 +264,7 @@
             <h3>🧱 Тетрис</h3>
             <canvas id="tetrisCanvas" width="180" height="360"></canvas>
             <div class="game-score" id="tetrisScore">Счёт: 0</div>
+            <div id="abilityStatus" style="font-size:0.65rem; color:#aaa;"></div>
             <div class="game-controls">
                 <div style="margin-bottom:0.3rem;">Управление: ←↓→ / WASD / кнопки</div>
                 <button id="tetrisLeft" class="ctrl-btn">←</button>
@@ -269,15 +272,25 @@
                 <button id="tetrisRight" class="ctrl-btn">→</button>
                 <button id="tetrisRotate" class="ctrl-btn">↻</button>
                 <button id="tetrisDrop" class="ctrl-btn">Drop</button>
+                <button id="ability1" class="ctrl-btn" style="width:auto; padding:0 8px;">⚡</button>
+                <button id="ability2" class="ctrl-btn" style="width:auto; padding:0 8px;">❄️</button>
+                <button id="ability3" class="ctrl-btn" style="width:auto; padding:0 8px;">🧹</button>
             </div>
             <button class="back-btn" id="backTetris">← Назад</button>
         `;
+        window.tetris.onGameOver = function() {
+            window.tetris.showShop();
+        };
         window.tetris.init(1);
         attachTetrisControls(0);
         document.getElementById('backTetris').onclick = function() {
             window.tetris.stop();
             showSelection();
         };
+        // Привязка способностей
+        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', 18);
+        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', 18);
+        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', 18);
     }
 
     function showTetrisMulti() {
@@ -299,6 +312,7 @@
             <button class="back-btn" id="backTetrisMulti">← Назад</button>
         `;
         window.tetris.init(2);
+        window.tetris.onGameOver = null;
         document.getElementById('backTetrisMulti').onclick = function() {
             window.tetris.stop();
             showSelection();
@@ -321,6 +335,7 @@
         if (btnMap.drop) btnMap.drop.onclick = () => window.tetris.drop(playerIdx, blockSize);
     }
 
+    // --- Змейка (из предыдущего ответа, с магазином) ---
     function showSnakeMode() {
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
@@ -381,11 +396,7 @@
             <button class="back-btn" id="backSnakeMulti">← Назад</button>
         `;
         window.snake.init(2);
-        window.snake.onGameOver = function() {
-            // В мультиплеере магазин не вызываем
-            alert('Игра окончена!');
-            showSelection();
-        };
+        window.snake.onGameOver = null;
         document.getElementById('backSnakeMulti').onclick = function() {
             window.snake.stop();
             showSelection();
@@ -403,12 +414,58 @@
                     const newDir = dirMap[dir];
                     const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
                     if (!opposite) s.nextDirs[playerIdx] = newDir;
-                    // Проверка двойного нажатия для рывка
                     s.handleDashInput(playerIdx, dir);
                 };
             }
         }
     }
+
+    // Магазин тетриса теперь метод самого tetris
+    window.tetris.showShop = function() {
+        const self = this;
+        const render = () => {
+            modalInner.innerHTML = `
+                <h3>🧱 Улучшения Тетриса</h3>
+                <p>T-очки: <strong>${self.currency}</strong></p>
+                <div class="snake-shop" id="tetrisShopUpgrades"></div>
+                <button class="game-btn" id="playTetrisAgain">Играть снова</button>
+                <button class="back-btn" id="backToTetrisMenu">В меню</button>
+            `;
+            const container = document.getElementById('tetrisShopUpgrades');
+            const upgrades = [
+                { key: 'speed', name: 'Скорость +', desc: 'Уменьшает интервал падения', cost: 100, max: 5, current: self.upgrades.speed || 0 },
+                { key: 'lineBonus', name: 'Бонус за линии', desc: '+20% очков за каждую линию', cost: 150, max: 5, current: self.upgrades.lineBonus || 0 },
+                { key: 'startRows', name: 'Начальные ряды', desc: 'Добавляет заполненные строки (сложность)', cost: 50, max: 3, current: self.upgrades.startRows || 0 },
+                { key: 'specialChance', name: 'Спец. фигуры', desc: '+5% шанс выпадения спец. фигуры', cost: 200, max: 4, current: self.upgrades.specialChance || 0 },
+                { key: 'abilityPower', name: 'Сила способностей', desc: 'Сокращает кулдаун способностей', cost: 250, max: 3, current: self.upgrades.abilityPower || 0 }
+            ];
+            upgrades.forEach(up => {
+                const nextCost = up.cost + up.current * up.cost * 0.5;
+                const maxed = up.max && up.current >= up.max;
+                const item = document.createElement('div');
+                item.className = 'shop-upgrade';
+                item.innerHTML = `
+                    <div class="desc"><strong>${up.name}</strong><br>${up.desc}</div>
+                    <span class="cost">${maxed ? 'МАКС' : Math.floor(nextCost) + '💎'}</span>
+                    <button class="buy-btn" ${(self.currency >= nextCost && !maxed) ? '' : 'disabled'}>Купить</button>
+                `;
+                if (!maxed && self.currency >= nextCost) {
+                    item.querySelector('.buy-btn').onclick = () => {
+                        self.currency -= Math.floor(nextCost);
+                        self.upgrades[up.key] = up.current + 1;
+                        self.saveUpgrades();
+                        render();
+                    };
+                }
+                container.appendChild(item);
+            });
+            document.getElementById('playTetrisAgain').onclick = () => {
+                showTetrisSingle();
+            };
+            document.getElementById('backToTetrisMenu').onclick = showSelection;
+        };
+        render();
+    };
 
     function closeModal() {
         modalOverlay.classList.remove('active');
@@ -448,6 +505,10 @@
                 else if (isDown(key)) t.move(0, 0, 1, bSize);
                 else if (isUp(key)) t.rotate(0, bSize);
                 else if (isSpace(key)) t.drop(0, bSize);
+                // Клавиши способностей: Z, X, C
+                else if (key === 'z' || key === 'Z' || key === 'я' || key === 'Я') t.useAbility(0, 'lightning', bSize);
+                else if (key === 'x' || key === 'X' || key === 'ч' || key === 'Ч') t.useAbility(0, 'freeze', bSize);
+                else if (key === 'c' || key === 'C' || key === 'с' || key === 'С') t.useAbility(0, 'clear', bSize);
             } else {
                 if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') t.move(0, -1, 0, bSize);
                 else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') t.move(0, 1, 0, bSize);
