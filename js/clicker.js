@@ -34,6 +34,26 @@ window.clicker = {
     stats: { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 },
     ui: {},
 
+    prestige: {
+        level: 0,
+        multiplier: 1,
+        nextAt: 1000000,
+        baseReq: 1000000
+    },
+    daily: {
+        date: '',
+        tasks: [],
+        completedToday: false
+    },
+    cards: [],
+    allCards: [
+        { id: 'c1', name: 'Неоновая искра', desc: '+1% к пассивному доходу', effect: function() { clicker.perSec = Math.floor(clicker.perSec * 1.01); } },
+        { id: 'c2', name: 'Кристалл удачи', desc: '+2% шанс двойного клика', effect: function() { clicker.doubleClickChance += 0.02; } },
+        { id: 'c3', name: 'Теневой клинок', desc: '+0.5 к силе клика', effect: function() { clicker.perClick += 0.5; } },
+        { id: 'c4', name: 'Эхо пустоты', desc: '+1% шанс крита', effect: function() { clicker.critChance += 0.01; } },
+        { id: 'c5', name: 'Золотой жук', desc: '+0.2% от счёта в секунду', effect: function() { clicker.bankPercent += 0.2; } }
+    ],
+
     upgrades: {
         auto: { tier: 0, level: 0, baseCost: 15, costMult: 1.6, name: 'Автоклик', icon: '⚡', desc: '+1 пасс.доход', effect: function(lvl) { clicker.perSec += 1; } },
         power: { tier: 0, level: 0, baseCost: 10, costMult: 1.6, name: 'Сила клика', icon: '💪', desc: '+1 к урону клика', effect: function(lvl) { clicker.perClick += 1; } },
@@ -77,11 +97,17 @@ window.clicker = {
         }},
         quantum: { tier: 4, level: 0, maxLevel: 1, baseCost: 5000, costMult: 1, name: 'Квантовый клик', icon: '⚛️', desc: 'Каждый 10-й клик x5', unlock: 20000, effect: function(lvl) { clicker.quantumActive = true; } },
         blackHole: { tier: 4, level: 0, maxLevel: 1, baseCost: 8000, costMult: 1, name: 'Чёрная дыра', icon: '🕳️', desc: '2% макс. здоровья босса каждые 2с', unlock: 20000, effect: function(lvl) { clicker.blackHoleActive = true; } },
+        chrono: { tier: 5, level: 0, maxLevel: 1, baseCost: 50000, costMult: 1, name: 'Хронос', icon: '⏳', desc: 'Замедляет босса на 30%', unlock: 100000, effect: function(lvl) { clicker.bossWeakness = 1.3; } },
+        luckDragon: { tier: 5, level: 0, maxLevel: 5, baseCost: 30000, costMult: 2.5, name: 'Дракон удачи', icon: '🐉', desc: '+3% ко всем шансам', unlock: 100000, effect: function(lvl) {
+            clicker.critChance += 0.03;
+            clicker.doubleClickChance += 0.03;
+        }}
     },
 
     init: function() {
         if (this.tickIntervalId) clearInterval(this.tickIntervalId);
         this.tickIntervalId = setInterval(() => this.autoTick(), this.tickRate);
+        this.loadDaily();
         this.updateUI();
     },
 
@@ -113,6 +139,9 @@ window.clicker = {
                 quantumActive: this.quantumActive,
                 blackHoleActive: this.blackHoleActive,
                 stats: this.stats,
+                prestige: this.prestige,
+                daily: this.daily,
+                cards: this.cards,
                 upgrades: {}
             };
             for (let key in this.upgrades) {
@@ -148,11 +177,12 @@ window.clicker = {
             this.quantumActive = data.quantumActive || false;
             this.blackHoleActive = data.blackHoleActive || false;
             this.stats = data.stats || { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 };
+            if (data.prestige) this.prestige = data.prestige;
+            if (data.daily) this.daily = data.daily;
+            if (data.cards) this.cards = data.cards;
             if (data.upgrades) {
                 for (let key in data.upgrades) {
-                    if (this.upgrades[key]) {
-                        this.upgrades[key].level = data.upgrades[key];
-                    }
+                    if (this.upgrades[key]) this.upgrades[key].level = data.upgrades[key];
                 }
             }
             for (let key in this.upgrades) {
@@ -161,6 +191,10 @@ window.clicker = {
                     up.effect(i);
                 }
             }
+            this.cards.forEach(id => {
+                const card = this.allCards.find(c => c.id === id);
+                if (card) card.effect();
+            });
             if (this.tickIntervalId) clearInterval(this.tickIntervalId);
             this.tickIntervalId = setInterval(() => this.autoTick(), this.tickRate);
         } catch(e) {}
@@ -187,7 +221,8 @@ window.clicker = {
         if (Math.random() < this.critChance) gain *= this.critMult;
         if (this.doubleClickChance > 0 && Math.random() < this.doubleClickChance) gain *= 2;
 
-        // Всегда получаем алмазы
+        gain *= this.prestige.multiplier;
+
         this.score += gain;
         this.stats.totalEarned += gain;
 
@@ -195,10 +230,18 @@ window.clicker = {
         if (this.boss.active) {
             this.boss.health -= gain;
             if (this.boss.health <= 0) {
-                const reward = Math.floor(this.boss.reward * this.bossBounty);
+                const reward = Math.floor(this.boss.reward * this.bossBounty * this.prestige.multiplier);
                 this.score += reward;
                 this.stats.bossesDefeated++;
                 this.addEvent(`Босс ${this.boss.name} повержен! +${reward}💎`);
+                if (Math.random() < 0.1 + this.prestige.level * 0.02) {
+                    const newCard = this.allCards[Math.floor(Math.random() * this.allCards.length)];
+                    if (!this.cards.includes(newCard.id)) {
+                        this.cards.push(newCard.id);
+                        newCard.effect();
+                        this.addEvent(`🃏 Новая карта: ${newCard.name}!`);
+                    }
+                }
                 this.boss.active = false;
                 this.updateBossUI();
                 bossDefeated = true;
@@ -216,8 +259,67 @@ window.clicker = {
         this.updateUI();
         this.updateComboDisplay();
         this.checkChallenge();
+        this.checkDailyTasks(gain);
         if (this.ui.renderUpgrades) this.ui.renderUpgrades();
         this.save();
+    },
+
+    loadDaily: function() {
+        const today = new Date().toISOString().slice(0,10);
+        if (this.daily.date !== today) {
+            this.daily.date = today;
+            this.daily.tasks = this.generateDailyTasks();
+            this.daily.completedToday = false;
+        }
+    },
+    generateDailyTasks: function() {
+        return [
+            { desc: 'Кликни 500 раз', target: 500, progress: 0, reward: 10000, done: false },
+            { desc: 'Убей 2 боссов', target: 2, progress: 0, reward: 25000, done: false },
+            { desc: 'Заработай 100000 💎', target: 100000, progress: 0, reward: 50000, done: false }
+        ];
+    },
+    checkDailyTasks: function(earned) {
+        if (this.daily.completedToday) return;
+        this.daily.tasks[0].progress = Math.min(this.stats.totalClicks, this.daily.tasks[0].target);
+        this.daily.tasks[1].progress = Math.min(this.stats.bossesDefeated, this.daily.tasks[1].target);
+        this.daily.tasks[2].progress = Math.min(this.daily.tasks[2].progress + earned, this.daily.tasks[2].target);
+        if (this.daily.tasks.every(t => t.progress >= t.target)) {
+            this.daily.completedToday = true;
+            const totalReward = this.daily.tasks.reduce((s,t) => s + t.reward, 0);
+            this.score += totalReward;
+            this.addEvent(`🎯 Все ежедневные задания выполнены! +${totalReward}💎`);
+        }
+    },
+
+    prestigeReset: function() {
+        if (this.score < this.prestige.nextAt) return false;
+        this.prestige.level++;
+        this.prestige.multiplier = 1 + this.prestige.level * 0.1;
+        this.prestige.nextAt = Math.floor(this.prestige.baseReq * Math.pow(1.5, this.prestige.level));
+        this.score = 0;
+        this.perClick = 1;
+        this.perSec = 0;
+        this.critChance = 0.1;
+        this.critMult = 2;
+        this.doubleClickChance = 0;
+        this.maxCombo = 0;
+        this.comboMultiplier = 0;
+        this.poisonDps = 0;
+        this.meteorActive = false;
+        this.cloneActive = false;
+        this.bankPercent = 0;
+        this.tickRate = 1000;
+        this.magnetFieldActive = false;
+        this.magnetPercent = 0;
+        this.bossBounty = 1;
+        this.quantumActive = false;
+        this.blackHoleActive = false;
+        for (let key in this.upgrades) {
+            this.upgrades[key].level = 0;
+        }
+        this.save();
+        return true;
     },
 
     createRipple: function(e) {
@@ -285,17 +387,6 @@ window.clicker = {
             document.body.appendChild(particle);
             setTimeout(() => particle.remove(), 500);
         }
-        if (!document.getElementById('particle-style')) {
-            const style = document.createElement('style');
-            style.id = 'particle-style';
-            style.textContent = `
-                @keyframes particleBurst {
-                    0% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
-                    100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
     },
 
     showFloatingNumber: function(value) {
@@ -324,6 +415,7 @@ window.clicker = {
         let add = this.perSec;
         if (this.goldRushActive) add *= this.goldRushMult;
         if (this.bankPercent > 0) add += this.score * (this.bankPercent / 100);
+        add *= this.prestige.multiplier;
 
         if (this.magnetFieldActive) {
             this._magnetTick = (this._magnetTick || 0) + this.tickRate/1000;
@@ -346,7 +438,7 @@ window.clicker = {
             }
             this.boss.health -= bossDmg;
             if (this.boss.health <= 0) {
-                const reward = Math.floor(this.boss.reward * this.bossBounty);
+                const reward = Math.floor(this.boss.reward * this.bossBounty * this.prestige.multiplier);
                 this.score += reward;
                 this.stats.bossesDefeated++;
                 this.addEvent(`Босс ${this.boss.name} уничтожен! +${reward}💎`);
@@ -362,7 +454,7 @@ window.clicker = {
         if (this.poisonDps > 0 && this.boss.active) {
             this.boss.health -= this.poisonDps;
             if (this.boss.health <= 0) {
-                const reward = Math.floor(this.boss.reward * this.bossBounty);
+                const reward = Math.floor(this.boss.reward * this.bossBounty * this.prestige.multiplier);
                 this.score += reward;
                 this.stats.bossesDefeated++;
                 this.addEvent(`Яд добил босса! +${reward}💎`);
@@ -377,7 +469,7 @@ window.clicker = {
             this.meteorTimer++;
             if (this.meteorTimer >= this.meteorInterval) {
                 this.meteorTimer = 0;
-                const bonus = Math.floor(this.perSec * 20 + this.perClick * 15);
+                const bonus = Math.floor((this.perSec * 20 + this.perClick * 15) * this.prestige.multiplier);
                 this.score += bonus;
                 this.addEvent(`☄️ Метеоритный дождь +${bonus}💎`);
             }
@@ -436,7 +528,7 @@ window.clicker = {
         if (this.ui.perSecEl) {
             let totalPerSec = this.perSec * (this.goldRushActive ? this.goldRushMult : 1);
             if (this.bankPercent) totalPerSec += this.score * (this.bankPercent/100);
-            this.ui.perSecEl.textContent = Math.floor(totalPerSec);
+            this.ui.perSecEl.textContent = Math.floor(totalPerSec * this.prestige.multiplier);
         }
     },
 

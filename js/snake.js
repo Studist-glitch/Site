@@ -3,7 +3,7 @@ window.snake = {
     active: false,
     interval: null,
     players: 1,
-    snakes: [],           // [player1, player2 (опционально)]
+    snakes: [],
     foods: [],
     dirs: [],
     nextDirs: [],
@@ -14,19 +14,32 @@ window.snake = {
     dashCooldowns: [],
     dashTimers: [],
     lastDirTap: [],
-    activePowerups: [[]],
-    powerupTimers: [[]],
+    activePowerups: [],
+    powerupTimers: [],
     animFrame: null,
     foodPhase: 0,
 
-    // Бот
-    bot: null,           // { segments: [], dir: {x,y}, nextDir: {x,y}, color, alive }
+    bot: null,
     botMoveTimer: null,
     botSpawnTimer: null,
-    botSpawnInterval: 35000, // первое появление через 35 сек
-    botRespawnDelay: 20000,
+    botMinDistance: 15,
+    botEdgeSpawn: true,
 
-    // Улучшения
+    eventActive: null,
+    eventTimer: 0,
+    meteorBlocks: [],
+
+    bossSnake: null,
+    bossTimer: null,
+    bossInterval: 120000,
+
+    achievements: [],
+    allAchievements: [
+        { id: 'firstBlood', name: 'Первая кровь', desc: 'Убейте бота-змею', reward: 100 },
+        { id: 'combo10', name: 'Комбо-мастер', desc: 'Достигните комбо x10', reward: 200 },
+        { id: 'longSnake', name: 'Длинная змея', desc: 'Достигните длины 30', reward: 300 }
+    ],
+
     currency: 0,
     upgrades: null,
 
@@ -73,14 +86,20 @@ window.snake = {
         this.nextDirs = [];
         this.scores = [];
         this.foods = [];
-        this.combos = [0];
-        this.comboTimers = [null];
-        this.dashCharges = [3];
-        this.dashCooldowns = [0];
-        this.dashTimers = [null];
-        this.lastDirTap = [{dir:'', time:0}];
-        this.activePowerups = [[]];
-        this.powerupTimers = [[]];
+        this.combos = [];
+        this.comboTimers = [];
+        this.dashCharges = [];
+        this.dashCooldowns = [];
+        this.dashTimers = [];
+        this.lastDirTap = [];
+        this.activePowerups = [];
+        this.powerupTimers = [];
+        this.bot = null;
+        this.eventActive = null;
+        this.eventTimer = 0;
+        this.meteorBlocks = [];
+        this.bossSnake = null;
+        this.bossTimer = null;
 
         const startLen = 3 + (this.upgrades.length || 0);
         for (let i = 0; i < players; i++) {
@@ -94,39 +113,22 @@ window.snake = {
             this.dirs.push({x: dirX, y: 0});
             this.nextDirs.push({x: dirX, y: 0});
             this.scores.push(0);
-            if (i === 0) {
-                this.combos = [0];
-                this.comboTimers = [null];
-                this.dashCharges = [this.upgrades.dashCooldown ? 3 : 3];
-                this.dashCooldowns = [this.upgrades.dashCooldown || 0];
-                this.dashTimers = [null];
-                this.lastDirTap = [{dir:'', time:0}];
-                this.activePowerups = [[]];
-                this.powerupTimers = [[]];
-            } else {
-                this.combos.push(0);
-                this.comboTimers.push(null);
-                this.dashCharges.push(3);
-                this.dashCooldowns.push(0);
-                this.dashTimers.push(null);
-                this.lastDirTap.push({dir:'', time:0});
-                this.activePowerups.push([]);
-                this.powerupTimers.push([]);
-            }
-            if (this.upgrades.shieldStart) {
-                this.addPowerup(i, 'shield');
-            }
+            this.combos.push(0);
+            this.comboTimers.push(null);
+            this.dashCharges.push(this.upgrades.dashCooldown ? 3 : 3);
+            this.dashCooldowns.push(this.upgrades.dashCooldown || 0);
+            this.dashTimers.push(null);
+            this.lastDirTap.push({dir: '', time: 0});
+            this.activePowerups.push([]);
+            this.powerupTimers.push([]);
+            if (this.upgrades.shieldStart) this.addPowerup(i, 'shield');
         }
 
         for (let i = 0; i < 4; i++) this.placeFood();
         this.active = true;
-
-        // Бот: только для одиночной игры
         if (players === 1) {
-            this.bot = null;
             this.scheduleBotSpawn();
-        } else {
-            this.bot = null;
+            this.scheduleBossSpawn();
         }
 
         this.startAnimationLoop();
@@ -138,45 +140,53 @@ window.snake = {
     scheduleBotSpawn: function() {
         if (this.botSpawnTimer) clearTimeout(this.botSpawnTimer);
         this.botSpawnTimer = setTimeout(() => {
-            if (this.active && !this.bot) this.spawnBot();
-        }, this.botSpawnInterval);
+            if (this.active && !this.bot && !this.bossSnake) this.spawnBot();
+        }, 35000);
     },
 
     spawnBot: function() {
+        const head = this.snakes[0][0];
+        let startX, startY;
+        const edgePositions = [];
+        for (let x = 0; x < this.W; x++) {
+            edgePositions.push({x, y: 0}, {x, y: this.H-1});
+        }
+        for (let y = 1; y < this.H-1; y++) {
+            edgePositions.push({x: 0, y}, {x: this.W-1, y});
+        }
+        const farEdges = edgePositions.filter(p => Math.abs(p.x - head.x) + Math.abs(p.y - head.y) >= this.botMinDistance);
+        if (farEdges.length > 0) {
+            const pos = farEdges[Math.floor(Math.random() * farEdges.length)];
+            startX = pos.x; startY = pos.y;
+        } else {
+            do {
+                startX = Math.floor(Math.random() * this.W);
+                startY = Math.floor(Math.random() * this.H);
+            } while (Math.abs(startX-head.x)+Math.abs(startY-head.y) < 10 || this.isOccupied(startX, startY));
+        }
+
         const length = 4 + Math.floor(this.scores[0] / 30);
         const segments = [];
-        // стартовая позиция в свободном месте
-        let startX, startY;
-        do {
-            startX = 3 + Math.floor(Math.random() * (this.W - 6));
-            startY = 3 + Math.floor(Math.random() * (this.H - 6));
-        } while (this.isOccupied(startX, startY));
-        // строим горизонтально
-        for (let i = 0; i < length; i++) {
-            segments.push({x: startX - i, y: startY});
-        }
-        this.bot = {
-            segments: segments,
-            dir: {x: 1, y: 0},
-            color: '#ff6644',
-            alive: true
-        };
-        // таймер для случайной смены направления
-        this.botMoveTimer = setInterval(() => this.botChangeDirection(), 500);
-        document.getElementById('eventsContainer')?.insertAdjacentHTML('beforeend', '<div class="event-message">🦎 Враждебная змея появилась!</div>');
+        for (let i = 0; i < length; i++) segments.push({x: startX - i, y: startY});
+        this.bot = { segments: segments, dir: {x: 1, y: 0}, color: '#ff6644', alive: true };
+        this.botMoveTimer = setInterval(() => this.botAI(), 400);
+        this.addEvent('🦎 Враждебная змея появилась!');
     },
 
-    botChangeDirection: function() {
+    botAI: function() {
         if (!this.bot || !this.bot.alive) return;
-        const possible = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-        // исключаем противоположное и ведущие в препятствие
-        const safeDirs = possible.filter(d => {
+        const head = this.bot.segments[0];
+        const possibleDirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+        const safeDirs = possibleDirs.filter(d => {
             if (d.x === -this.bot.dir.x && d.y === -this.bot.dir.y) return false;
-            const head = this.bot.segments[0];
-            const nx = head.x + d.x, ny = head.y + d.y;
-            if (nx<0||nx>=this.W||ny<0||ny>=this.H) return false;
-            // не врезаться в собственное тело
-            if (this.bot.segments.some(s => s.x===nx && s.y===ny)) return false;
+            for (let step = 1; step <= 3; step++) {
+                const nx = head.x + d.x * step;
+                const ny = head.y + d.y * step;
+                if (nx < 0 || nx >= this.W || ny < 0 || ny >= this.H) return false;
+                if (this.bot.segments.some(s => s.x === nx && s.y === ny)) return false;
+                if (this.meteorBlocks.some(b => b.x === nx && b.y === ny)) return false;
+                if (this.snakes[0].some(s => s.x === nx && s.y === ny)) return false;
+            }
             return true;
         });
         if (safeDirs.length > 0) {
@@ -184,9 +194,31 @@ window.snake = {
         }
     },
 
+    scheduleBossSpawn: function() {
+        if (this.bossTimer) clearTimeout(this.bossTimer);
+        this.bossTimer = setTimeout(() => {
+            if (this.active && !this.bossSnake) this.spawnBoss();
+        }, this.bossInterval);
+    },
+
+    spawnBoss: function() {
+        const head = this.snakes[0][0];
+        let startX, startY;
+        do {
+            startX = Math.floor(Math.random() * (this.W - 10)) + 5;
+            startY = Math.floor(Math.random() * (this.H - 10)) + 5;
+        } while (Math.abs(startX-head.x)+Math.abs(startY-head.y) < 15 || this.isOccupied(startX, startY));
+        const segments = [];
+        for (let i = 0; i < 20; i++) segments.push({x: startX - i, y: startY});
+        this.bossSnake = { segments: segments, dir: {x: 0, y: 1}, color: '#ff0000', alive: true, health: 5 };
+        this.addEvent('🐲 Босс-змея появилась! Атакуйте её хвост!');
+    },
+
     isOccupied: function(x, y) {
-        if (this.snakes.some(s => s.some(seg => seg.x===x && seg.y===y))) return true;
-        if (this.bot && this.bot.segments.some(seg => seg.x===x && seg.y===y)) return true;
+        if (this.snakes.some(s => s.some(seg => seg.x === x && seg.y === y))) return true;
+        if (this.bot && this.bot.segments.some(seg => seg.x === x && seg.y === y)) return true;
+        if (this.bossSnake && this.bossSnake.segments.some(seg => seg.x === x && seg.y === y)) return true;
+        if (this.meteorBlocks.some(b => b.x === x && b.y === y)) return true;
         return false;
     },
 
@@ -200,7 +232,7 @@ window.snake = {
         else if (rand < 0.88) type = 'shield';
         else if (rand < 0.94) type = 'freeze';
         else if (rand < 0.97) type = 'double';
-        else type = (hasExtra >= 1 ? 'shrink' : 'double'); // доп. тип
+        else type = (hasExtra >= 1 ? 'shrink' : 'double');
         if (hasExtra >= 2 && Math.random() < 0.3) type = 'invincible';
         if (hasExtra >= 3 && Math.random() < 0.2) type = 'bonus';
 
@@ -218,14 +250,14 @@ window.snake = {
         ctx.clearRect(0, 0, 200, 200);
 
         const pulse = 1 + 0.2 * Math.sin(this.foodPhase * 5);
+        const colorMap = {
+            normal: '#ff4444', gold: '#ffcc00', speed: '#44ccff', shield: '#44ff44',
+            freeze: '#88ffff', double: '#ff44cc', shrink: '#ff8800', invincible: '#ff00ff', bonus: '#ffffff'
+        };
         this.foods.forEach(f => {
             const cx = f.x * this.SIZE + this.SIZE/2;
             const cy = f.y * this.SIZE + this.SIZE/2;
             const radius = (this.SIZE/2 - 1) * pulse;
-            const colorMap = {
-                normal: '#ff4444', gold: '#ffcc00', speed: '#44ccff', shield: '#44ff44',
-                freeze: '#88ffff', double: '#ff44cc', shrink: '#ff8800', invincible: '#ff00ff', bonus: '#ffffff'
-            };
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI*2);
             ctx.fillStyle = colorMap[f.type] || '#ff4444';
@@ -235,18 +267,18 @@ window.snake = {
             ctx.shadowBlur = 0;
         });
 
+        // Игроки
         const playerColors = [this.getSkinColor(0), '#44ff44'];
         this.snakes.forEach((snake, idx) => {
             snake.forEach((seg, i) => {
                 const x = seg.x*this.SIZE, y = seg.y*this.SIZE;
-                const size = this.SIZE-1;
                 ctx.fillStyle = i===0 ? '#fff' : playerColors[idx];
                 ctx.shadowColor = ctx.fillStyle;
                 ctx.shadowBlur = i===0 ? 10 : 4;
-                ctx.fillRect(x, y, size, size);
+                ctx.fillRect(x, y, this.SIZE-1, this.SIZE-1);
                 ctx.fillStyle = 'rgba(255,255,255,0.2)';
                 ctx.shadowBlur = 0;
-                ctx.fillRect(x, y, size, size/2);
+                ctx.fillRect(x, y, this.SIZE-1, 3);
             });
         });
 
@@ -260,140 +292,170 @@ window.snake = {
                 ctx.fillRect(x, y, this.SIZE-1, this.SIZE-1);
             });
         }
+        // Босс
+        if (this.bossSnake && this.bossSnake.alive) {
+            this.bossSnake.segments.forEach((seg, i) => {
+                const x = seg.x*this.SIZE, y = seg.y*this.SIZE;
+                ctx.fillStyle = '#ff0000';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 8;
+                ctx.fillRect(x, y, this.SIZE-1, this.SIZE-1);
+                // индикатор здоровья на хвосте
+                if (i === this.bossSnake.segments.length-1) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '8px sans-serif';
+                    ctx.fillText(this.bossSnake.health, x+2, y+8);
+                }
+            });
+        }
+        // Метеориты
+        this.meteorBlocks.forEach(b => {
+            ctx.fillStyle = '#888';
+            ctx.fillRect(b.x*this.SIZE, b.y*this.SIZE, this.SIZE-1, this.SIZE-1);
+        });
 
         ctx.shadowBlur = 0;
-        // UI
-        const scoreEl = document.getElementById('snakeScore');
-        if (scoreEl) scoreEl.textContent = 'Счёт: ' + this.scores[0];
-        const comboEl = document.getElementById('comboIndicator');
-        if (comboEl) comboEl.textContent = this.combos[0] > 1 ? `Комбо x${this.combos[0]}` : '';
-        const dashEl = document.getElementById('dashIndicator');
-        if (dashEl) dashEl.textContent = `Рывки: ${this.dashCharges[0]}`;
-        const pwEl = document.getElementById('powerupsContainer');
-        if (pwEl) pwEl.innerHTML = this.activePowerups[0].map(p => `<span class="powerup-badge" style="color:${p.color}">${p.name}</span>`).join('');
-    },
-
-    applyMagnet: function(playerIdx) {
-        if (!this.upgrades.magnet) return;
-        const head = this.snakes[playerIdx][0];
-        this.foods.forEach(f => {
-            const dx = head.x - f.x, dy = head.y - f.y;
-            if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
-                if (dx !== 0) f.x += dx > 0 ? 1 : -1;
-                if (dy !== 0) f.y += dy > 0 ? 1 : -1;
-                f.x = Math.max(0, Math.min(this.W-1, f.x));
-                f.y = Math.max(0, Math.min(this.H-1, f.y));
-            }
-        });
-    },
-
-    handleDashInput: function(playerIdx, direction) {
-        if (!this.active) return;
-        const now = Date.now();
-        const last = this.lastDirTap[playerIdx];
-        const dirStr = typeof direction === 'string' ? direction : (direction.x+','+direction.y);
-        if (last.dir === dirStr && (now - last.time) < 300 && this.dashCharges[playerIdx] > 0 && !this.dashTimers[playerIdx]) {
-            this.performDash(playerIdx);
-            last.time = 0;
-        } else {
-            last.dir = dirStr;
-            last.time = now;
+        if (this.players === 1) {
+            document.getElementById('snakeScore').textContent = 'Счёт: ' + this.scores[0];
+            document.getElementById('comboIndicator').textContent = this.combos[0] > 1 ? `Комбо x${this.combos[0]}` : '';
+            document.getElementById('dashIndicator').textContent = `Рывки: ${this.dashCharges[0]}`;
+            document.getElementById('powerupsContainer').innerHTML = this.activePowerups[0].map(p =>
+                `<span class="powerup-badge" style="color:${p.color}">${p.name}</span>`
+            ).join('');
         }
     },
 
-    performDash: function(playerIdx) {
-        const snake = this.snakes[playerIdx];
-        const dir = this.dirs[playerIdx];
-        const head = snake[0];
-        const newHead = {x: head.x + dir.x*2, y: head.y + dir.y*2};
-        if (newHead.x<0||newHead.x>=this.W||newHead.y<0||newHead.y>=this.H) return;
-        if (snake.some(s=>s.x===newHead.x&&s.y===newHead.y)) return;
-        if (this.bot && this.bot.segments.some(s=>s.x===newHead.x&&s.y===newHead.y)) return;
-        snake.unshift(newHead);
-        snake.pop();
-        this.dashCharges[playerIdx]--;
-        if (!this.dashTimers[playerIdx]) {
-            this.dashTimers[playerIdx] = setTimeout(() => {
-                this.dashCharges[playerIdx] = Math.min(3, this.dashCharges[playerIdx]+1);
-                this.dashTimers[playerIdx] = null;
-            }, (this.dashCooldowns[playerIdx] || 3) * 1000);
-        }
+    addEvent: function(text) {
+        const container = document.getElementById('eventsContainer');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'event-message';
+        div.textContent = text;
+        container.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
     },
 
-    addPowerup: function(playerIdx, type) {
-        const pwList = this.activePowerups[playerIdx];
-        const config = {
-            speed: {name:'Скорость', color:'#44ccff', dur:8},
-            shield: {name:'Щит', color:'#44ff44', dur:15},
-            freeze: {name:'Замедл.', color:'#88ffff', dur:5},
-            double: {name:'x2 Очки', color:'#ff44cc', dur:10},
-            shrink: {name:'Уменьшение', color:'#ff8800', dur:20},
-            invincible: {name:'Неуязвимость', color:'#ff00ff', dur:6},
-            bonus: {name:'Бонус очков', color:'#ffffff', dur:1}
-        };
-        const conf = config[type];
-        if (!conf) return;
-        const existing = pwList.find(p=>p.type===type);
-        if (existing) {
-            existing.duration = conf.dur;
-            return;
-        }
-        pwList.push({type, name:conf.name, color:conf.color, duration:conf.dur});
-        if (type === 'shrink') {
-            // Уменьшаем змею наполовину (минимум 2)
-            const snake = this.snakes[playerIdx];
-            const newLen = Math.max(2, Math.floor(snake.length/2));
-            snake.splice(newLen);
-        }
-        if (type === 'bonus') {
-            this.scores[playerIdx] += 30;
-        }
-        const timer = setInterval(() => {
-            const idx = pwList.findIndex(p=>p.type===type);
-            if (idx!==-1) {
-                pwList[idx].duration--;
-                if (pwList[idx].duration <= 0) {
-                    pwList.splice(idx,1);
+    updateEvents: function() {
+        if (!this.eventActive) {
+            this.eventTimer++;
+            if (this.eventTimer > 600) {
+                this.eventTimer = 0;
+                if (Math.random() < 0.3) {
+                    const types = ['meteor', 'speedUp', 'walls'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    this.startEvent(type);
                 }
             }
-        }, 1000);
-        this.powerupTimers[playerIdx].push(timer);
+        } else {
+            this.eventActive.timer--;
+            if (this.eventActive.timer <= 0) this.endEvent();
+        }
+    },
+
+    startEvent: function(type) {
+        this.eventActive = { type, timer: 300 };
+        if (type === 'meteor') {
+            this.meteorBlocks = [];
+            for (let i = 0; i < 5; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * this.W);
+                    y = Math.floor(Math.random() * this.H);
+                } while (this.isOccupied(x, y));
+                this.meteorBlocks.push({x, y});
+            }
+            this.addEvent('☄️ Метеоритный дождь! Препятствия на поле.');
+        } else if (type === 'speedUp') {
+            clearInterval(this.interval);
+            const interval = Math.max(30, Math.floor(100 / (this.upgrades.speed || 1)));
+            this.interval = setInterval(() => this.move(), interval);
+            this.addEvent('⚡ Ускорение времени!');
+        } else if (type === 'walls') {
+            this.tempWalls = true;
+            this.addEvent('🧱 Временные стены! Края смертельны.');
+        }
+    },
+
+    endEvent: function() {
+        if (this.eventActive.type === 'speedUp') {
+            clearInterval(this.interval);
+            const base = 150;
+            this.interval = setInterval(() => this.move(), Math.max(50, Math.floor(base / (this.upgrades.speed || 1))));
+        }
+        this.meteorBlocks = [];
+        this.tempWalls = false;
+        this.eventActive = null;
     },
 
     move: function() {
         if (!this.active) return;
+        this.updateEvents();
         for (let i = 0; i < this.players; i++) this.dirs[i] = this.nextDirs[i];
-        this.applyMagnet(0);
-        if (this.players===2) this.applyMagnet(1);
+        if (this.upgrades.magnet) {
+            const head = this.snakes[0][0];
+            this.foods.forEach(f => {
+                const dx = head.x - f.x, dy = head.y - f.y;
+                if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
+                    if (dx !== 0) f.x += dx > 0 ? 1 : -1;
+                    if (dy !== 0) f.y += dy > 0 ? 1 : -1;
+                    f.x = Math.max(0, Math.min(this.W-1, f.x));
+                    f.y = Math.max(0, Math.min(this.H-1, f.y));
+                }
+            });
+        }
 
-        // Движение бота
+        // Бот
         if (this.bot && this.bot.alive) {
             const bot = this.bot;
             const head = {x: bot.segments[0].x + bot.dir.x, y: bot.segments[0].y + bot.dir.y};
             let died = false;
             if (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H) died = true;
             else if (bot.segments.some(s=>s.x===head.x&&s.y===head.y)) died = true;
-            else if (this.snakes.some(s=>s.some(seg=>seg.x===head.x&&seg.y===head.y))) died = true; // врезался в игрока
+            else if (this.meteorBlocks.some(b=>b.x===head.x&&b.y===head.y)) died = true;
+            else if (this.tempWalls && (head.x===0||head.x===this.W-1||head.y===0||head.y===this.H-1)) died = true;
             if (!died) {
                 bot.segments.unshift(head);
                 let ate = false;
                 for (let f=0; f<this.foods.length; f++) {
                     if (head.x===this.foods[f].x && head.y===this.foods[f].y) {
-                        this.foods.splice(f,1);
-                        this.placeFood();
-                        ate = true;
-                        break;
+                        this.foods.splice(f,1); this.placeFood(); ate = true; break;
                     }
                 }
                 if (!ate) bot.segments.pop();
             } else {
-                // Бот умирает
                 bot.alive = false;
                 clearInterval(this.botMoveTimer);
                 this.scores[0] += 50 * (this.upgrades.scoreMult || 1);
-                document.getElementById('eventsContainer')?.insertAdjacentHTML('beforeend', '<div class="event-message">🦎 Вражеская змея уничтожена! +50 очков</div>');
+                this.addEvent('🦎 Вражеская змея уничтожена! +50 очков');
+                this.checkAchievements();
                 this.bot = null;
                 this.scheduleBotSpawn();
+            }
+        }
+
+        // Босс
+        if (this.bossSnake && this.bossSnake.alive) {
+            const boss = this.bossSnake;
+            const head = {x: boss.segments[0].x + boss.dir.x, y: boss.segments[0].y + boss.dir.y};
+            let bDied = false;
+            if (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H) bDied = true;
+            if (!bDied) {
+                boss.segments.unshift(head);
+                boss.segments.pop();
+                // проверка атаки игрока на хвост
+                const playerHead = this.snakes[0][0];
+                const tail = boss.segments[boss.segments.length-1];
+                if (playerHead.x === tail.x && playerHead.y === tail.y) {
+                    boss.health--;
+                    if (boss.health <= 0) {
+                        boss.alive = false;
+                        this.scores[0] += 200;
+                        this.addEvent('🐲 Босс-змея повержена! +200 очков');
+                        this.bossSnake = null;
+                        this.scheduleBossSpawn();
+                        this.checkAchievements();
+                    }
+                }
             }
         }
 
@@ -403,15 +465,16 @@ window.snake = {
             const hasShield = this.activePowerups[i]?.some(p=>p.type==='shield');
             const invincible = this.activePowerups[i]?.some(p=>p.type==='invincible');
             let dead = false;
-            if (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H) dead = !hasShield && !invincible;
+            if (this.tempWalls && (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H)) dead = !hasShield && !invincible;
+            else if (!this.tempWalls && (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H)) dead = !hasShield && !invincible;
             else if (this.snakes.some(s=>s.some(seg=>seg.x===head.x&&seg.y===head.y))) dead = !hasShield && !invincible;
+            else if (this.meteorBlocks.some(b=>b.x===head.x&&b.y===head.y)) dead = !hasShield && !invincible;
             else if (this.bot && this.bot.alive && this.bot.segments.some(seg=>seg.x===head.x&&seg.y===head.y)) dead = !hasShield && !invincible;
+            else if (this.bossSnake && this.bossSnake.alive && this.bossSnake.segments.some(seg=>seg.x===head.x&&seg.y===head.y)) dead = !hasShield && !invincible;
             if (dead) {
                 if (hasShield) {
                     const idx = this.activePowerups[i].findIndex(p=>p.type==='shield');
                     if (idx!==-1) this.activePowerups[i].splice(idx,1);
-                } else if (invincible) {
-                    // ничего
                 } else {
                     this.kill(i); return;
                 }
@@ -440,7 +503,91 @@ window.snake = {
             }
             if (!ate) this.snakes[i].pop();
         }
+
+        this.checkAchievements();
         this.draw();
+    },
+
+    addPowerup: function(playerIdx, type) {
+        const pwList = this.activePowerups[playerIdx];
+        const config = {
+            speed: {name:'Скорость', color:'#44ccff', dur:8},
+            shield: {name:'Щит', color:'#44ff44', dur:15},
+            freeze: {name:'Замедл.', color:'#88ffff', dur:5},
+            double: {name:'x2 Очки', color:'#ff44cc', dur:10},
+            shrink: {name:'Уменьшение', color:'#ff8800', dur:20},
+            invincible: {name:'Неуязвимость', color:'#ff00ff', dur:6},
+            bonus: {name:'Бонус очков', color:'#ffffff', dur:1}
+        };
+        const conf = config[type];
+        if (!conf) return;
+        const existing = pwList.find(p=>p.type===type);
+        if (existing) { existing.duration = conf.dur; return; }
+        pwList.push({type, name:conf.name, color:conf.color, duration:conf.dur});
+        if (type === 'shrink') {
+            const snake = this.snakes[playerIdx];
+            const newLen = Math.max(2, Math.floor(snake.length/2));
+            snake.splice(newLen);
+        }
+        if (type === 'bonus') this.scores[playerIdx] += 30;
+        const timer = setInterval(() => {
+            const idx = pwList.findIndex(p=>p.type===type);
+            if (idx!==-1) {
+                pwList[idx].duration--;
+                if (pwList[idx].duration <= 0) pwList.splice(idx,1);
+            }
+        }, 1000);
+        this.powerupTimers[playerIdx].push(timer);
+    },
+
+    handleDashInput: function(playerIdx, direction) {
+        if (!this.active) return;
+        const now = Date.now();
+        const last = this.lastDirTap[playerIdx];
+        const dirStr = typeof direction === 'string' ? direction : (direction.x+','+direction.y);
+        if (last.dir === dirStr && (now - last.time) < 300 && this.dashCharges[playerIdx] > 0 && !this.dashTimers[playerIdx]) {
+            this.performDash(playerIdx);
+            last.time = 0;
+        } else {
+            last.dir = dirStr;
+            last.time = now;
+        }
+    },
+
+    performDash: function(playerIdx) {
+        const snake = this.snakes[playerIdx];
+        const dir = this.dirs[playerIdx];
+        const head = snake[0];
+        const newHead = {x: head.x + dir.x*2, y: head.y + dir.y*2};
+        if (newHead.x<0||newHead.x>=this.W||newHead.y<0||newHead.y>=this.H) return;
+        if (snake.some(s=>s.x===newHead.x&&s.y===newHead.y)) return;
+        if (this.bot && this.bot.segments.some(s=>s.x===newHead.x&&s.y===newHead.y)) return;
+        if (this.bossSnake && this.bossSnake.segments.some(s=>s.x===newHead.x&&s.y===newHead.y)) return;
+        if (this.meteorBlocks.some(b=>b.x===newHead.x&&b.y===newHead.y)) return;
+        snake.unshift(newHead);
+        snake.pop();
+        this.dashCharges[playerIdx]--;
+        if (!this.dashTimers[playerIdx]) {
+            this.dashTimers[playerIdx] = setTimeout(() => {
+                this.dashCharges[playerIdx] = Math.min(3, this.dashCharges[playerIdx]+1);
+                this.dashTimers[playerIdx] = null;
+            }, (this.dashCooldowns[playerIdx] || 3) * 1000);
+        }
+    },
+
+    checkAchievements: function() {
+        this.allAchievements.forEach(a => {
+            if (this.achievements.includes(a.id)) return;
+            let earned = false;
+            if (a.id === 'firstBlood' && this.bot && !this.bot.alive) earned = true;
+            if (a.id === 'combo10' && this.combos[0] >= 10) earned = true;
+            if (a.id === 'longSnake' && this.snakes[0].length >= 30) earned = true;
+            if (earned) {
+                this.achievements.push(a.id);
+                this.currency += a.reward;
+                this.addEvent(`🏆 Достижение: ${a.name}! +${a.reward}💎`);
+            }
+        });
     },
 
     kill: function(idx) {
@@ -453,15 +600,10 @@ window.snake = {
         this.powerupTimers.forEach(arr=>arr.forEach(t=>clearInterval(t)));
         if (this.bot) { clearInterval(this.botMoveTimer); this.bot = null; }
         if (this.botSpawnTimer) clearTimeout(this.botSpawnTimer);
-        if (this.players===1) {
-            this.currency += this.scores[0];
-            this.saveUpgrades();
-            if (this.onGameOver) this.onGameOver();
-        } else {
-            alert(`Игрок ${idx===0?2:1} победил!`);
-            this.stop();
-            if (this.onGameOver) this.onGameOver();
-        }
+        if (this.bossTimer) clearTimeout(this.bossTimer);
+        this.currency += this.scores[idx];
+        this.saveUpgrades();
+        if (this.onGameOver) this.onGameOver();
     },
 
     stop: function() {
@@ -471,6 +613,7 @@ window.snake = {
         if (this.animFrame) cancelAnimationFrame(this.animFrame);
         if (this.bot) { clearInterval(this.botMoveTimer); this.bot = null; }
         if (this.botSpawnTimer) clearTimeout(this.botSpawnTimer);
+        if (this.bossTimer) clearTimeout(this.bossTimer);
     },
 
     startAnimationLoop: function() {
