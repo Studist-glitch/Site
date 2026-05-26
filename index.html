@@ -7,13 +7,14 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Фоновый шум -->
     <canvas id="bgCanvas"></canvas>
 
     <div class="container">
-        <h1>STARVE<br><span>NEON</span></h1>
+        <h1>
+            <span class="line">STARVE</span>
+            <span class="line accent">NEON</span>
+        </h1>
 
-        <!-- Вытянутое видео 1 -->
         <div class="video-stretch">
             <video src="images/video1.webm" autoplay loop muted playsinline></video>
         </div>
@@ -23,7 +24,6 @@
             <p><strong>Starve Neon</strong> — безжалостный симулятор выживания. Ты окажешься в мире, где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.</p>
         </div>
 
-        <!-- Вытянутое видео 2 -->
         <div class="video-stretch">
             <video src="images/video2.webm" autoplay loop muted playsinline></video>
         </div>
@@ -53,39 +53,18 @@
             <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
         </div>
 
-        <!-- Таблица с 4 видео и описаниями -->
         <table class="video-table">
             <tr>
-                <td class="vid-cell">
-                    <video src="images/video1.webm" autoplay loop muted playsinline></video>
-                </td>
-                <td class="vid-cell">
-                    <video src="images/video2.webm" autoplay loop muted playsinline></video>
-                </td>
-                <td class="vid-cell">
-                    <video src="images/video3.webm" autoplay loop muted playsinline></video>
-                </td>
-                <td class="vid-cell">
-                    <video src="images/video4.webm" autoplay loop muted playsinline></video>
-                </td>
+                <td class="vid-cell"><video src="images/video1.webm" autoplay loop muted playsinline></video></td>
+                <td class="vid-cell"><video src="images/video2.webm" autoplay loop muted playsinline></video></td>
+                <td class="vid-cell"><video src="images/video3.webm" autoplay loop muted playsinline></video></td>
+                <td class="vid-cell"><video src="images/video4.webm" autoplay loop muted playsinline></video></td>
             </tr>
             <tr>
-                <td class="desc-cell">
-                    <strong>Игровой мир</strong>
-                    БРУТАЛЬНЫЙ ХАРДКОРНЫЙ МИР. Я не буду держать тебя за руку, приятель. Я оставлю небольшой туториал по базовой механике, а дальше ты сам по себе ;}
-                </td>
-                <td class="desc-cell">
-                    <strong>Статус</strong>
-                    Starve Neon находится на ранней стадии разработки, но открыт для кроссплатформенного многопользовательского тестирования.
-                </td>
-                <td class="desc-cell">
-                    <strong>Развитие</strong>
-                    Полная система развития от копий и мечей до ГРЕБАНОГО МИНИГАНА, ЧУВАК! Броня для разных биомов, модули и система генетики, подобная RimWorld.
-                </td>
-                <td class="desc-cell">
-                    <strong>Союзники</strong>
-                    Создавай союзы с фракциями и другими игроками, участвуй в битвах на арене и приручай животных. Отправляйся кланом на рейд подобно Rust.
-                </td>
+                <td class="desc-cell"><strong>Игровой мир</strong> БРУТАЛЬНЫЙ ХАРДКОРНЫЙ МИР.</td>
+                <td class="desc-cell"><strong>Статус</strong> Ранняя стадия, мультиплеер.</td>
+                <td class="desc-cell"><strong>Развитие</strong> От копья до минигана.</td>
+                <td class="desc-cell"><strong>Союзники</strong> Фракции, кланы, рейды.</td>
             </tr>
         </table>
 
@@ -94,10 +73,8 @@
         </footer>
     </div>
 
-    <!-- Кнопка мини-игр в углу экрана -->
     <button class="mini-games-float" id="openMiniGames" title="Мини-игры">🎮</button>
 
-    <!-- Модальное окно -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content" id="modalInner"></div>
     </div>

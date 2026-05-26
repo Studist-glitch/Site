@@ -1,63 +1,57 @@
 (function() {
     // Фоновый шум
-    const canvas = document.getElementById('bgCanvas');
-    const ctx = canvas.getContext('2d');
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
     let particles = [];
 
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    function resizeBg() {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
     }
-    window.addEventListener('resize', resize);
-    resize();
+    window.addEventListener('resize', resizeBg);
+    resizeBg();
 
-    // Создание частиц
     const PARTICLE_COUNT = 80;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
+            x: Math.random() * bgCanvas.width,
+            y: Math.random() * bgCanvas.height,
             vx: (Math.random() - 0.5) * 0.5,
             vy: (Math.random() - 0.5) * 0.5,
             size: Math.random() * 2 + 1,
-            hue: Math.random() * 60 + 270 // от 270 до 330 (фиолетовый-розовый)
+            hue: Math.random() * 60 + 270
         });
     }
 
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Рисуем частицы
+    function animateBg() {
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         for (let p of particles) {
             p.x += p.vx;
             p.y += p.vy;
-            // Зацикливание
-            if (p.x < 0) p.x = canvas.width;
-            if (p.x > canvas.width) p.x = 0;
-            if (p.y < 0) p.y = canvas.height;
-            if (p.y > canvas.height) p.y = 0;
-
-            // Меняем цвет со временем
+            if (p.x < 0) p.x = bgCanvas.width;
+            if (p.x > bgCanvas.width) p.x = 0;
+            if (p.y < 0) p.y = bgCanvas.height;
+            if (p.y > bgCanvas.height) p.y = 0;
             p.hue = (p.hue + 0.2) % 360;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, 0.15)`;
-            ctx.fill();
-            // Легкое свечение
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.4)`;
-            ctx.fill();
-            ctx.shadowBlur = 0; // сброс
+            bgCtx.beginPath();
+            bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, 0.15)`;
+            bgCtx.fill();
+            bgCtx.shadowBlur = 8;
+            bgCtx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.4)`;
+            bgCtx.fill();
+            bgCtx.shadowBlur = 0;
         }
-        requestAnimationFrame(animate);
+        requestAnimationFrame(animateBg);
     }
-    animate();
+    animateBg();
 
-    // Модальное окно и мини-игры
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
 
     function showSelection() {
+        activeGame = null;
         modalInner.innerHTML = `
             <h3>🎮 Мини-игры</h3>
             <button class="game-btn" id="playClicker">⚡ Кликер</button>
@@ -71,42 +65,173 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
+    // ========== КЛИКЕР ==========
     function showClicker() {
         window.clicker.init();
         activeGame = 'clicker';
+
         modalInner.innerHTML = `
             <h3>⚡ Кликер</h3>
-            <div class="clicker-stats">
-                <span>💎 <span id="clickerScore">0</span></span>
-                <span>⚡/сек: <span id="clickerPerSec">0</span></span>
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="click">Клик</button>
+                <button class="tab-btn" data-tab="upgrades">Улучшения</button>
+                <button class="tab-btn" data-tab="stats">Статистика</button>
             </div>
-            <div id="bossContainer" class="boss-container" style="display:none;">
-                <div style="color:#ff5555; font-weight:bold; font-size:0.8rem;" id="bossName">Босс</div>
-                <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
-                <div style="font-size:0.65rem; color:#ccc;" id="bossHealthText"></div>
+            <div id="tab-click" class="tab-content">
+                <div class="clicker-stats">
+                    <span>💎 <span id="clickerScore">0</span></span>
+                    <span>⚡/сек: <span id="clickerPerSec">0</span></span>
+                </div>
+                <div class="combo-display" id="comboDisplay"></div>
+                <div id="bossContainer" class="boss-container" style="display:none;">
+                    <div style="color:#ff5555; font-weight:bold; font-size:0.8rem;" id="bossName">Босс</div>
+                    <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
+                    <div style="font-size:0.65rem; color:#ccc;" id="bossHealthText"></div>
+                </div>
+                <div id="clickerArea" style="position:relative; min-height:70px;">
+                    <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
+                </div>
+                <div id="eventsContainer"></div>
             </div>
-            <div id="clickerArea" style="position:relative; min-height:70px;">
-                <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
+            <div id="tab-upgrades" class="tab-content" style="display:none;">
+                <div id="clickerUpgrades" class="upgrades-list"></div>
             </div>
-            <div id="eventsContainer"></div>
-            <div id="clickerUpgrades" class="upgrades-list"></div>
+            <div id="tab-stats" class="tab-content" style="display:none;">
+                <table class="stats-table" id="statsTable"></table>
+            </div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
-        document.getElementById('clickerBtn').onclick = function() {
-            window.clicker.handleClick();
-            this.classList.add('animated');
-            setTimeout(() => this.classList.remove('animated'), 500);
+
+        // Привязываем UI к кликеру
+        window.clicker.attachUI({
+            scoreEl: document.getElementById('clickerScore'),
+            perSecEl: document.getElementById('clickerPerSec'),
+            comboEl: document.getElementById('comboDisplay'),
+            renderUpgrades: renderUpgradesList
+        });
+
+        document.getElementById('clickerBtn').onclick = function(e) {
+            window.clicker.handleClick(e);
         };
+
+        // Вкладки
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const tab = this.dataset.tab;
+                document.getElementById('tab-click').style.display = tab === 'click' ? 'block' : 'none';
+                document.getElementById('tab-upgrades').style.display = tab === 'upgrades' ? 'block' : 'none';
+                document.getElementById('tab-stats').style.display = tab === 'stats' ? 'block' : 'none';
+                if (tab === 'upgrades') renderUpgradesList();
+                if (tab === 'stats') renderStatsTable();
+            });
+        });
+
         document.getElementById('backClicker').onclick = function() {
-            activeGame = null;
             showSelection();
         };
+
         window.clicker.updateUI();
-        window.clicker.renderUpgradesList();
-        window.clicker.generateChallenge();
         window.clicker.updateBossUI();
+        window.clicker.generateChallenge();
+        renderUpgradesList();
     }
 
+    function renderUpgradesList() {
+        const container = document.getElementById('clickerUpgrades');
+        if (!container) return;
+        container.innerHTML = '';
+        const score = window.clicker.score;
+        const tierNames = ['Базовые', 'Продвинутые', 'Экспертные', 'Мастерские', 'Легендарные'];
+        const tierUnlocks = [0, 200, 1000, 5000, 20000];
+
+        for (let t = 0; t < tierNames.length; t++) {
+            const unlocked = score >= tierUnlocks[t];
+            const header = document.createElement('div');
+            header.style.cssText = 'color:#c44eff; font-weight:600; margin: 0.5rem 0 0.2rem; font-size:0.75rem;';
+            header.textContent = tierNames[t] + (unlocked ? '' : ` (🔒 ${tierUnlocks[t]}💎)`);
+            container.appendChild(header);
+
+            for (let key in window.clicker.upgrades) {
+                const up = window.clicker.upgrades[key];
+                if (up.tier !== t) continue;
+                const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
+                const canBuy = score >= cost && unlocked;
+                const maxed = up.maxLevel && up.level >= up.maxLevel;
+                let desc = up.desc;
+                if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
+                if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
+                if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + up.level} сек`;
+                if (key === 'meteor') desc = `Периодический бонус, интервал ${Math.max(5, 15 - up.level)}с`;
+                if (key === 'acceleration') desc = `Тик на 0.1с быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
+                if (key === 'magnetField') desc = `Каждые ${window.clicker.magnetInterval}с +${window.clicker.magnetPercent}% от счёта`;
+
+                const item = document.createElement('div');
+                item.className = 'upgrade-item' + (unlocked ? '' : ' locked');
+                item.innerHTML = `
+                    <div class="info">
+                        <span class="icon">${up.icon}</span>
+                        <div class="details">
+                            <span class="name">${up.name} (ур.${up.level})</span>
+                            <span class="effect">${desc}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span class="cost">${maxed ? 'МАКС' : cost + '💎'}</span>
+                        <button class="buy-btn" ${(canBuy && !maxed) ? '' : 'disabled'}>${maxed ? '✔️' : 'Купить'}</button>
+                    </div>
+                `;
+                if (canBuy && !maxed) {
+                    item.querySelector('.buy-btn').addEventListener('click', () => {
+                        window.clicker.buyUpgrade(key);
+                    });
+                }
+                container.appendChild(item);
+            }
+        }
+    }
+
+    function renderStatsTable() {
+        const table = document.getElementById('statsTable');
+        if (!table) return;
+        const stats = window.clicker.getStats();
+        table.innerHTML = `
+            <tr><td>Всего 💎</td><td>${stats.score}</td></tr>
+            <tr><td>Урон клика</td><td>${stats.perClick}</td></tr>
+            <tr><td>Пасс./сек</td><td>${stats.perSec}</td></tr>
+            <tr><td>Крит.шанс</td><td>${stats.critChance}</td></tr>
+            <tr><td>Крит.множитель</td><td>${stats.critMult}</td></tr>
+            <tr><td>Всего кликов</td><td>${stats.totalClicks}</td></tr>
+            <tr><td>Всего заработано</td><td>${stats.totalEarned}</td></tr>
+            <tr><td>Убито боссов</td><td>${stats.bossesDefeated}</td></tr>
+            <tr><td>Интервал тика</td><td>${(stats.tickRate/1000).toFixed(1)}с</td></tr>
+        `;
+    }
+
+    // Подменяем buyUpgrade, чтобы использовался renderUpgradesList
+    const originalBuyUpgrade = window.clicker.buyUpgrade;
+    window.clicker.buyUpgrade = function(key) {
+        const up = this.upgrades[key];
+        const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
+        if (this.score < cost || (up.maxLevel && up.level >= up.maxLevel)) return;
+        this.score -= cost;
+        up.effect(up.level + 1);
+        if (key === 'goldRush') {
+            this.goldRushActive = true;
+            this.goldRushMult = 2;
+            this.goldRushTimer = 5 + (up.level + 1);
+        }
+        if (key === 'comboMaster') {
+            this.maxCombo = (this.maxCombo || 0) + 10;
+            this.comboMultiplier = (this.comboMultiplier || 0) + 0.01;
+        }
+        up.level++;
+        this.updateUI();
+        renderUpgradesList(); // используем локальную функцию
+    };
+
+    // ========== ТЕТРИС ==========
     function showTetrisMode() {
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
@@ -122,48 +247,76 @@
             if (mode === 'single') showTetrisSingle();
             else showTetrisMulti();
         };
-        document.getElementById('backTetrisMode').onclick = function() {
-            activeGame = null;
-            showSelection();
-        };
+        document.getElementById('backTetrisMode').onclick = showSelection;
     }
 
     function showTetrisSingle() {
+        activeGame = 'tetris';
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
             <canvas id="tetrisCanvas" width="180" height="360"></canvas>
             <div class="game-score" id="tetrisScore">Счёт: 0</div>
-            <div class="game-controls">← → ↓ &nbsp; ↑ вращать &nbsp; пробел уронить</div>
+            <div class="game-controls">
+                <div style="margin-bottom:0.3rem;">Управление: ←↓→ / WASD / кнопки</div>
+                <button id="tetrisLeft" class="ctrl-btn">←</button>
+                <button id="tetrisDown" class="ctrl-btn">↓</button>
+                <button id="tetrisRight" class="ctrl-btn">→</button>
+                <button id="tetrisRotate" class="ctrl-btn">↻</button>
+                <button id="tetrisDrop" class="ctrl-btn">Drop</button>
+            </div>
             <button class="back-btn" id="backTetris">← Назад</button>
         `;
         window.tetris.init(1);
-        activeGame = 'tetris';
+        attachTetrisControls(0);
         document.getElementById('backTetris').onclick = function() {
             window.tetris.stop();
-            activeGame = null;
             showSelection();
         };
     }
 
     function showTetrisMulti() {
+        activeGame = 'tetris';
         modalInner.innerHTML = `
             <h3>🧱 Тетрис (2 игрока)</h3>
             <div class="multi-canvas-wrap">
-                <div><canvas id="tetrisCanvasP1" width="150" height="300"></canvas><div class="game-score" id="tetrisScoreP1">Игрок 1: 0</div></div>
-                <div><canvas id="tetrisCanvasP2" width="150" height="300"></canvas><div class="game-score" id="tetrisScoreP2">Игрок 2: 0</div></div>
+                <div>
+                    <canvas id="tetrisCanvasP1" width="150" height="300"></canvas>
+                    <div class="game-score" id="tetrisScoreP1">Игрок 1: 0</div>
+                    <div class="game-controls">WASD, пробел</div>
+                </div>
+                <div>
+                    <canvas id="tetrisCanvasP2" width="150" height="300"></canvas>
+                    <div class="game-score" id="tetrisScoreP2">Игрок 2: 0</div>
+                    <div class="game-controls">←↑↓→, Enter</div>
+                </div>
             </div>
-            <div class="game-controls">P1: WASD (ЦФЫВ), пробел &nbsp; P2: ←↑↓→, Enter</div>
             <button class="back-btn" id="backTetrisMulti">← Назад</button>
         `;
         window.tetris.init(2);
-        activeGame = 'tetris';
         document.getElementById('backTetrisMulti').onclick = function() {
             window.tetris.stop();
-            activeGame = null;
             showSelection();
         };
     }
 
+    function attachTetrisControls(playerIdx) {
+        const blockSize = window.tetris.players === 1 ? 18 : 15;
+        const btnMap = {
+            left: document.getElementById(playerIdx === 0 ? 'tetrisLeft' : `tetrisLeftP${playerIdx+1}`),
+            down: document.getElementById(playerIdx === 0 ? 'tetrisDown' : `tetrisDownP${playerIdx+1}`),
+            right: document.getElementById(playerIdx === 0 ? 'tetrisRight' : `tetrisRightP${playerIdx+1}`),
+            rotate: document.getElementById(playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`),
+            drop: document.getElementById(playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`)
+        };
+
+        if (btnMap.left) btnMap.left.onclick = () => window.tetris.move(playerIdx, -1, 0, blockSize);
+        if (btnMap.down) btnMap.down.onclick = () => window.tetris.move(playerIdx, 0, 1, blockSize);
+        if (btnMap.right) btnMap.right.onclick = () => window.tetris.move(playerIdx, 1, 0, blockSize);
+        if (btnMap.rotate) btnMap.rotate.onclick = () => window.tetris.rotate(playerIdx, blockSize);
+        if (btnMap.drop) btnMap.drop.onclick = () => window.tetris.drop(playerIdx, blockSize);
+    }
+
+    // ========== ЗМЕЙКА ==========
     function showSnakeMode() {
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
@@ -179,49 +332,77 @@
             if (mode === 'single') showSnakeSingle();
             else showSnakeMulti();
         };
-        document.getElementById('backSnakeMode').onclick = function() {
-            activeGame = null;
-            showSelection();
-        };
+        document.getElementById('backSnakeMode').onclick = showSelection;
     }
 
     function showSnakeSingle() {
+        activeGame = 'snake';
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
             <canvas id="snakeCanvas" width="200" height="200"></canvas>
             <div class="game-score" id="snakeScore">Счёт: 0</div>
-            <div class="game-controls">← → ↑ ↓ (стрелки)</div>
+            <div class="game-controls">
+                <div style="margin-bottom:0.3rem;">Управление: стрелки / WASD / кнопки</div>
+                <button id="snakeUp" class="ctrl-btn">↑</button>
+                <button id="snakeLeft" class="ctrl-btn">←</button>
+                <button id="snakeDown" class="ctrl-btn">↓</button>
+                <button id="snakeRight" class="ctrl-btn">→</button>
+            </div>
             <button class="back-btn" id="backSnake">← Назад</button>
         `;
         window.snake.init(1);
-        activeGame = 'snake';
+        attachSnakeControls(0);
         document.getElementById('backSnake').onclick = function() {
             window.snake.stop();
-            activeGame = null;
             showSelection();
         };
     }
 
     function showSnakeMulti() {
+        activeGame = 'snake';
         modalInner.innerHTML = `
             <h3>🐍 Змейка (2 игрока)</h3>
             <canvas id="snakeCanvas" width="200" height="200"></canvas>
             <div class="game-score" id="snakeScoreP1">Игрок 1: 0</div>
             <div class="game-score" id="snakeScoreP2">Игрок 2: 0</div>
-            <div class="game-controls">P1: WASD (ЦФЫВ) &nbsp; P2: ←↑↓→</div>
+            <div class="game-controls">P1: WASD | P2: ←↑↓→</div>
             <button class="back-btn" id="backSnakeMulti">← Назад</button>
         `;
         window.snake.init(2);
-        activeGame = 'snake';
         document.getElementById('backSnakeMulti').onclick = function() {
             window.snake.stop();
-            activeGame = null;
             showSelection();
         };
     }
 
+    function attachSnakeControls(playerIdx) {
+        const dirMap = {
+            up: {x:0, y:-1},
+            down: {x:0, y:1},
+            left: {x:-1, y:0},
+            right: {x:1, y:0}
+        };
+        const prefix = playerIdx === 0 ? '' : 'P'+(playerIdx+1);
+        for (let dir in dirMap) {
+            const btn = document.getElementById(`snake${dir.charAt(0).toUpperCase()+dir.slice(1)}`);
+            if (btn) {
+                btn.onclick = () => {
+                    if (!window.snake.active) return;
+                    const s = window.snake;
+                    const newDir = dirMap[dir];
+                    const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
+                    if (!opposite) {
+                        s.nextDirs[playerIdx] = newDir;
+                    }
+                };
+            }
+        }
+    }
+
     function closeModal() {
         modalOverlay.classList.remove('active');
+        if (activeGame === 'tetris') window.tetris.stop();
+        if (activeGame === 'snake') window.snake.stop();
         activeGame = null;
     }
 
@@ -233,7 +414,24 @@
         if (e.target === modalOverlay) closeModal();
     };
 
-    // Расширенная обработка клавиатуры с поддержкой русской раскладки
+    // ========== КЛАВИАТУРА ==========
+    function mapKey(key) {
+        const map = {
+            'ц': 'w', 'Ц': 'W',
+            'ф': 'a', 'Ф': 'A',
+            'ы': 's', 'Ы': 'S',
+            'в': 'd', 'В': 'D'
+        };
+        return map[key] || key;
+    }
+
+    function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
+    function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
+    function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
+    function isUp(key) { return key === 'ArrowUp' || key === 'w' || key === 'W' || key === 'ц' || key === 'Ц'; }
+    function isSpace(key) { return key === ' '; }
+    function isEnter(key) { return key === 'Enter'; }
+
     document.addEventListener('keydown', function(e) {
         const key = e.key;
         const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
@@ -246,52 +444,51 @@
         if (activeGame === 'tetris' && window.tetris.active) {
             const t = window.tetris;
             const bSize = t.players === 1 ? 18 : 15;
-            let mappedKey = key;
-            if (key === 'ц' || key === 'Ц') mappedKey = 'w';
-            else if (key === 'ф' || key === 'Ф') mappedKey = 'a';
-            else if (key === 'ы' || key === 'Ы') mappedKey = 's';
-            else if (key === 'в' || key === 'В') mappedKey = 'd';
 
             if (t.players === 1) {
-                if (mappedKey === 'ArrowLeft') t.move(0, -1, 0, bSize);
-                else if (mappedKey === 'ArrowRight') t.move(0, 1, 0, bSize);
-                else if (mappedKey === 'ArrowDown') t.move(0, 0, 1, bSize);
-                else if (mappedKey === 'ArrowUp') t.rotate(0, bSize);
-                else if (mappedKey === ' ') t.drop(0, bSize);
+                if (isLeft(key)) t.move(0, -1, 0, bSize);
+                else if (isRight(key)) t.move(0, 1, 0, bSize);
+                else if (isDown(key)) t.move(0, 0, 1, bSize);
+                else if (isUp(key)) t.rotate(0, bSize);
+                else if (isSpace(key)) t.drop(0, bSize);
             } else {
-                if (mappedKey === 'a') t.move(0, -1, 0, bSize);
-                else if (mappedKey === 'd') t.move(0, 1, 0, bSize);
-                else if (mappedKey === 's') t.move(0, 0, 1, bSize);
-                else if (mappedKey === 'w') t.rotate(0, bSize);
-                else if (mappedKey === ' ') t.drop(0, bSize);
-                else if (mappedKey === 'ArrowLeft') t.move(1, -1, 0, bSize);
-                else if (mappedKey === 'ArrowRight') t.move(1, 1, 0, bSize);
-                else if (mappedKey === 'ArrowDown') t.move(1, 0, 1, bSize);
-                else if (mappedKey === 'ArrowUp') t.rotate(1, bSize);
-                else if (mappedKey === 'Enter') t.drop(1, bSize);
+                // Игрок 1: WASD
+                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') t.move(0, -1, 0, bSize);
+                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') t.move(0, 1, 0, bSize);
+                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') t.move(0, 0, 1, bSize);
+                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') t.rotate(0, bSize);
+                else if (key === ' ') t.drop(0, bSize);
+                // Игрок 2: Стрелки
+                else if (key === 'ArrowLeft') t.move(1, -1, 0, bSize);
+                else if (key === 'ArrowRight') t.move(1, 1, 0, bSize);
+                else if (key === 'ArrowDown') t.move(1, 0, 1, bSize);
+                else if (key === 'ArrowUp') t.rotate(1, bSize);
+                else if (key === 'Enter') t.drop(1, bSize);
             }
         } else if (activeGame === 'snake' && window.snake.active) {
             const s = window.snake;
-            let mappedKey = key;
-            if (key === 'ц' || key === 'Ц') mappedKey = 'w';
-            else if (key === 'ф' || key === 'Ф') mappedKey = 'a';
-            else if (key === 'ы' || key === 'Ы') mappedKey = 's';
-            else if (key === 'в' || key === 'В') mappedKey = 'd';
+            function setDir(pIdx, newDir) {
+                const cur = s.dirs[pIdx];
+                if (newDir.x === -cur.x && newDir.y === -cur.y) return; // нельзя развернуться
+                s.nextDirs[pIdx] = newDir;
+            }
 
             if (s.players === 1) {
-                if (mappedKey === 'ArrowLeft' && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
-                else if (mappedKey === 'ArrowUp' && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
-                else if (mappedKey === 'ArrowRight' && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
-                else if (mappedKey === 'ArrowDown' && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
+                if (isLeft(key)) setDir(0, {x:-1, y:0});
+                else if (isRight(key)) setDir(0, {x:1, y:0});
+                else if (isUp(key)) setDir(0, {x:0, y:-1});
+                else if (isDown(key)) setDir(0, {x:0, y:1});
             } else {
-                if (mappedKey === 'a' && s.dirs[0].x!==1) s.nextDirs[0] = {x:-1,y:0};
-                else if (mappedKey === 'w' && s.dirs[0].y!==1) s.nextDirs[0] = {x:0,y:-1};
-                else if (mappedKey === 'd' && s.dirs[0].x!==-1) s.nextDirs[0] = {x:1,y:0};
-                else if (mappedKey === 's' && s.dirs[0].y!==-1) s.nextDirs[0] = {x:0,y:1};
-                if (mappedKey === 'ArrowLeft' && s.dirs[1].x!==1) s.nextDirs[1] = {x:-1,y:0};
-                else if (mappedKey === 'ArrowUp' && s.dirs[1].y!==1) s.nextDirs[1] = {x:0,y:-1};
-                else if (mappedKey === 'ArrowRight' && s.dirs[1].x!==-1) s.nextDirs[1] = {x:1,y:0};
-                else if (mappedKey === 'ArrowDown' && s.dirs[1].y!==-1) s.nextDirs[1] = {x:0,y:1};
+                // P1: WASD
+                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') setDir(0, {x:-1, y:0});
+                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') setDir(0, {x:1, y:0});
+                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') setDir(0, {x:0, y:-1});
+                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') setDir(0, {x:0, y:1});
+                // P2: стрелки
+                else if (key === 'ArrowLeft') setDir(1, {x:-1, y:0});
+                else if (key === 'ArrowRight') setDir(1, {x:1, y:0});
+                else if (key === 'ArrowUp') setDir(1, {x:0, y:-1});
+                else if (key === 'ArrowDown') setDir(1, {x:0, y:1});
             }
         }
     });
