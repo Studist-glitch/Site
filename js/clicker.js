@@ -89,6 +89,83 @@ window.clicker = {
         this.ui = elements;
     },
 
+    save: function() {
+        try {
+            const data = {
+                score: this.score,
+                perClick: this.perClick,
+                perSec: this.perSec,
+                critChance: this.critChance,
+                critMult: this.critMult,
+                doubleClickChance: this.doubleClickChance,
+                maxCombo: this.maxCombo,
+                comboMultiplier: this.comboMultiplier,
+                poisonDps: this.poisonDps,
+                meteorActive: this.meteorActive,
+                meteorInterval: this.meteorInterval,
+                cloneActive: this.cloneActive,
+                bankPercent: this.bankPercent,
+                tickRate: this.tickRate,
+                magnetFieldActive: this.magnetFieldActive,
+                magnetPercent: this.magnetPercent,
+                magnetInterval: this.magnetInterval,
+                bossBounty: this.bossBounty,
+                quantumActive: this.quantumActive,
+                blackHoleActive: this.blackHoleActive,
+                stats: this.stats,
+                upgrades: {}
+            };
+            for (let key in this.upgrades) {
+                data.upgrades[key] = this.upgrades[key].level;
+            }
+            localStorage.setItem('starveClickerSave', JSON.stringify(data));
+        } catch(e) {}
+    },
+
+    load: function() {
+        try {
+            const raw = localStorage.getItem('starveClickerSave');
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            this.score = data.score || 0;
+            this.perClick = data.perClick || 1;
+            this.perSec = data.perSec || 0;
+            this.critChance = data.critChance || 0.1;
+            this.critMult = data.critMult || 2;
+            this.doubleClickChance = data.doubleClickChance || 0;
+            this.maxCombo = data.maxCombo || 0;
+            this.comboMultiplier = data.comboMultiplier || 0;
+            this.poisonDps = data.poisonDps || 0;
+            this.meteorActive = data.meteorActive || false;
+            this.meteorInterval = data.meteorInterval || 15;
+            this.cloneActive = data.cloneActive || false;
+            this.bankPercent = data.bankPercent || 0;
+            this.tickRate = data.tickRate || 1000;
+            this.magnetFieldActive = data.magnetFieldActive || false;
+            this.magnetPercent = data.magnetPercent || 0;
+            this.magnetInterval = data.magnetInterval || 15;
+            this.bossBounty = data.bossBounty || 1;
+            this.quantumActive = data.quantumActive || false;
+            this.blackHoleActive = data.blackHoleActive || false;
+            this.stats = data.stats || { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 };
+            if (data.upgrades) {
+                for (let key in data.upgrades) {
+                    if (this.upgrades[key]) {
+                        this.upgrades[key].level = data.upgrades[key];
+                    }
+                }
+            }
+            for (let key in this.upgrades) {
+                const up = this.upgrades[key];
+                for (let i = 1; i <= up.level; i++) {
+                    up.effect(i);
+                }
+            }
+            if (this.tickIntervalId) clearInterval(this.tickIntervalId);
+            this.tickIntervalId = setInterval(() => this.autoTick(), this.tickRate);
+        } catch(e) {}
+    },
+
     handleClick: function(event) {
         if (this.comboTimer) clearTimeout(this.comboTimer);
         this.combo++;
@@ -110,11 +187,13 @@ window.clicker = {
         if (Math.random() < this.critChance) gain *= this.critMult;
         if (this.doubleClickChance > 0 && Math.random() < this.doubleClickChance) gain *= 2;
 
+        // Всегда получаем алмазы
+        this.score += gain;
+        this.stats.totalEarned += gain;
+
         let bossDefeated = false;
         if (this.boss.active) {
-            let dmg = gain;
-            if (this.bossWeakness !== 1) dmg *= this.bossWeakness;
-            this.boss.health -= dmg;
+            this.boss.health -= gain;
             if (this.boss.health <= 0) {
                 const reward = Math.floor(this.boss.reward * this.bossBounty);
                 this.score += reward;
@@ -126,22 +205,19 @@ window.clicker = {
                 this.screenFlash();
                 this.screenShake();
             }
-        } else {
-            this.score += gain;
         }
-        this.stats.totalClicks++;
-        this.stats.totalEarned += gain;
 
+        this.stats.totalClicks++;
         if (event) this.createRipple(event);
         this.spawnClickParticles(gain, bossDefeated);
         this.showFloatingNumber(gain);
 
         if (Math.random() < 0.01) this.triggerClickEvent();
-
         this.updateUI();
         this.updateComboDisplay();
         this.checkChallenge();
         if (this.ui.renderUpgrades) this.ui.renderUpgrades();
+        this.save();
     },
 
     createRipple: function(e) {

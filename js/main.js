@@ -1,10 +1,7 @@
 (function() {
-    // ========== Фоновая анимация (частицы) ==========
     const bgCanvas = document.getElementById('bgCanvas');
     const bgCtx = bgCanvas.getContext('2d');
     let particles = [];
-    let mouseX = 0, mouseY = 0;
-    let targetMouseX = 0, targetMouseY = 0;
 
     function resizeBg() {
         bgCanvas.width = window.innerWidth;
@@ -13,7 +10,6 @@
     window.addEventListener('resize', resizeBg);
     resizeBg();
 
-    // Создаём больше частиц для заметности
     const PARTICLE_COUNT = 120;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         particles.push({
@@ -27,7 +23,8 @@
         });
     }
 
-    // Отслеживание мыши для параллакса
+    let mouseX = 0, mouseY = 0;
+    let targetMouseX = 0, targetMouseY = 0;
     document.addEventListener('mousemove', function(e) {
         targetMouseX = e.clientX / bgCanvas.width - 0.5;
         targetMouseY = e.clientY / bgCanvas.height - 0.5;
@@ -36,30 +33,20 @@
     function animateBg() {
         mouseX += (targetMouseX - mouseX) * 0.05;
         mouseY += (targetMouseY - mouseY) * 0.05;
-
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-
         for (let p of particles) {
-            // Движение под влиянием мыши
             p.x += p.vx + mouseX * 0.3;
             p.y += p.vy + mouseY * 0.3;
-
-            // Зацикливание
             if (p.x < -10) p.x = bgCanvas.width + 10;
             if (p.x > bgCanvas.width + 10) p.x = -10;
             if (p.y < -10) p.y = bgCanvas.height + 10;
             if (p.y > bgCanvas.height + 10) p.y = -10;
-
-            // Плавная смена оттенка
             p.hue = (p.hue + 0.15) % 360;
-
             bgCtx.beginPath();
             bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
             const alpha = p.baseAlpha + Math.sin(Date.now() * 0.002 + p.x) * 0.05;
             bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${alpha})`;
             bgCtx.fill();
-
-            // Свечение
             bgCtx.shadowBlur = 12;
             bgCtx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.5)`;
             bgCtx.fill();
@@ -69,7 +56,6 @@
     }
     animateBg();
 
-    // ========== Модальное окно и игры ==========
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
@@ -89,11 +75,11 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
-    // ========== КЛИКЕР ==========
     function showClicker() {
         window.clicker.init();
+        window.clicker.load();
         activeGame = 'clicker';
-        // (контент кликера без изменений, полный код ниже)
+
         modalInner.innerHTML = `
             <h3>⚡ Кликер</h3>
             <div class="tab-buttons">
@@ -154,6 +140,7 @@
             }
             up.level++;
             this.updateUI();
+            this.save();
             renderUpgradesList();
         };
 
@@ -251,7 +238,6 @@
         `;
     }
 
-    // ========== ТЕТРИС ==========
     function showTetrisMode() {
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
@@ -335,7 +321,6 @@
         if (btnMap.drop) btnMap.drop.onclick = () => window.tetris.drop(playerIdx, blockSize);
     }
 
-    // ========== ЗМЕЙКА ==========
     function showSnakeMode() {
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
@@ -359,9 +344,14 @@
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
             <canvas id="snakeCanvas" width="200" height="200"></canvas>
+            <div class="snake-hud">
+                <span class="combo-indicator" id="comboIndicator"></span>
+                <span class="dash-indicator" id="dashIndicator"></span>
+            </div>
+            <div class="active-powerups" id="powerupsContainer"></div>
             <div class="game-score" id="snakeScore">Счёт: 0</div>
             <div class="game-controls">
-                <div style="margin-bottom:0.3rem;">Управление: стрелки / WASD / кнопки</div>
+                <div style="margin-bottom:0.3rem;">Управление: стрелки / WASD</div>
                 <button id="snakeUp" class="ctrl-btn">↑</button>
                 <button id="snakeLeft" class="ctrl-btn">←</button>
                 <button id="snakeDown" class="ctrl-btn">↓</button>
@@ -370,6 +360,9 @@
             <button class="back-btn" id="backSnake">← Назад</button>
         `;
         window.snake.init(1);
+        window.snake.onGameOver = function() {
+            window.snake.showShop();
+        };
         attachSnakeControls(0);
         document.getElementById('backSnake').onclick = function() {
             window.snake.stop();
@@ -388,6 +381,11 @@
             <button class="back-btn" id="backSnakeMulti">← Назад</button>
         `;
         window.snake.init(2);
+        window.snake.onGameOver = function() {
+            // В мультиплеере магазин не вызываем
+            alert('Игра окончена!');
+            showSelection();
+        };
         document.getElementById('backSnakeMulti').onclick = function() {
             window.snake.stop();
             showSelection();
@@ -405,6 +403,8 @@
                     const newDir = dirMap[dir];
                     const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
                     if (!opposite) s.nextDirs[playerIdx] = newDir;
+                    // Проверка двойного нажатия для рывка
+                    s.handleDashInput(playerIdx, dir);
                 };
             }
         }
@@ -425,7 +425,6 @@
         if (e.target === modalOverlay) closeModal();
     };
 
-    // ========== КЛАВИАТУРА ==========
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
     function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
     function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
@@ -469,19 +468,24 @@
                 s.nextDirs[pIdx] = newDir;
             }
             if (s.players === 1) {
-                if (isLeft(key)) setDir(0, {x:-1, y:0});
-                else if (isRight(key)) setDir(0, {x:1, y:0});
-                else if (isUp(key)) setDir(0, {x:0, y:-1});
-                else if (isDown(key)) setDir(0, {x:0, y:1});
+                let dir = null;
+                if (isLeft(key)) dir = {x:-1, y:0};
+                else if (isRight(key)) dir = {x:1, y:0};
+                else if (isUp(key)) dir = {x:0, y:-1};
+                else if (isDown(key)) dir = {x:0, y:1};
+                if (dir) {
+                    setDir(0, dir);
+                    s.handleDashInput(0, dir);
+                }
             } else {
-                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') setDir(0, {x:-1, y:0});
-                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') setDir(0, {x:1, y:0});
-                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') setDir(0, {x:0, y:-1});
-                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') setDir(0, {x:0, y:1});
-                else if (key === 'ArrowLeft') setDir(1, {x:-1, y:0});
-                else if (key === 'ArrowRight') setDir(1, {x:1, y:0});
-                else if (key === 'ArrowUp') setDir(1, {x:0, y:-1});
-                else if (key === 'ArrowDown') setDir(1, {x:0, y:1});
+                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') { setDir(0, {x:-1, y:0}); s.handleDashInput(0, 'left'); }
+                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') { setDir(0, {x:1, y:0}); s.handleDashInput(0, 'right'); }
+                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') { setDir(0, {x:0, y:-1}); s.handleDashInput(0, 'up'); }
+                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') { setDir(0, {x:0, y:1}); s.handleDashInput(0, 'down'); }
+                else if (key === 'ArrowLeft') { setDir(1, {x:-1, y:0}); s.handleDashInput(1, 'left'); }
+                else if (key === 'ArrowRight') { setDir(1, {x:1, y:0}); s.handleDashInput(1, 'right'); }
+                else if (key === 'ArrowUp') { setDir(1, {x:0, y:-1}); s.handleDashInput(1, 'up'); }
+                else if (key === 'ArrowDown') { setDir(1, {x:0, y:1}); s.handleDashInput(1, 'down'); }
             }
         }
     });

@@ -1,4 +1,3 @@
-/* Подключение шрифта Russo One */
 @font-face {
     font-family: 'Russo One';
     src: url('../fonts/RussoOne.woff2') format('woff2');
@@ -25,6 +24,32 @@ body {
     position: relative;
 }
 
+/* Динамический цветовой шум по всему экрану */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(196,78,255,0.03) 0%,
+        rgba(0,255,200,0.02) 50%,
+        rgba(255,100,100,0.03) 100%
+    );
+    mix-blend-mode: overlay;
+    animation: colorShift 12s ease-in-out infinite alternate;
+}
+
+@keyframes colorShift {
+    0% { filter: hue-rotate(0deg) saturate(1); }
+    50% { filter: hue-rotate(180deg) saturate(1.2); }
+    100% { filter: hue-rotate(360deg) saturate(1); }
+}
+
 #bgCanvas {
     position: fixed;
     top: 0;
@@ -33,7 +58,7 @@ body {
     height: 100%;
     z-index: -1;
     pointer-events: none;
-    opacity: 0.35;
+    opacity: 0.4;
 }
 
 .container {
@@ -54,6 +79,12 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    0% { text-shadow: 0 0 8px rgba(196,78,255,0.4); }
+    100% { text-shadow: 0 0 18px rgba(196,78,255,0.8), 0 0 40px rgba(196,78,255,0.3); }
 }
 
 .line {
@@ -61,13 +92,11 @@ h1 {
     font-size: 2.6rem;
     color: #ffffff;
     position: relative;
+    -webkit-text-stroke: 1px rgba(0,0,0,0.2);
+    text-stroke: 1px rgba(0,0,0,0.2);
 }
 
-.line.accent {
-    color: #ffffff;
-}
-
-/* Шумовой эффект на заголовке */
+/* Шумовое затемнение */
 .line::after {
     content: '';
     position: absolute;
@@ -75,17 +104,22 @@ h1 {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.15 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 150px 150px;
-    animation: noiseMove 6s linear infinite;
-    mix-blend-mode: multiply;
-    opacity: 0.12;
+    animation: noiseMove 6s linear infinite, hueRotate 8s linear infinite;
     pointer-events: none;
+    opacity: 0.7;
+    mix-blend-mode: darken;
 }
 
 @keyframes noiseMove {
     0% { background-position: 0 0; }
     100% { background-position: 150px 150px; }
+}
+
+@keyframes hueRotate {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
 }
 
 h2 {
@@ -111,12 +145,13 @@ p, li {
     padding: 1rem;
     margin: 0.8rem 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: border-color 0.25s, box-shadow 0.25s;
+    transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
 }
 
 .card:hover {
-    border-color: rgba(196, 78, 255, 0.3);
-    box-shadow: 0 6px 18px rgba(196, 78, 255, 0.1);
+    border-color: rgba(196, 78, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(196, 78, 255, 0.15);
+    transform: translateY(-2px);
 }
 
 .video-stretch {
@@ -126,11 +161,12 @@ p, li {
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid rgba(196, 78, 255, 0.15);
-    transition: box-shadow 0.3s;
+    transition: box-shadow 0.3s, transform 0.2s;
 }
 
 .video-stretch:hover {
-    box-shadow: 0 0 12px rgba(196, 78, 255, 0.2);
+    box-shadow: 0 0 16px rgba(196, 78, 255, 0.25);
+    transform: scale(1.01);
 }
 
 .video-stretch video {
@@ -155,12 +191,13 @@ p, li {
     font-size: 0.75rem;
     color: #c0c0d0;
     border: 1px solid rgba(196, 78, 255, 0.08);
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .specs-grid div:hover {
-    background: rgba(196, 78, 255, 0.05);
-    border-color: rgba(196, 78, 255, 0.2);
+    background: rgba(196, 78, 255, 0.06);
+    border-color: rgba(196, 78, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 .links {
@@ -180,14 +217,21 @@ a {
     padding: 0.45rem 1.2rem;
     border-radius: 40px;
     font-weight: 500;
-    transition: background 0.2s, box-shadow 0.2s;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
     font-size: 0.85rem;
     position: relative;
+    animation: linkPulse 2s infinite alternate;
+}
+
+@keyframes linkPulse {
+    0% { box-shadow: 0 0 5px rgba(196,78,255,0.1); }
+    100% { box-shadow: 0 0 12px rgba(196,78,255,0.3); }
 }
 
 a:hover {
     background: rgba(196, 78, 255, 0.08);
-    box-shadow: 0 0 12px rgba(196, 78, 255, 0.3);
+    box-shadow: 0 0 16px rgba(196, 78, 255, 0.5);
+    transform: translateY(-1px);
 }
 
 a.alt {
@@ -260,11 +304,11 @@ footer a:hover {
     font-size: 0.75rem;
 }
 
-/* Плавающая кнопка мини‑игр */
+/* Кнопка мини-игр */
 .mini-games-float {
     position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
+    bottom: 10px;
+    right: 10px;
     background: rgba(196,78,255,0.12);
     border: 1px solid rgba(196,78,255,0.3);
     color: #c44eff;
@@ -280,16 +324,22 @@ footer a:hover {
     justify-content: center;
     transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
     position: relative;
-    overflow: hidden;
+    animation: floatBtnPulse 3s infinite;
+}
+
+@keyframes floatBtnPulse {
+    0% { box-shadow: 0 0 8px rgba(196,78,255,0.2); }
+    50% { box-shadow: 0 0 20px rgba(196,78,255,0.4); }
+    100% { box-shadow: 0 0 8px rgba(196,78,255,0.2); }
 }
 
 .mini-games-float:hover {
-    transform: scale(1.08);
-    background: rgba(196,78,255,0.2);
-    box-shadow: 0 0 18px rgba(196,78,255,0.5);
+    transform: scale(1.1);
+    background: rgba(196,78,255,0.25);
+    box-shadow: 0 0 25px rgba(196,78,255,0.7);
 }
 
-/* Общий шум для кнопок */
+/* Шум на кнопках */
 .mini-games-float::after,
 .game-btn::after,
 .tab-btn::after,
@@ -302,12 +352,12 @@ footer a:hover {
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 150px 150px;
-    animation: noiseMove 6s linear infinite;
-    mix-blend-mode: multiply;
-    opacity: 0.08;
+    animation: noiseMove 6s linear infinite, hueRotate 8s linear infinite;
     pointer-events: none;
+    opacity: 0.8;
+    mix-blend-mode: darken;
     border-radius: inherit;
 }
 
@@ -339,12 +389,12 @@ footer a:hover {
     font-size: 0.8rem;
     max-height: 85vh;
     overflow-y: auto;
-    animation: modalIn 0.25s ease-out;
+    animation: modalIn 0.3s ease-out;
 }
 
 @keyframes modalIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from { transform: scale(0.95) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .modal-content h3 {
@@ -364,7 +414,7 @@ footer a:hover {
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.8rem;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
     position: relative;
     overflow: hidden;
 }
@@ -372,11 +422,17 @@ footer a:hover {
 .game-btn:hover {
     background: rgba(196,78,255,0.15);
     border-color: rgba(196,78,255,0.4);
+    transform: translateY(-1px);
+}
+
+.game-btn:active {
+    transform: translateY(0);
 }
 
 .game-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    transform: none;
 }
 
 .back-btn {
@@ -466,7 +522,6 @@ footer a:hover {
     box-shadow: 0 0 18px rgba(196,78,255,0.5);
 }
 
-/* Ripple */
 .ripple {
     position: absolute;
     border-radius: 50%;
@@ -540,8 +595,6 @@ footer a:hover {
     border-radius: 6px;
     padding: 0.35rem 0.5rem;
     transition: background 0.2s;
-    position: relative;
-    overflow: hidden;
 }
 
 .upgrade-item:hover {
@@ -687,7 +740,6 @@ canvas {
     font-weight: 600;
 }
 
-/* Кнопки управления тетрисом/змейкой */
 .ctrl-btn {
     display: inline-block;
     width: 36px;
@@ -708,4 +760,91 @@ canvas {
 .ctrl-btn:active {
     background: rgba(196,78,255,0.3);
     box-shadow: 0 0 8px #c44eff;
+}
+
+/* --- Змейка: новые стили --- */
+.snake-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    margin-bottom: 0.3rem;
+    color: #aaa;
+}
+
+.combo-indicator {
+    color: #ffcc00;
+    text-shadow: 0 0 6px #ffcc00;
+    transition: opacity 0.3s;
+}
+
+.dash-indicator {
+    color: #44ccff;
+    text-shadow: 0 0 6px #44ccff;
+}
+
+.active-powerups {
+    display: flex;
+    gap: 0.2rem;
+    margin: 0.2rem 0;
+    min-height: 1.2rem;
+}
+
+.powerup-badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid currentColor;
+    animation: badgePulse 1s infinite alternate;
+}
+
+@keyframes badgePulse {
+    from { opacity: 0.8; }
+    to { opacity: 1; }
+}
+
+.snake-shop {
+    margin-top: 0.5rem;
+}
+
+.snake-shop h4 {
+    color: #c44eff;
+    margin-bottom: 0.3rem;
+}
+
+.shop-upgrade {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(196,78,255,0.04);
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    margin: 0.2rem 0;
+    font-size: 0.7rem;
+}
+
+.shop-upgrade .desc {
+    text-align: left;
+    flex: 1;
+}
+
+.shop-upgrade .cost {
+    color: #c44eff;
+    font-weight: 600;
+}
+
+.snake-eat-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+    animation: eatParticle 0.4s ease-out forwards;
+}
+
+@keyframes eatParticle {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
 }
