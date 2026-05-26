@@ -60,6 +60,7 @@
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
 
+    // ---------- Общие функции для модального окна ----------
     function showSelection() {
         activeGame = null;
         modalInner.innerHTML = `
@@ -75,7 +76,7 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
-    // --- Кликер (без изменений) ---
+    // ---------- Кликер ----------
     function showClicker() {
         window.clicker.init();
         window.clicker.load();
@@ -239,7 +240,7 @@
         `;
     }
 
-    // --- Тетрис ---
+    // ---------- Тетрис ----------
     function showTetrisMode() {
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
@@ -266,15 +267,16 @@
             <div class="game-score" id="tetrisScore">Счёт: 0</div>
             <div id="abilityStatus" style="font-size:0.65rem; color:#aaa;"></div>
             <div class="game-controls">
-                <div style="margin-bottom:0.3rem;">Управление: ←↓→ / WASD / кнопки</div>
+                <div>←↓→ / WASD / кнопки (удерживайте для быстрого движения)</div>
                 <button id="tetrisLeft" class="ctrl-btn">←</button>
                 <button id="tetrisDown" class="ctrl-btn">↓</button>
                 <button id="tetrisRight" class="ctrl-btn">→</button>
                 <button id="tetrisRotate" class="ctrl-btn">↻</button>
                 <button id="tetrisDrop" class="ctrl-btn">Drop</button>
-                <button id="ability1" class="ctrl-btn" style="width:auto; padding:0 8px;">⚡</button>
-                <button id="ability2" class="ctrl-btn" style="width:auto; padding:0 8px;">❄️</button>
-                <button id="ability3" class="ctrl-btn" style="width:auto; padding:0 8px;">🧹</button>
+                <button id="tetrisHold" class="ctrl-btn" style="width:auto;padding:0 8px;">📦</button>
+                <button id="ability1" class="ctrl-btn" style="width:auto;padding:0 8px;">⚡</button>
+                <button id="ability2" class="ctrl-btn" style="width:auto;padding:0 8px;">❄️</button>
+                <button id="ability3" class="ctrl-btn" style="width:auto;padding:0 8px;">🧹</button>
             </div>
             <button class="back-btn" id="backTetris">← Назад</button>
         `;
@@ -282,15 +284,16 @@
             window.tetris.showShop();
         };
         window.tetris.init(1);
-        attachTetrisControls(0);
+        const bSize = 18;
+        attachTetrisControls(0, bSize);
         document.getElementById('backTetris').onclick = function() {
             window.tetris.stop();
             showSelection();
         };
-        // Привязка способностей
-        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', 18);
-        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', 18);
-        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', 18);
+        document.getElementById('tetrisHold').onclick = () => window.tetris.hold(0, bSize);
+        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', bSize);
+        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', bSize);
+        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', bSize);
     }
 
     function showTetrisMulti() {
@@ -313,29 +316,63 @@
         `;
         window.tetris.init(2);
         window.tetris.onGameOver = null;
+        const bSize = 15;
+        attachTetrisControls(0, bSize);
+        attachTetrisControls(1, bSize);
         document.getElementById('backTetrisMulti').onclick = function() {
             window.tetris.stop();
             showSelection();
         };
     }
 
-    function attachTetrisControls(playerIdx) {
-        const blockSize = window.tetris.players === 1 ? 18 : 15;
-        const btnMap = {
-            left: document.getElementById(playerIdx === 0 ? 'tetrisLeft' : `tetrisLeftP${playerIdx+1}`),
-            down: document.getElementById(playerIdx === 0 ? 'tetrisDown' : `tetrisDownP${playerIdx+1}`),
-            right: document.getElementById(playerIdx === 0 ? 'tetrisRight' : `tetrisRightP${playerIdx+1}`),
-            rotate: document.getElementById(playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`),
-            drop: document.getElementById(playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`)
+    // Улучшенное управление для тетриса: повтор при удержании кнопки (pointerdown/pointerup)
+    function attachTetrisControls(playerIdx, blockSize) {
+        const actions = {
+            left: { btnId: playerIdx === 0 ? 'tetrisLeft' : `tetrisLeftP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, -1, 0, blockSize) },
+            right: { btnId: playerIdx === 0 ? 'tetrisRight' : `tetrisRightP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, 1, 0, blockSize) },
+            down: { btnId: playerIdx === 0 ? 'tetrisDown' : `tetrisDownP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, 0, 1, blockSize) },
+            rotate: { btnId: playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`, action: () => window.tetris.rotate(playerIdx, blockSize) },
+            drop: { btnId: playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`, action: () => window.tetris.drop(playerIdx, blockSize) }
         };
-        if (btnMap.left) btnMap.left.onclick = () => window.tetris.move(playerIdx, -1, 0, blockSize);
-        if (btnMap.down) btnMap.down.onclick = () => window.tetris.move(playerIdx, 0, 1, blockSize);
-        if (btnMap.right) btnMap.right.onclick = () => window.tetris.move(playerIdx, 1, 0, blockSize);
-        if (btnMap.rotate) btnMap.rotate.onclick = () => window.tetris.rotate(playerIdx, blockSize);
-        if (btnMap.drop) btnMap.drop.onclick = () => window.tetris.drop(playerIdx, blockSize);
+
+        const repeatDelay = 100; // задержка перед повторением
+        const repeatInterval = 50; // интервал повторов
+        const heldTimers = {};
+
+        for (let key in actions) {
+            const act = actions[key];
+            const btn = document.getElementById(act.btnId);
+            if (!btn) continue;
+
+            const startRepeat = () => {
+                if (heldTimers[key]) return;
+                act.action();
+                heldTimers[key] = {
+                    initial: setTimeout(() => {
+                        heldTimers[key].repeat = setInterval(() => act.action(), repeatInterval);
+                    }, repeatDelay)
+                };
+            };
+
+            const stopRepeat = () => {
+                if (heldTimers[key]) {
+                    clearTimeout(heldTimers[key].initial);
+                    clearInterval(heldTimers[key].repeat);
+                    delete heldTimers[key];
+                }
+            };
+
+            btn.addEventListener('pointerdown', startRepeat);
+            btn.addEventListener('pointerup', stopRepeat);
+            btn.addEventListener('pointerleave', stopRepeat);
+            btn.addEventListener('pointercancel', stopRepeat);
+            // Для сенсорных экранов предотвращаем стандартное поведение
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startRepeat(); });
+            btn.addEventListener('touchend', stopRepeat);
+        }
     }
 
-    // --- Змейка (из предыдущего ответа, с магазином) ---
+    // ---------- Змейка ----------
     function showSnakeMode() {
         modalInner.innerHTML = `
             <h3>🐍 Змейка</h3>
@@ -366,7 +403,7 @@
             <div class="active-powerups" id="powerupsContainer"></div>
             <div class="game-score" id="snakeScore">Счёт: 0</div>
             <div class="game-controls">
-                <div style="margin-bottom:0.3rem;">Управление: стрелки / WASD</div>
+                <div>Управление: стрелки / WASD / свайпы по холсту</div>
                 <button id="snakeUp" class="ctrl-btn">↑</button>
                 <button id="snakeLeft" class="ctrl-btn">←</button>
                 <button id="snakeDown" class="ctrl-btn">↓</button>
@@ -379,6 +416,7 @@
             window.snake.showShop();
         };
         attachSnakeControls(0);
+        setupSnakeSwipe();
         document.getElementById('backSnake').onclick = function() {
             window.snake.stop();
             showSelection();
@@ -408,64 +446,68 @@
         for (let dir in dirMap) {
             const btn = document.getElementById(`snake${dir.charAt(0).toUpperCase()+dir.slice(1)}`);
             if (btn) {
-                btn.onclick = () => {
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
                     if (!window.snake.active) return;
                     const s = window.snake;
                     const newDir = dirMap[dir];
                     const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
                     if (!opposite) s.nextDirs[playerIdx] = newDir;
                     s.handleDashInput(playerIdx, dir);
-                };
+                });
             }
         }
     }
 
-    // Магазин тетриса теперь метод самого tetris
-    window.tetris.showShop = function() {
-        const self = this;
-        const render = () => {
-            modalInner.innerHTML = `
-                <h3>🧱 Улучшения Тетриса</h3>
-                <p>T-очки: <strong>${self.currency}</strong></p>
-                <div class="snake-shop" id="tetrisShopUpgrades"></div>
-                <button class="game-btn" id="playTetrisAgain">Играть снова</button>
-                <button class="back-btn" id="backToTetrisMenu">В меню</button>
-            `;
-            const container = document.getElementById('tetrisShopUpgrades');
-            const upgrades = [
-                { key: 'speed', name: 'Скорость +', desc: 'Уменьшает интервал падения', cost: 100, max: 5, current: self.upgrades.speed || 0 },
-                { key: 'lineBonus', name: 'Бонус за линии', desc: '+20% очков за каждую линию', cost: 150, max: 5, current: self.upgrades.lineBonus || 0 },
-                { key: 'startRows', name: 'Начальные ряды', desc: 'Добавляет заполненные строки (сложность)', cost: 50, max: 3, current: self.upgrades.startRows || 0 },
-                { key: 'specialChance', name: 'Спец. фигуры', desc: '+5% шанс выпадения спец. фигуры', cost: 200, max: 4, current: self.upgrades.specialChance || 0 },
-                { key: 'abilityPower', name: 'Сила способностей', desc: 'Сокращает кулдаун способностей', cost: 250, max: 3, current: self.upgrades.abilityPower || 0 }
-            ];
-            upgrades.forEach(up => {
-                const nextCost = up.cost + up.current * up.cost * 0.5;
-                const maxed = up.max && up.current >= up.max;
-                const item = document.createElement('div');
-                item.className = 'shop-upgrade';
-                item.innerHTML = `
-                    <div class="desc"><strong>${up.name}</strong><br>${up.desc}</div>
-                    <span class="cost">${maxed ? 'МАКС' : Math.floor(nextCost) + '💎'}</span>
-                    <button class="buy-btn" ${(self.currency >= nextCost && !maxed) ? '' : 'disabled'}>Купить</button>
-                `;
-                if (!maxed && self.currency >= nextCost) {
-                    item.querySelector('.buy-btn').onclick = () => {
-                        self.currency -= Math.floor(nextCost);
-                        self.upgrades[up.key] = up.current + 1;
-                        self.saveUpgrades();
-                        render();
-                    };
-                }
-                container.appendChild(item);
-            });
-            document.getElementById('playTetrisAgain').onclick = () => {
-                showTetrisSingle();
-            };
-            document.getElementById('backToTetrisMenu').onclick = showSelection;
+    // Свайп-управление для змейки (1 игрок)
+    function setupSnakeSwipe() {
+        const canvas = document.getElementById('snakeCanvas');
+        if (!canvas) return;
+        let touchStart = null;
+
+        const handleStart = (e) => {
+            if (!window.snake.active) return;
+            const touch = e.touches ? e.touches[0] : e;
+            touchStart = { x: touch.clientX, y: touch.clientY };
         };
-        render();
-    };
+
+        const handleEnd = (e) => {
+            if (!touchStart || !window.snake.active) return;
+            const touch = e.changedTouches ? e.changedTouches[0] : e;
+            const dx = touch.clientX - touchStart.x;
+            const dy = touch.clientY - touchStart.y;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            if (Math.max(absDx, absDy) < 20) { touchStart = null; return; } // слишком короткий свайп
+
+            let dir;
+            if (absDx > absDy) {
+                dir = dx > 0 ? 'right' : 'left';
+            } else {
+                dir = dy > 0 ? 'down' : 'up';
+            }
+
+            const s = window.snake;
+            const newDir = { up: {x:0,y:-1}, down: {x:0,y:1}, left: {x:-1,y:0}, right: {x:1,y:0} }[dir];
+            const opposite = (newDir.x === -s.dirs[0].x && newDir.y === -s.dirs[0].y);
+            if (!opposite) s.nextDirs[0] = newDir;
+            s.handleDashInput(0, dir);
+
+            touchStart = null;
+        };
+
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        canvas.addEventListener('touchend', handleEnd);
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('mouseleave', () => { touchStart = null; });
+    }
+
+    // ---------- Глобальные обработчики для магазинов ----------
+    document.addEventListener('startTetrisSingle', () => showTetrisSingle());
+    document.addEventListener('startSnakeSingle', () => showSnakeSingle());
+    document.addEventListener('openMiniGamesMenu', () => showSelection());
 
     function closeModal() {
         modalOverlay.classList.remove('active');
@@ -482,6 +524,7 @@
         if (e.target === modalOverlay) closeModal();
     };
 
+    // ---------- Обработка клавиатуры ----------
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
     function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
     function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
@@ -489,11 +532,14 @@
     function isSpace(key) { return key === ' '; }
     function isEnter(key) { return key === 'Enter'; }
 
+    const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
+                      'w','a','s','d','W','A','S','D',
+                      'ц','ф','ы','в','Ц','Ф','Ы','В',
+                      'z','Z','x','X','c','C','h','H',
+                      'я','Я','ч','Ч','с','С','р','Р'];
+
     document.addEventListener('keydown', function(e) {
         const key = e.key;
-        const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
-                          'w','a','s','d','W','A','S','D',
-                          'ц','ф','ы','в','Ц','Ф','Ы','В'];
         if (gameKeys.includes(key)) e.preventDefault();
 
         if (activeGame === 'tetris' && window.tetris.active) {
@@ -505,7 +551,7 @@
                 else if (isDown(key)) t.move(0, 0, 1, bSize);
                 else if (isUp(key)) t.rotate(0, bSize);
                 else if (isSpace(key)) t.drop(0, bSize);
-                // Клавиши способностей: Z, X, C
+                else if (key === 'h' || key === 'H' || key === 'р' || key === 'Р') t.hold(0, bSize);
                 else if (key === 'z' || key === 'Z' || key === 'я' || key === 'Я') t.useAbility(0, 'lightning', bSize);
                 else if (key === 'x' || key === 'X' || key === 'ч' || key === 'Ч') t.useAbility(0, 'freeze', bSize);
                 else if (key === 'c' || key === 'C' || key === 'с' || key === 'С') t.useAbility(0, 'clear', bSize);
@@ -539,14 +585,14 @@
                     s.handleDashInput(0, dir);
                 }
             } else {
-                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') { setDir(0, {x:-1, y:0}); s.handleDashInput(0, 'left'); }
-                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') { setDir(0, {x:1, y:0}); s.handleDashInput(0, 'right'); }
-                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') { setDir(0, {x:0, y:-1}); s.handleDashInput(0, 'up'); }
-                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') { setDir(0, {x:0, y:1}); s.handleDashInput(0, 'down'); }
-                else if (key === 'ArrowLeft') { setDir(1, {x:-1, y:0}); s.handleDashInput(1, 'left'); }
-                else if (key === 'ArrowRight') { setDir(1, {x:1, y:0}); s.handleDashInput(1, 'right'); }
-                else if (key === 'ArrowUp') { setDir(1, {x:0, y:-1}); s.handleDashInput(1, 'up'); }
-                else if (key === 'ArrowDown') { setDir(1, {x:0, y:1}); s.handleDashInput(1, 'down'); }
+                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') { setDir(0, {x:-1,y:0}); s.handleDashInput(0, 'left'); }
+                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') { setDir(0, {x:1,y:0}); s.handleDashInput(0, 'right'); }
+                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') { setDir(0, {x:0,y:-1}); s.handleDashInput(0, 'up'); }
+                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') { setDir(0, {x:0,y:1}); s.handleDashInput(0, 'down'); }
+                else if (key === 'ArrowLeft') { setDir(1, {x:-1,y:0}); s.handleDashInput(1, 'left'); }
+                else if (key === 'ArrowRight') { setDir(1, {x:1,y:0}); s.handleDashInput(1, 'right'); }
+                else if (key === 'ArrowUp') { setDir(1, {x:0,y:-1}); s.handleDashInput(1, 'up'); }
+                else if (key === 'ArrowDown') { setDir(1, {x:0,y:1}); s.handleDashInput(1, 'down'); }
             }
         }
     });
