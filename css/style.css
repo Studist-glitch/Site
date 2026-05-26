@@ -3,6 +3,7 @@
     padding: 0;
     box-sizing: border-box;
 }
+
 body {
     background: #0a0a0f;
     color: #d0d0e0;
@@ -11,11 +12,25 @@ body {
     padding: 1.2rem 0.8rem;
     display: flex;
     justify-content: center;
+    overflow-x: hidden;
 }
+
+/* Фоновый шум */
+#bgCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+
 .container {
     width: 100%;
     max-width: 650px;
 }
+
 h1 {
     font-size: 2.6rem;
     font-weight: 800;
@@ -24,10 +39,25 @@ h1 {
     color: #fff;
     margin-bottom: 0.3rem;
     line-height: 1.1;
+    animation: textGlow 2s ease-in-out infinite alternate;
 }
+
 h1 span {
     color: #c44eff;
+    text-shadow: 0 0 10px #c44eff;
+    animation: neonPulse 1.5s infinite alternate;
 }
+
+@keyframes textGlow {
+    from { text-shadow: 0 0 5px #c44eff, 0 0 10px #c44eff; }
+    to { text-shadow: 0 0 20px #c44eff, 0 0 30px #ff44cc; }
+}
+
+@keyframes neonPulse {
+    0% { color: #c44eff; }
+    100% { color: #ff44cc; }
+}
+
 h2 {
     font-size: 0.95rem;
     text-transform: uppercase;
@@ -36,11 +66,13 @@ h2 {
     margin-bottom: 0.3rem;
     font-weight: 600;
 }
+
 p, li {
     color: #b0b0c0;
     font-size: 0.85rem;
     max-width: 60ch;
 }
+
 .card {
     background: rgba(18, 18, 26, 0.8);
     backdrop-filter: blur(8px);
@@ -49,7 +81,20 @@ p, li {
     padding: 1rem;
     margin: 0.8rem 0;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    animation: fadeInUp 0.6s ease-out both;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
+
+.card:hover {
+    border-color: rgba(196, 78, 255, 0.4);
+    box-shadow: 0 0 25px rgba(196, 78, 255, 0.2);
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .video-stretch {
     width: 100%;
     height: 180px;
@@ -57,19 +102,27 @@ p, li {
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid rgba(196, 78, 255, 0.25);
+    transition: box-shadow 0.3s;
 }
+
+.video-stretch:hover {
+    box-shadow: 0 0 20px rgba(196, 78, 255, 0.4);
+}
+
 .video-stretch video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
+
 .specs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 0.5rem;
     margin-top: 0.4rem;
 }
+
 .specs-grid div {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 6px;
@@ -78,7 +131,14 @@ p, li {
     font-size: 0.75rem;
     color: #c0c0d0;
     border: 1px solid rgba(196, 78, 255, 0.1);
+    transition: background 0.2s, border-color 0.2s;
 }
+
+.specs-grid div:hover {
+    background: rgba(196, 78, 255, 0.08);
+    border-color: rgba(196, 78, 255, 0.3);
+}
+
 .links {
     display: flex;
     flex-wrap: wrap;
@@ -86,6 +146,7 @@ p, li {
     justify-content: center;
     margin: 1rem 0 1.5rem;
 }
+
 a {
     display: inline-block;
     background: #c44eff;
@@ -96,25 +157,37 @@ a {
     font-weight: 600;
     transition: background 0.2s, box-shadow 0.2s;
     font-size: 0.85rem;
+    animation: buttonPulse 2s infinite;
 }
+
 a:hover {
     background: #da80ff;
     box-shadow: 0 0 20px rgba(196, 78, 255, 0.6);
 }
+
 a.alt {
     background: transparent;
     border: 1px solid #c44eff;
     color: #c44eff;
 }
+
 a.alt:hover {
     background: rgba(196, 78, 255, 0.08);
 }
+
+@keyframes buttonPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
 footer {
     margin-top: 1.5rem;
     font-size: 0.65rem;
     color: #555;
     text-align: center;
 }
+
 footer a, footer button {
     background: none;
     padding: 0;
@@ -124,7 +197,9 @@ footer a, footer button {
     border: none;
     cursor: pointer;
     font-size: 0.65rem;
+    transition: color 0.2s;
 }
+
 footer a:hover, footer button:hover {
     color: #e0a0ff;
 }
@@ -136,6 +211,7 @@ footer a:hover, footer button:hover {
     margin: 2rem 0 1rem;
     table-layout: fixed;
 }
+
 .video-table td {
     padding: 0.6rem;
     vertical-align: top;
@@ -143,7 +219,14 @@ footer a:hover, footer button:hover {
     background: rgba(18, 18, 26, 0.6);
     border: 1px solid rgba(196, 78, 255, 0.15);
     border-radius: 8px;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
+
+.video-table td:hover {
+    border-color: rgba(196, 78, 255, 0.4);
+    box-shadow: 0 0 12px rgba(196, 78, 255, 0.2);
+}
+
 .video-table .vid-cell video {
     width: 100%;
     height: auto;
@@ -151,6 +234,7 @@ footer a:hover, footer button:hover {
     border: 1px solid rgba(196,78,255,0.3);
     display: block;
 }
+
 .video-table .desc-cell {
     font-size: 0.7rem;
     color: #b0b0c0;
@@ -158,6 +242,7 @@ footer a:hover, footer button:hover {
     padding-top: 0.4rem;
     background: rgba(10,10,15,0.7);
 }
+
 .video-table .desc-cell strong {
     color: #c44eff;
     display: block;
@@ -184,7 +269,15 @@ footer a:hover, footer button:hover {
     align-items: center;
     justify-content: center;
     transition: transform 0.2s, box-shadow 0.2s;
+    animation: floatPulse 2s infinite;
 }
+
+@keyframes floatPulse {
+    0% { box-shadow: 0 0 15px rgba(196,78,255,0.5); }
+    50% { box-shadow: 0 0 30px rgba(196,78,255,0.9); }
+    100% { box-shadow: 0 0 15px rgba(196,78,255,0.5); }
+}
+
 .mini-games-float:hover {
     transform: scale(1.1);
     box-shadow: 0 0 28px rgba(196,78,255,0.9);
@@ -200,10 +293,14 @@ footer a:hover, footer button:hover {
     z-index: 100;
     justify-content: center;
     align-items: center;
+    transition: opacity 0.3s;
 }
+
 .modal-overlay.active {
     display: flex;
+    opacity: 1;
 }
+
 .modal-content {
     background: #12121a;
     border: 1px solid rgba(196,78,255,0.4);
@@ -216,12 +313,20 @@ footer a:hover, footer button:hover {
     font-size: 0.8rem;
     max-height: 85vh;
     overflow-y: auto;
+    animation: modalIn 0.3s ease-out;
 }
+
+@keyframes modalIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
 .modal-content h3 {
     color: #c44eff;
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
 }
+
 .game-btn {
     display: block;
     width: 100%;
@@ -233,14 +338,18 @@ footer a:hover, footer button:hover {
     border-radius: 5px;
     cursor: pointer;
     font-size: 0.8rem;
+    transition: background 0.2s;
 }
+
 .game-btn:hover {
     background: rgba(196,78,255,0.3);
 }
+
 .game-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
 .back-btn {
     margin-top: 0.5rem;
     background: none;
@@ -248,8 +357,11 @@ footer a:hover, footer button:hover {
     color: #888;
     cursor: pointer;
     font-size: 0.75rem;
+    transition: color 0.2s;
 }
+
 .back-btn:hover { color: #fff; }
+
 .mode-select {
     margin: 0.5rem 0;
     display: flex;
@@ -257,6 +369,7 @@ footer a:hover, footer button:hover {
     justify-content: center;
     font-size: 0.75rem;
 }
+
 .mode-select label { cursor: pointer; color: #aaa; }
 .mode-select input { margin-right: 0.2rem; }
 
@@ -267,6 +380,7 @@ footer a:hover, footer button:hover {
     margin: 0.3rem 0;
     font-size: 0.8rem;
 }
+
 .clicker-main-btn {
     background: #c44eff;
     color: white;
@@ -282,13 +396,16 @@ footer a:hover, footer button:hover {
     transition: transform 0.1s, box-shadow 0.1s;
     position: relative;
 }
+
 .clicker-main-btn:active {
     transform: scale(0.95);
     box-shadow: 0 0 30px rgba(196,78,255,0.9);
 }
+
 .clicker-main-btn.animated {
     animation: pulse 0.5s ease-in-out;
 }
+
 @keyframes pulse {
     0% { box-shadow: 0 0 20px rgba(196,78,255,0.5); }
     50% { box-shadow: 0 0 40px rgba(196,78,255,1); }
@@ -306,6 +423,7 @@ footer a:hover, footer button:hover {
     z-index: 10;
     text-shadow: 0 0 8px #ffcc00;
 }
+
 @keyframes floatUp {
     0% { opacity: 1; transform: translateY(0); }
     100% { opacity: 0; transform: translateY(-40px); }
@@ -328,6 +446,7 @@ footer a:hover, footer button:hover {
     animation: eventPop 2.5s ease-out forwards;
     box-shadow: 0 0 30px rgba(196,78,255,0.8);
 }
+
 @keyframes eventPop {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
     20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
@@ -343,6 +462,7 @@ footer a:hover, footer button:hover {
     gap: 0.3rem;
     margin: 0.5rem 0;
 }
+
 .upgrade-item {
     display: flex;
     align-items: center;
@@ -353,35 +473,43 @@ footer a:hover, footer button:hover {
     padding: 0.4rem 0.6rem;
     transition: background 0.2s;
 }
+
 .upgrade-item.locked {
     opacity: 0.5;
     background: rgba(255,255,255,0.02);
 }
+
 .upgrade-item .info {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
+
 .upgrade-item .icon {
     font-size: 1.2rem;
 }
+
 .upgrade-item .details {
     text-align: left;
 }
+
 .upgrade-item .name {
     font-size: 0.8rem;
     font-weight: bold;
     color: #d0d0e0;
 }
+
 .upgrade-item .effect {
     font-size: 0.65rem;
     color: #aaa;
 }
+
 .upgrade-item .cost {
     color: #ffcc00;
     font-weight: bold;
     font-size: 0.8rem;
 }
+
 .upgrade-item .buy-btn {
     background: #c44eff;
     color: white;
@@ -392,9 +520,11 @@ footer a:hover, footer button:hover {
     font-size: 0.7rem;
     transition: background 0.2s;
 }
+
 .upgrade-item .buy-btn:hover {
     background: #da80ff;
 }
+
 .upgrade-item .buy-btn:disabled {
     background: #555;
     cursor: not-allowed;
@@ -408,6 +538,7 @@ footer a:hover, footer button:hover {
     margin: 0.5rem 0;
     border: 1px solid #ff4444;
 }
+
 .boss-bar-container {
     width: 100%;
     height: 10px;
@@ -416,6 +547,7 @@ footer a:hover, footer button:hover {
     overflow: hidden;
     margin: 0.3rem 0;
 }
+
 .boss-bar {
     height: 100%;
     background: linear-gradient(90deg, #ff4444, #ff8844);
@@ -427,18 +559,22 @@ canvas {
     border-radius: 4px;
     margin: 0.2rem auto;
     display: block;
+    filter: drop-shadow(0 0 6px rgba(196,78,255,0.5));
 }
+
 .game-score {
     color: #c44eff;
     font-weight: 600;
     margin: 0.2rem 0;
     font-size: 0.75rem;
 }
+
 .game-controls {
     font-size: 0.6rem;
     color: #888;
     margin-bottom: 0.2rem;
 }
+
 .multi-canvas-wrap {
     display: flex;
     justify-content: center;
@@ -453,6 +589,7 @@ canvas {
     max-height: 4em;
     overflow-y: auto;
 }
+
 .event-message {
     background: rgba(196,78,255,0.2);
     border-radius: 4px;
@@ -460,6 +597,7 @@ canvas {
     margin-bottom: 0.2rem;
     animation: fadeInOut 3s ease-in-out forwards;
 }
+
 @keyframes fadeInOut {
     0% { opacity: 0; }
     10% { opacity: 1; }

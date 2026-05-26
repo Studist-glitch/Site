@@ -120,9 +120,13 @@ window.clicker = {
                 this.addEvent(`Босс ${this.boss.name} повержен! +${this.boss.reward}💎`);
                 this.boss.active = false;
                 this.updateBossUI();
+                this.spawnClickParticles(gain, true);
+            } else {
+                this.spawnClickParticles(gain, false);
             }
         } else {
             this.score += gain;
+            this.spawnClickParticles(gain, false);
         }
 
         this.showFloatingNumber(gain);
@@ -135,6 +139,58 @@ window.clicker = {
         this.updateUI();
         this.checkChallenge();
         this.renderUpgradesList();
+    },
+
+    // Новый метод: взрыв частиц при клике
+    spawnClickParticles: function(amount, bossDefeated) {
+        const area = document.getElementById('clickerArea');
+        if (!area) return;
+        const btn = document.getElementById('clickerBtn');
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+
+        const count = bossDefeated ? 20 : 8;
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'click-particle';
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 40;
+            const size = Math.random() * 6 + 2;
+            particle.style.cssText = `
+                position: fixed;
+                left: ${cx}px;
+                top: ${cy}px;
+                width: ${size}px;
+                height: ${size}px;
+                background: hsl(${Math.random() * 60 + 270}, 100%, 70%);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 250;
+                box-shadow: 0 0 6px currentColor;
+                animation: particleBurst 0.6s ease-out forwards;
+                transform: translate(-50%, -50%);
+            `;
+            // Задаём кастомное свойство для анимации через стиль
+            particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+            particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 600);
+        }
+
+        // Добавляем keyframes динамически, если нет
+        if (!document.getElementById('particle-style')) {
+            const style = document.createElement('style');
+            style.id = 'particle-style';
+            style.textContent = `
+                @keyframes particleBurst {
+                    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     },
 
     showFloatingNumber: function(value) {

@@ -1,4 +1,58 @@
 (function() {
+    // Фоновый шум
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Создание частиц
+    const PARTICLE_COUNT = 80;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            size: Math.random() * 2 + 1,
+            hue: Math.random() * 60 + 270 // от 270 до 330 (фиолетовый-розовый)
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Рисуем частицы
+        for (let p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            // Зацикливание
+            if (p.x < 0) p.x = canvas.width;
+            if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height;
+            if (p.y > canvas.height) p.y = 0;
+
+            // Меняем цвет со временем
+            p.hue = (p.hue + 0.2) % 360;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, 0.15)`;
+            ctx.fill();
+            // Легкое свечение
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.4)`;
+            ctx.fill();
+            ctx.shadowBlur = 0; // сброс
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Модальное окно и мини-игры
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
@@ -34,6 +88,7 @@
             <div id="clickerArea" style="position:relative; min-height:70px;">
                 <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
             </div>
+            <div id="eventsContainer"></div>
             <div id="clickerUpgrades" class="upgrades-list"></div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
