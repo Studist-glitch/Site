@@ -31,6 +31,7 @@ body {
     max-width: 650px;
 }
 
+/* Заголовок с активным переливом */
 h1 {
     font-size: 2.6rem;
     font-weight: 800;
@@ -40,22 +41,32 @@ h1 {
     margin-bottom: 0.3rem;
     line-height: 1.1;
     animation: textGlow 2s ease-in-out infinite alternate;
+    background: linear-gradient(45deg, #c44eff, #ff44cc, #44ccff, #c44eff);
+    background-size: 400% 400%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
 }
 
 h1 span {
-    color: #c44eff;
-    text-shadow: 0 0 10px #c44eff;
+    /* сохраняем для совместимости, но перелив уже есть */
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    -webkit-text-fill-color: #c44eff;
+    text-shadow: 0 0 10px #c44eff, 0 0 20px #ff44cc;
     animation: neonPulse 1.5s infinite alternate;
 }
 
 @keyframes textGlow {
-    from { text-shadow: 0 0 5px #c44eff, 0 0 10px #c44eff; }
-    to { text-shadow: 0 0 20px #c44eff, 0 0 30px #ff44cc; }
+    0% { filter: drop-shadow(0 0 5px #c44eff); }
+    100% { filter: drop-shadow(0 0 20px #ff44cc); }
 }
 
 @keyframes neonPulse {
-    0% { color: #c44eff; }
-    100% { color: #ff44cc; }
+    0% { color: #c44eff; text-shadow: 0 0 10px #c44eff; }
+    100% { color: #ff44cc; text-shadow: 0 0 20px #ff44cc; }
 }
 
 h2 {
@@ -73,6 +84,7 @@ p, li {
     max-width: 60ch;
 }
 
+/* Карточки с анимированной границей */
 .card {
     background: rgba(18, 18, 26, 0.8);
     backdrop-filter: blur(8px);
@@ -83,11 +95,40 @@ p, li {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     animation: fadeInUp 0.6s ease-out both;
     transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Псевдоэлемент для бегущего градиента границы */
+.card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #c44eff, #ff44cc, #44ccff, #c44eff);
+    background-size: 400% 400%;
+    border-radius: 10px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.4s;
+    animation: borderRotate 4s linear infinite;
+}
+
+.card:hover::before {
+    opacity: 0.6;
 }
 
 .card:hover {
     border-color: rgba(196, 78, 255, 0.4);
-    box-shadow: 0 0 25px rgba(196, 78, 255, 0.2);
+    box-shadow: 0 0 25px rgba(196, 78, 255, 0.3);
+}
+
+@keyframes borderRotate {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 @keyframes fadeInUp {
@@ -139,6 +180,7 @@ p, li {
     border-color: rgba(196, 78, 255, 0.3);
 }
 
+/* Ссылки с переливающимся фоном */
 .links {
     display: flex;
     flex-wrap: wrap;
@@ -149,19 +191,21 @@ p, li {
 
 a {
     display: inline-block;
-    background: #c44eff;
+    background: linear-gradient(45deg, #c44eff, #ff44cc);
+    background-size: 200% 200%;
+    animation: buttonGradient 3s ease infinite;
     color: #fff;
     text-decoration: none;
     padding: 0.5rem 1.2rem;
     border-radius: 40px;
     font-weight: 600;
-    transition: background 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
     font-size: 0.85rem;
-    animation: buttonPulse 2s infinite;
+    box-shadow: 0 0 10px rgba(196, 78, 255, 0.3);
 }
 
 a:hover {
-    background: #da80ff;
+    transform: scale(1.05);
     box-shadow: 0 0 20px rgba(196, 78, 255, 0.6);
 }
 
@@ -169,16 +213,19 @@ a.alt {
     background: transparent;
     border: 1px solid #c44eff;
     color: #c44eff;
+    animation: none;
+    box-shadow: none;
 }
 
 a.alt:hover {
     background: rgba(196, 78, 255, 0.08);
+    box-shadow: 0 0 10px rgba(196, 78, 255, 0.4);
 }
 
-@keyframes buttonPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.03); }
-    100% { transform: scale(1); }
+@keyframes buttonGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 footer {
@@ -204,7 +251,7 @@ footer a:hover, footer button:hover {
     color: #e0a0ff;
 }
 
-/* Таблица с видео и описаниями */
+/* Таблица с видео */
 .video-table {
     width: 100%;
     border-collapse: collapse;
@@ -223,8 +270,8 @@ footer a:hover, footer button:hover {
 }
 
 .video-table td:hover {
-    border-color: rgba(196, 78, 255, 0.4);
-    box-shadow: 0 0 12px rgba(196, 78, 255, 0.2);
+    border-color: rgba(196, 78, 255, 0.5);
+    box-shadow: 0 0 15px rgba(196, 78, 255, 0.25);
 }
 
 .video-table .vid-cell video {
@@ -255,7 +302,9 @@ footer a:hover, footer button:hover {
     position: fixed;
     bottom: 1.5rem;
     right: 1.5rem;
-    background: rgba(196,78,255,0.85);
+    background: linear-gradient(45deg, #c44eff, #ff44cc);
+    background-size: 200% 200%;
+    animation: floatPulse 2s infinite, buttonGradient 3s ease infinite;
     color: white;
     border: none;
     border-radius: 50%;
@@ -268,19 +317,17 @@ footer a:hover, footer button:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    animation: floatPulse 2s infinite;
+    transition: transform 0.2s;
 }
 
 @keyframes floatPulse {
     0% { box-shadow: 0 0 15px rgba(196,78,255,0.5); }
-    50% { box-shadow: 0 0 30px rgba(196,78,255,0.9); }
+    50% { box-shadow: 0 0 30px rgba(196,78,255,0.9), 0 0 50px rgba(255,68,204,0.5); }
     100% { box-shadow: 0 0 15px rgba(196,78,255,0.5); }
 }
 
 .mini-games-float:hover {
     transform: scale(1.1);
-    box-shadow: 0 0 28px rgba(196,78,255,0.9);
 }
 
 /* Модалка */
@@ -314,6 +361,23 @@ footer a:hover, footer button:hover {
     max-height: 85vh;
     overflow-y: auto;
     animation: modalIn 0.3s ease-out;
+    position: relative;
+}
+
+/* Свечение границы модалки */
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #c44eff, #ff44cc, #44ccff);
+    background-size: 300% 300%;
+    border-radius: 12px;
+    z-index: -1;
+    opacity: 0.7;
+    animation: borderRotate 6s linear infinite;
 }
 
 @keyframes modalIn {
@@ -327,27 +391,32 @@ footer a:hover, footer button:hover {
     font-size: 0.95rem;
 }
 
+/* Кнопки мини-игр с переливом */
 .game-btn {
     display: block;
     width: 100%;
     margin: 0.25rem 0;
     padding: 0.4rem;
-    background: rgba(196,78,255,0.15);
+    background: linear-gradient(45deg, rgba(196,78,255,0.2), rgba(255,68,204,0.2));
     border: 1px solid rgba(196,78,255,0.3);
     color: #d0d0e0;
     border-radius: 5px;
     cursor: pointer;
     font-size: 0.8rem;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
+    background-size: 200% 200%;
+    animation: buttonGradient 4s ease infinite;
 }
 
 .game-btn:hover {
-    background: rgba(196,78,255,0.3);
+    background: rgba(196,78,255,0.4);
+    box-shadow: 0 0 12px rgba(196,78,255,0.6);
 }
 
 .game-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    animation: none;
 }
 
 .back-btn {
@@ -359,7 +428,6 @@ footer a:hover, footer button:hover {
     font-size: 0.75rem;
     transition: color 0.2s;
 }
-
 .back-btn:hover { color: #fff; }
 
 .mode-select {
@@ -369,7 +437,6 @@ footer a:hover, footer button:hover {
     justify-content: center;
     font-size: 0.75rem;
 }
-
 .mode-select label { cursor: pointer; color: #aaa; }
 .mode-select input { margin-right: 0.2rem; }
 
@@ -379,10 +446,12 @@ footer a:hover, footer button:hover {
     justify-content: space-between;
     margin: 0.3rem 0;
     font-size: 0.8rem;
+    color: #c44eff;
+    text-shadow: 0 0 5px #c44eff;
 }
 
 .clicker-main-btn {
-    background: #c44eff;
+    background: radial-gradient(circle at 30% 30%, #ff44cc, #c44eff);
     color: white;
     border: none;
     border-radius: 50%;
@@ -395,24 +464,28 @@ footer a:hover, footer button:hover {
     box-shadow: 0 0 20px rgba(196,78,255,0.5);
     transition: transform 0.1s, box-shadow 0.1s;
     position: relative;
+    animation: clickerGlow 2s infinite alternate;
+}
+
+@keyframes clickerGlow {
+    from { box-shadow: 0 0 15px #c44eff; }
+    to { box-shadow: 0 0 30px #ff44cc, 0 0 45px #c44eff; }
 }
 
 .clicker-main-btn:active {
-    transform: scale(0.95);
-    box-shadow: 0 0 30px rgba(196,78,255,0.9);
+    transform: scale(0.9);
 }
 
 .clicker-main-btn.animated {
-    animation: pulse 0.5s ease-in-out;
+    animation: clickerPulse 0.4s ease-in-out, clickerGlow 2s infinite alternate;
 }
 
-@keyframes pulse {
-    0% { box-shadow: 0 0 20px rgba(196,78,255,0.5); }
-    50% { box-shadow: 0 0 40px rgba(196,78,255,1); }
-    100% { box-shadow: 0 0 20px rgba(196,78,255,0.5); }
+@keyframes clickerPulse {
+    0% { box-shadow: 0 0 20px #c44eff; }
+    50% { box-shadow: 0 0 50px #ff44cc, 0 0 70px #c44eff; }
+    100% { box-shadow: 0 0 20px #c44eff; }
 }
 
-/* Всплывающие числа при клике */
 .float-number {
     position: absolute;
     color: #ffcc00;
@@ -425,37 +498,40 @@ footer a:hover, footer button:hover {
 }
 
 @keyframes floatUp {
-    0% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-40px); }
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
 }
 
-/* События - большое всплывающее окно */
-.event-big-popup {
+/* Вспышка при убийстве босса */
+.screen-flash {
     position: fixed;
-    top: 30%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.8);
-    border: 2px solid #c44eff;
-    border-radius: 16px;
-    padding: 1rem 2rem;
-    color: #fff;
-    font-size: 1.5rem;
-    z-index: 300;
-    text-align: center;
-    animation: eventPop 2.5s ease-out forwards;
-    box-shadow: 0 0 30px rgba(196,78,255,0.8);
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(196,78,255,0.3);
+    z-index: 350;
+    pointer-events: none;
+    animation: flashFade 0.5s ease-out forwards;
 }
 
-@keyframes eventPop {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-    40% { transform: translate(-50%, -50%) scale(1); }
-    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+@keyframes flashFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
-/* Список улучшений */
+/* Тряска экрана */
+.screen-shake {
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0% { transform: translate(0); }
+    20% { transform: translate(-3px, 2px); }
+    40% { transform: translate(3px, -1px); }
+    60% { transform: translate(-2px, -2px); }
+    80% { transform: translate(1px, 1px); }
+    100% { transform: translate(0); }
+}
+
 .upgrades-list {
     display: flex;
     flex-direction: column;
@@ -467,15 +543,20 @@ footer a:hover, footer button:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(196,78,255,0.1);
-    border: 1px solid rgba(196,78,255,0.2);
+    background: rgba(196,78,255,0.05);
+    border: 1px solid rgba(196,78,255,0.15);
     border-radius: 8px;
     padding: 0.4rem 0.6rem;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.upgrade-item:hover {
+    background: rgba(196,78,255,0.15);
+    border-color: rgba(196,78,255,0.4);
 }
 
 .upgrade-item.locked {
-    opacity: 0.5;
+    opacity: 0.4;
     background: rgba(255,255,255,0.02);
 }
 
@@ -511,55 +592,59 @@ footer a:hover, footer button:hover {
 }
 
 .upgrade-item .buy-btn {
-    background: #c44eff;
-    color: white;
+    background: linear-gradient(45deg, #c44eff, #ff44cc);
     border: none;
     border-radius: 20px;
     padding: 0.3rem 0.8rem;
     cursor: pointer;
     font-size: 0.7rem;
-    transition: background 0.2s;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 0 6px rgba(196,78,255,0.4);
 }
 
 .upgrade-item .buy-btn:hover {
-    background: #da80ff;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(196,78,255,0.8);
 }
 
 .upgrade-item .buy-btn:disabled {
-    background: #555;
+    background: #444;
+    box-shadow: none;
     cursor: not-allowed;
 }
 
-/* Босс */
 .boss-container {
     background: rgba(30,30,40,0.9);
     border-radius: 10px;
     padding: 0.5rem;
     margin: 0.5rem 0;
     border: 1px solid #ff4444;
+    box-shadow: 0 0 10px rgba(255,68,68,0.3);
 }
 
 .boss-bar-container {
     width: 100%;
-    height: 10px;
+    height: 12px;
     background: #333;
-    border-radius: 5px;
+    border-radius: 6px;
     overflow: hidden;
     margin: 0.3rem 0;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
 }
 
 .boss-bar {
     height: 100%;
     background: linear-gradient(90deg, #ff4444, #ff8844);
+    box-shadow: 0 0 10px #ff4444;
     transition: width 0.3s;
 }
 
 canvas {
-    border: 1px solid #c44eff;
+    border: 1px solid rgba(196,78,255,0.4);
     border-radius: 4px;
     margin: 0.2rem auto;
     display: block;
-    filter: drop-shadow(0 0 6px rgba(196,78,255,0.5));
+    box-shadow: 0 0 10px rgba(196,78,255,0.3);
 }
 
 .game-score {
@@ -567,6 +652,7 @@ canvas {
     font-weight: 600;
     margin: 0.2rem 0;
     font-size: 0.75rem;
+    text-shadow: 0 0 5px #c44eff;
 }
 
 .game-controls {
@@ -582,7 +668,6 @@ canvas {
     flex-wrap: wrap;
 }
 
-/* Сообщения событий в кликере */
 #eventsContainer {
     text-align: left;
     padding: 0.2rem;
@@ -592,15 +677,16 @@ canvas {
 
 .event-message {
     background: rgba(196,78,255,0.2);
-    border-radius: 4px;
+    border-left: 2px solid #c44eff;
+    border-radius: 0 4px 4px 0;
     padding: 0.1rem 0.4rem;
     margin-bottom: 0.2rem;
     animation: fadeInOut 3s ease-in-out forwards;
 }
 
 @keyframes fadeInOut {
-    0% { opacity: 0; }
-    10% { opacity: 1; }
+    0% { opacity: 0; transform: translateX(-10px); }
+    10% { opacity: 1; transform: translateX(0); }
     90% { opacity: 1; }
-    100% { opacity: 0; }
+    100% { opacity: 0; transform: translateX(10px); }
 }

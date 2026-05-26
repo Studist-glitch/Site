@@ -113,6 +113,7 @@ window.clicker = {
         if (Math.random() < this.critChance) gain *= this.critMult;
         if (this.doubleClickChance > 0 && Math.random() < this.doubleClickChance) gain *= 2;
 
+        let bossDefeated = false;
         if (this.boss.active) {
             this.boss.health -= gain;
             if (this.boss.health <= 0) {
@@ -120,18 +121,18 @@ window.clicker = {
                 this.addEvent(`Босс ${this.boss.name} повержен! +${this.boss.reward}💎`);
                 this.boss.active = false;
                 this.updateBossUI();
-                this.spawnClickParticles(gain, true);
-            } else {
-                this.spawnClickParticles(gain, false);
+                bossDefeated = true;
+                // Эффекты при убийстве босса
+                this.screenFlash();
+                this.screenShake();
             }
         } else {
             this.score += gain;
-            this.spawnClickParticles(gain, false);
         }
 
+        this.spawnClickParticles(gain, bossDefeated);
         this.showFloatingNumber(gain);
 
-        // События при клике (редко: 1%)
         if (Math.random() < 0.01) {
             this.triggerClickEvent();
         }
@@ -141,45 +142,52 @@ window.clicker = {
         this.renderUpgradesList();
     },
 
-    // Новый метод: взрыв частиц при клике
+    screenFlash: function() {
+        const flash = document.createElement('div');
+        flash.className = 'screen-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 500);
+    },
+
+    screenShake: function() {
+        document.body.classList.add('screen-shake');
+        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
+    },
+
     spawnClickParticles: function(amount, bossDefeated) {
-        const area = document.getElementById('clickerArea');
-        if (!area) return;
         const btn = document.getElementById('clickerBtn');
         if (!btn) return;
         const rect = btn.getBoundingClientRect();
         const cx = rect.left + rect.width/2;
         const cy = rect.top + rect.height/2;
 
-        const count = bossDefeated ? 20 : 8;
+        const count = bossDefeated ? 30 : 8;
         for (let i = 0; i < count; i++) {
             const particle = document.createElement('div');
-            particle.className = 'click-particle';
             const angle = Math.random() * Math.PI * 2;
-            const distance = 30 + Math.random() * 40;
+            const distance = 30 + Math.random() * 60;
             const size = Math.random() * 6 + 2;
+            const hue = Math.random() * 60 + 270;
             particle.style.cssText = `
                 position: fixed;
                 left: ${cx}px;
                 top: ${cy}px;
                 width: ${size}px;
                 height: ${size}px;
-                background: hsl(${Math.random() * 60 + 270}, 100%, 70%);
+                background: hsl(${hue}, 100%, 70%);
                 border-radius: 50%;
                 pointer-events: none;
                 z-index: 250;
-                box-shadow: 0 0 6px currentColor;
-                animation: particleBurst 0.6s ease-out forwards;
+                box-shadow: 0 0 ${size*2}px hsl(${hue}, 100%, 70%);
+                animation: particleBurst 0.7s ease-out forwards;
                 transform: translate(-50%, -50%);
+                --tx: ${Math.cos(angle) * distance}px;
+                --ty: ${Math.sin(angle) * distance}px;
             `;
-            // Задаём кастомное свойство для анимации через стиль
-            particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
-            particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
             document.body.appendChild(particle);
-            setTimeout(() => particle.remove(), 600);
+            setTimeout(() => particle.remove(), 700);
         }
 
-        // Добавляем keyframes динамически, если нет
         if (!document.getElementById('particle-style')) {
             const style = document.createElement('style');
             style.id = 'particle-style';
@@ -222,30 +230,32 @@ window.clicker = {
 
         if (this.boss.active) {
             let bossDamage = add;
-            if (this.upgrades.slowBoss.level > 0) bossDamage *= 0.7; // замедление
+            if (this.upgrades.slowBoss.level > 0) bossDamage *= 0.7;
             this.boss.health -= bossDamage;
             if (this.boss.health <= 0) {
                 this.score += this.boss.reward;
                 this.addEvent(`Босс ${this.boss.name} уничтожен! +${this.boss.reward}💎`);
                 this.boss.active = false;
+                this.screenFlash();
+                this.screenShake();
             }
             this.updateBossUI();
         } else {
             this.score += add;
         }
 
-        // Яд (если куплен)
         if (this.poisonDps > 0 && this.boss.active) {
             this.boss.health -= this.poisonDps;
             if (this.boss.health <= 0) {
                 this.score += this.boss.reward;
                 this.addEvent(`Яд расправился с боссом! +${this.boss.reward}💎`);
                 this.boss.active = false;
+                this.screenFlash();
+                this.screenShake();
             }
             this.updateBossUI();
         }
 
-        // Метеорит (если куплен)
         if (this.meteorActive) {
             this.meteorTimer++;
             if (this.meteorTimer >= this.meteorInterval) {
@@ -256,7 +266,6 @@ window.clicker = {
             }
         }
 
-        // Золотая лихорадка
         if (this.goldRushActive) {
             this.goldRushTimer--;
             if (this.goldRushTimer <= 0) {
@@ -265,12 +274,10 @@ window.clicker = {
             }
         }
 
-        // Появление босса (шанс зависит от счёта)
         if (!this.boss.active && Math.random() < 0.01 + this.score * 0.00002) {
             this.spawnBoss();
         }
 
-        // Событие раз в 15-30 секунд (не чаще)
         this.eventTimer++;
         if (this.eventTimer >= 20 + Math.floor(Math.random() * 15)) {
             this.eventTimer = 0;
