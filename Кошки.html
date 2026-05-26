@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Таинственные коты ❤️ чеши, копи сердечки, открывай секретных</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #070714, #000000 100%);
+            font-family: 'Segoe UI', 'Poppins', 'Roboto', system-ui, sans-serif;
+            min-height: 100vh;
+            padding: 30px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ========== 6 СЛОЁВ ПЫЛИНОК (МАКСИМАЛЬНАЯ ПЛОТНОСТЬ + МЕРЦАНИЕ) ========== */
+        .dust-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .dust-1 { background-image: radial-gradient(3.5px 3.5px at 7% 23%, rgba(255,210,140,0.9), transparent 70%),radial-gradient(4px 4px at 19% 64%, rgba(255,185,100,0.85), transparent 72%),radial-gradient(2.8px 2.8px at 33% 11%, rgba(255,225,160,0.95), transparent 70%),radial-gradient(3.2px 3.2px at 47% 45%, rgba(255,200,120,0.9), transparent 70%),radial-gradient(3.8px 3.8px at 62% 81%, rgba(255,215,145,0.85), transparent 72%),radial-gradient(4.2px 4.2px at 78% 28%, rgba(255,190,105,0.8), transparent 70%),radial-gradient(4px 4px at 91% 67%, rgba(255,230,175,0.95), transparent 72%); background-size: 280% 280%; animation: floatSlow 70s linear infinite alternate; filter: blur(0.4px); }
+        .dust-2 { background-image: radial-gradient(1.2px 1.2px at 12% 33%, rgba(255,245,210,1), transparent 60%),radial-gradient(1px 1px at 24% 71%, rgba(255,235,185,0.95), transparent 62%),radial-gradient(1.5px 1.5px at 39% 18%, rgba(255,250,220,1), transparent 60%),radial-gradient(1px 1px at 53% 88%, rgba(255,225,165,0.9), transparent 62%),radial-gradient(1.3px 1.3px at 68% 44%, rgba(255,240,195,0.95), transparent 60%),radial-gradient(1px 1px at 77% 62%, rgba(255,215,145,0.9), transparent 62%),radial-gradient(1.6px 1.6px at 86% 19%, rgba(255,255,230,0.95), transparent 60%); background-size: 200% 200%; animation: dashFast 24s linear infinite alternate; filter: blur(0.2px);}
+        .dust-3 { background-image: radial-gradient(4.5px 4.5px at 14% 41%, rgba(255,180,80,0.8), transparent 75%),radial-gradient(5px 5px at 36% 72%, rgba(255,200,110,0.75), transparent 78%),radial-gradient(3.8px 3.8px at 58% 22%, rgba(255,170,70,0.8), transparent 75%),radial-gradient(4.2px 4.2px at 74% 66%, rgba(255,215,135,0.7), transparent 78%); background-size: 260% 260%; animation: glitterPulse 4s ease-in-out infinite alternate, floatMedium 40s linear infinite; opacity: 0.85;}
+        .dust-4 { background-image: radial-gradient(1px 1px at 9% 26%, rgba(255,250,220,0.9), transparent 55%),radial-gradient(1.2px 1.2px at 21% 58%, rgba(255,240,190,0.85), transparent 58%),radial-gradient(1px 1px at 37% 12%, rgba(255,255,210,0.95), transparent 55%),radial-gradient(1.1px 1.1px at 49% 79%, rgba(255,230,170,0.9), transparent 58%),radial-gradient(1.4px 1.4px at 64% 33%, rgba(255,245,200,0.85), transparent 55%); background-size: 210% 210%; animation: dashFast 18s linear infinite alternate;}
+        .dust-5 { background-image: radial-gradient(0.8px 0.8px at 3% 45%, rgba(255,220,180,0.7), transparent 60%),radial-gradient(0.9px 0.9px at 17% 82%, rgba(255,200,150,0.7), transparent 60%),radial-gradient(0.8px 0.8px at 43% 13%, rgba(255,240,200,0.8), transparent 60%),radial-gradient(0.7px 0.7px at 68% 51%, rgba(255,210,160,0.7), transparent 60%); background-size: 300% 300%; animation: floatSlow 55s linear infinite alternate; opacity: 0.9;}
+        .dust-6 { background-image: radial-gradient(2px 2px at 25% 85%, rgba(255,160,100,0.6), transparent 70%),radial-gradient(1.5px 1.5px at 77% 33%, rgba(255,180,120,0.7), transparent 70%),radial-gradient(2.2px 2.2px at 42% 12%, rgba(255,200,140,0.8), transparent 70%); background-size: 250% 250%; animation: floatMedium 45s linear infinite; opacity: 0.7;}
+
+        @keyframes floatSlow { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
+        @keyframes dashFast { 0% { background-position: 100% 0%; } 100% { background-position: 0% 100%; } }
+        @keyframes floatMedium { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+        @keyframes glitterPulse { 0% { opacity: 0.55; transform: scale(0.98); } 100% { opacity: 1; transform: scale(1.02); } }
+
+        /* ===== ОСНОВНАЯ ТАБЛИЦА ===== */
+        .cat-table {
+            position: relative;
+            z-index: 2;
+            width: 92%;
+            max-width: 1300px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background: rgba(12, 10, 22, 0.55);
+            backdrop-filter: blur(18px);
+            border-radius: 56px;
+            overflow: hidden;
+            box-shadow: 0 30px 55px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 200, 100, 0.4);
+        }
+        .title-cell {
+            background: linear-gradient(130deg, #b87b3e, #8a5729);
+            color: #fffaf0;
+            font-size: 44px;
+            font-weight: 800;
+            text-align: center;
+            padding: 28px 20px;
+            letter-spacing: 4px;
+            text-shadow: 3px 3px 14px rgba(0,0,0,0.5);
+        }
+        .currency-bar {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffdfb3;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255,200,100,0.3);
+        }
+        .currency-bar span {
+            background: #2a1e0e;
+            padding: 6px 24px;
+            border-radius: 60px;
+            display: inline-block;
+            box-shadow: 0 0 12px rgba(255,100,50,0.5);
+        }
+        .cat-row-cell {
+            background: rgba(20, 18, 32, 0.7);
+            border-top: 1px solid rgba(255, 200, 110, 0.3);
+            transition: background 0.2s;
+        }
+        .cat-table tr:hover .cat-row-cell { background: rgba(35, 30, 55, 0.85); }
+        .cat-content {
+            display: flex;
+            align-items: center;
+            gap: 38px;
+            padding: 28px 36px;
+        }
+        .image-wrapper {
+            flex-shrink: 0;
+            width: 44%;
+            max-width: 450px;
+            perspective: 700px;
+        }
+        .cat-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 30px;
+            box-shadow: 0 22px 38px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255,190,100,0.4);
+            transition: transform 0.25s cubic-bezier(0.2,0.9,0.4,1.1), box-shadow 0.2s;
+            cursor: grab;
+        }
+        .cat-text {
+            flex: 1;
+            font-size: 21px;
+            line-height: 1.5;
+            color: #f7ecda;
+            font-weight: 500;
+            text-shadow: 0 1px 3px black;
+        }
+        .cat-text strong { color: #ffdaa5; font-size: 1.1em; }
+
+        /* Секция скрытых котиков (магазин) */
+        .shop-section {
+            position: relative;
+            z-index: 2;
+            max-width: 1300px;
+            margin: 50px auto 20px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(15px);
+            border-radius: 48px;
+            padding: 28px 24px;
+            border: 1px solid rgba(255,200,110,0.4);
+        }
+        .shop-title {
+            font-size: 32px;
+            color: #ffdfb3;
+            text-align: center;
+            margin-bottom: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 5px #ffaa55;
+        }
+        .hidden-cats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+        }
+        .cat-card {
+            background: rgba(20, 15, 30, 0.8);
+            border-radius: 36px;
+            width: 270px;
+            padding: 20px 18px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,180,80,0.5);
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .cat-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 25px 40px rgba(0,0,0,0.6), 0 0 20px rgba(255,150,50,0.4); }
+        .cat-card.locked {
+            filter: blur(4px) brightness(0.6);
+            background: rgba(10,8,18,0.9);
+            border-color: #7a5a3a;
+        }
+        .cat-card.locked:hover { filter: blur(3px) brightness(0.7); transform: translateY(-4px); }
+        .cat-card img {
+            width: 100%;
+            border-radius: 28px;
+            margin-bottom: 14px;
+            background: #1a1428;
+        }
+        .cat-card h3 { color: #ffcd94; font-size: 22px; margin: 8px 0; }
+        .cat-card .price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6680;
+            margin: 12px 0;
+        }
+        .price::before { content: "❤️ "; font-size: 26px; }
+        .unlock-btn {
+            background: linear-gradient(95deg, #e0a158, #b4622a);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .unlock-btn:hover { transform: scale(1.02); background: #f0b06a; box-shadow: 0 0 15px #ffaa55; }
+        .unlock-btn:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+        .secret-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #2a1a0a;
+            border-radius: 30px;
+            padding: 5px 10px;
+            font-size: 14px;
+            color: gold;
+            font-weight: bold;
+        }
+
+        /* Анимации эффектов */
+        .floating-heart {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            font-size: 28px;
+            filter: drop-shadow(0 0 6px #ff5577);
+            animation: heartFly 0.8s ease-out forwards;
+        }
+        @keyframes heartFly {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--dx, -20px), var(--dy, -120px)) scale(1.6); }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #ffcc44;
+            pointer-events: none;
+            z-index: 10001;
+            border-radius: 2px;
+            animation: confettiFall 1.2s ease-out forwards;
+        }
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(200px) rotate(360deg); opacity: 0; }
+        }
+        .scratch-spark {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #ffaa66, #ff4400);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: sparkFade 0.4s ease-out forwards;
+            z-index: 9999;
+        }
+        @keyframes sparkFade { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
+
+        @media (max-width: 780px) {
+            .cat-content { flex-direction: column; padding: 20px; gap: 20px; }
+            .image-wrapper { width: 100%; max-width: 320px; }
+            .cat-text { text-align: center; font-size: 18px; }
+            .title-cell { font-size: 32px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dust-layer dust-1"></div>
+<div class="dust-layer dust-2"></div>
+<div class="dust-layer dust-3"></div>
+<div class="dust-layer dust-4"></div>
+<div class="dust-layer dust-5"></div>
+<div class="dust-layer dust-6"></div>
+
+<table class="cat-table">
+    <tr><td class="title-cell" colspan="1">🐾✨ Таинственные коты ✨🐾</td></tr>
+    <tr><td class="currency-bar"><span><span style="color:#ff5577;">❤️</span> <span id="heartBalance">0</span> сердечек</span></td></tr>
+</table>
+
+<!-- Основные коты (первые 3 всегда видны) -->
+<table class="cat-table" id="catsTable">
+    <tbody id="catsTableBody">
+        <tr><td class="cat-row-cell"><div class="cat-content" data-cat-row><div class="image-wrapper"><img src="cat.png" class="cat-img" data-cat-img onerror="this.src='https://placekitten.com/500/400?image=1';"></div><div class="cat-text"><strong>🐾 1. Манул</strong><br>Дикий пушистый отшельник, серьёзный и независимый. Не мяукает — рычит.</div></div></td></tr>
+        <tr><td class="cat-row-cell"><div class="cat-content" data-cat-row><div class="image-wrapper"><img src="cat2.jpg" class="cat-img" data-cat-img onerror="this.src='https://placekitten.com/500/400?image=2';"></div><div class="cat-text"><strong>🐾 2. Британская короткошёрстная</strong><br>Плюшевый аристократ, спокойный и уютный.</div></div></td></tr>
+        <tr><td class="cat-row-cell"><div class="cat-content" data-cat-row><div class="image-wrapper"><img src="cat3.jpg" class="cat-img" data-cat-img onerror="this.src='https://placekitten.com/500/400?image=3';"></div><div class="cat-text"><strong>🐾 3. Рыжий кот</strong><br>Сгусток энергии и позитива, озорной и обаятельный.</div></div></td></tr>
+    </tbody>
+</table>
+
+<!-- Секция скрытых котиков (изначально не видны данные) -->
+<div class="shop-section" id="shopSection">
+    <div class="shop-title">🔒 Секретные котики (открой за сердечки) 🔒</div>
+    <div class="hidden-cats-grid" id="hiddenCatsGrid"></div>
+</div>
+
+<script>
+    // Скрытые коты (реальные данные скрыты до открытия)
+    const secretCats = [
+        { id: "secret_siamese", name: "Сиамский кот", desc: "Элегантный, голубоглазый и очень разговорчивый. Любит быть в центре внимания.", price: 12, img: "https://placekitten.com/500/400?image=4" },
+        { id: "secret_maine", name: "Мейн-кун", desc: "Добрый гигант с кисточками на ушах. Обожает воду и предан как пёс.", price: 20, img: "https://placekitten.com/500/400?image=5" },
+        { id: "secret_sphynx", name: "Сфинкс", desc: "Лысый, но невероятно тёплый и ласковый. Любит спать под одеялом.", price: 25, img: "https://placekitten.com/500/400?image=6" },
+        { id: "secret_scottish", name: "Шотландская вислоухая", desc: "Вечно удивлённый взгляд, мягкий характер и любовь к столбику.", price: 30, img: "https://placekitten.com/500/400?image=7" },
+        { id: "secret_bengal", name: "Бенгальский кот", desc: "Дикая грация в домашних условиях. Любит прыгать и играть с водой.", price: 40, img: "https://placekitten.com/500/400?image=8" }
+    ];
+
+    let heartBalance = 0;
+    let unlockedCats = [];
+
+    const balanceSpan = document.getElementById("heartBalance");
+    const catsTableBody = document.getElementById("catsTableBody");
+    const hiddenGrid = document.getElementById("hiddenCatsGrid");
+
+    // === ВСПОМОГАТЕЛЬНЫЕ ЭФФЕКТЫ ===
+    function spawnSpark(x, y) {
+        for (let i=0;i<6;i++) {
+            const spark = document.createElement('div');
+            spark.className = 'scratch-spark';
+            spark.style.left = (x + (Math.random() - 0.5)*30) + 'px';
+            spark.style.top = (y + (Math.random() - 0.5)*30) + 'px';
+            spark.style.width = (Math.random()*6+4)+'px';
+            spark.style.height = spark.style.width;
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 400);
+        }
+    }
+
+    function spawnConfetti(x, y) {
+        for (let i=0;i<70;i++) {
+            const conf = document.createElement('div');
+            conf.className = 'confetti';
+            conf.style.left = (x + (Math.random() - 0.5)*100) + 'px';
+            conf.style.top = (y + (Math.random() - 0.5)*60) + 'px';
+            conf.style.background = `hsl(${Math.random() * 360}, 80%, 60%)`;
+            conf.style.width = (Math.random()*8+4)+'px';
+            conf.style.height = conf.style.width;
+            conf.style.transform = `rotate(${Math.random()*360}deg)`;
+            document.body.appendChild(conf);
+            setTimeout(() => conf.remove(), 1200);
+        }
+    }
+
+    function spawnVisualHearts(x, y, count = 8) {
+        for (let i = 0; i < count; i++) {
+            const heart = document.createElement('div');
+            heart.className = 'floating-heart';
+            const hearts = ['❤️', '💖', '💗', '💓', '💕', '💞', '❤️‍🔥', '🧡'];
+            heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+            heart.style.left = (x - 10) + 'px';
+            heart.style.top = (y - 10) + 'px';
+            const dx = (Math.random() - 0.5) * 90;
+            const dy = -Math.random() * 120 - 40;
+            heart.style.setProperty('--dx', dx + 'px');
+            heart.style.setProperty('--dy', dy + 'px');
+            heart.style.animationDuration = 0.6 + Math.random() * 0.6 + 's';
+            heart.style.fontSize = (20 + Math.random() * 24) + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 1000);
+        }
+    }
+
+    function addHearts(amount, x, y) {
+        heartBalance += amount;
+        balanceSpan.innerText = heartBalance;
+        // +1 визуал
+        const plus = document.createElement('div');
+        plus.className = 'floating-heart';
+        plus.textContent = `+${amount}❤️`;
+        plus.style.left = (x - 20) + 'px';
+        plus.style.top = (y - 30) + 'px';
+        plus.style.fontSize = '26px';
+        plus.style.fontWeight = 'bold';
+        plus.style.color = '#ffcc88';
+        plus.style.setProperty('--dx', (Math.random()*40-20)+'px');
+        plus.style.setProperty('--dy', (-50 - Math.random()*40)+'px');
+        document.body.appendChild(plus);
+        setTimeout(() => plus.remove(), 700);
+        updateShopButtons();
+    }
+
+    function updateShopButtons() {
+        document.querySelectorAll('.unlock-btn').forEach(btn => {
+            const price = parseInt(btn.getAttribute('data-price'));
+            const unlocked = btn.getAttribute('data-unlocked') === 'true';
+            if (unlocked) {
+                btn.disabled = true;
+                btn.innerText = '✅ Открыт';
+            } else {
+                btn.disabled = (heartBalance < price);
+            }
+        });
+    }
+
+    // Детектор чесания (быстрые зигзаги)
+    function attachScratch(imgElement, onScratch) {
+        let positions = [];
+        let changes = 0, lastDir = 0;
+        let resetTimer;
+        const REQUIRED = 3, WINDOW = 350, MIN_SPEED = 0.22;
+        function reset() { positions = []; changes = 0; lastDir = 0; if(resetTimer) clearTimeout(resetTimer); }
+        imgElement.addEventListener('mousemove', (e) => {
+            const now = performance.now();
+            const x = e.clientX, y = e.clientY;
+            positions.push({x,y,t:now});
+            while(positions.length && now - positions[0].t > WINDOW) positions.shift();
+            if(positions.length<5) return;
+            let dist=0, dt=0;
+            for(let i=positions.length-3; i<positions.length-1 && i>=0; i++) {
+                const p1=positions[i], p2=positions[i+1];
+                const d = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+                const t = p2.t-p1.t;
+                if(t>0){ dist+=d; dt+=t; }
+            }
+            const speed = dt? dist/dt : 0;
+            if(speed < MIN_SPEED) return;
+            let cnt=0, prev=0;
+            for(let i=1;i<positions.length;i++){
+                const dx = positions[i].x-positions[i-1].x;
+                const dir = dx===0?0:(dx>0?1:-1);
+                if(prev!==0 && dir!==0 && dir!==prev) cnt++;
+                prev=dir;
+            }
+            if(cnt>=REQUIRED){
+                onScratch(x,y);
+                reset();
+            }
+        });
+        imgElement.addEventListener('mouseleave', reset);
+    }
+
+    // 3D эффект для картинок
+    function attach3DEffect(wrapper, img) {
+        if(!wrapper) return;
+        let onImg=false;
+        const baseShadow = '0 22px 38px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,190,100,0.4)';
+        wrapper.addEventListener('mousemove', (e) => {
+            onImg=true;
+            const rect = img.getBoundingClientRect();
+            const cx = rect.left+rect.width/2, cy=rect.top+rect.height/2;
+            const dx = e.clientX-cx, dy=e.clientY-cy;
+            const rotY = (dx/(rect.width/2))*6.5;
+            const rotX = (-dy/(rect.height/2))*6.5;
+            img.style.transform = `perspective(600px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.02)`;
+            const intensity = 1 - Math.min(1, Math.hypot(dx,dy)/Math.hypot(rect.width/2,rect.height/2))*0.65;
+            const border = 3+intensity*7;
+            const glow = 20+intensity*55;
+            img.style.boxShadow = `0 24px 42px rgba(0,0,0,0.6), 0 0 0 ${border}px rgba(255,180,70,${0.4+intensity*0.55}), 0 0 ${glow}px rgba(255,130,30,${0.3+intensity*0.6})`;
+        });
+        wrapper.addEventListener('mouseleave', () => {
+            onImg=false;
+            img.style.transform = '';
+            img.style.boxShadow = baseShadow;
+        });
+        const row = wrapper.closest('tr');
+        if(row) row.addEventListener('mouseenter', () => { if(!onImg) img.style.boxShadow = '0 26px 48px rgba(0,0,0,0.7), 0 0 0 5px rgba(255,170,70,0.6), 0 0 35px rgba(255,120,30,0.55)'; });
+    }
+
+    // Добавление нового кота в таблицу (после открытия)
+    function addCatToTable(cat) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="cat-row-cell"><div class="cat-content" data-cat-row><div class="image-wrapper"><img src="${cat.img}" class="cat-img" data-cat-img onerror="this.src='https://placekitten.com/500/400?image=9';"></div><div class="cat-text"><strong>🐾 ${cat.name}</strong><br>${cat.desc}</div></div></td>`;
+        catsTableBody.appendChild(tr);
+        const newRowDiv = tr.querySelector('.cat-content');
+        const newImg = tr.querySelector('.cat-img');
+        attachScratch(newImg, (x,y) => {
+            const earn = Math.floor(Math.random()*3)+1;
+            addHearts(earn, x, y);
+            spawnVisualHearts(x,y,6);
+            spawnSpark(x,y);
+        });
+        attach3DEffect(newRowDiv.querySelector('.image-wrapper'), newImg);
+    }
+
+    // Открыть секретного кота
+    function unlockCat(cat) {
+        if(unlockedCats.includes(cat.id)) return;
+        if(heartBalance < cat.price) return;
+        heartBalance -= cat.price;
+        unlockedCats.push(cat.id);
+        balanceSpan.innerText = heartBalance;
+        // Эффект конфетти и магия
+        const rect = document.getElementById('shopSection').getBoundingClientRect();
+        spawnConfetti(rect.left+rect.width/2, rect.top+80);
+        spawnVisualHearts(rect.left+rect.width/2, rect.top+80, 15);
+        // Добавляем кота в таблицу
+        addCatToTable(cat);
+        // Обновляем карточку в магазине: показываем реальные данные
+        const card = document.querySelector(`.cat-card[data-id='${cat.id}']`);
+        if(card) {
+            card.classList.remove('locked');
+            card.innerHTML = `
+                <img src="${cat.img}" onerror="this.src='https://placekitten.com/270/200';">
+                <h3>${cat.name}</h3>
+                <p style="font-size:13px; color:#ddccaa;">${cat.desc}</p>
+                <div class="price">${cat.price}</div>
+                <button class="unlock-btn" data-price="${cat.price}" data-unlocked="true" disabled>✅ Открыт</button>
+            `;
+            const btn = card.querySelector('.unlock-btn');
+            btn.setAttribute('data-unlocked','true');
+            btn.disabled = true;
+        }
+        updateShopButtons();
+        // дополнительное поздравление
+        const msgDiv = document.createElement('div');
+        msgDiv.textContent = `✨✨ Тайный кот "${cat.name}" присоединился к тебе! ✨✨`;
+        msgDiv.style.position = 'fixed';
+        msgDiv.style.bottom = '20px';
+        msgDiv.style.left = '50%';
+        msgDiv.style.transform = 'translateX(-50%)';
+        msgDiv.style.background = '#ffb347';
+        msgDiv.style.color = '#2c1a0a';
+        msgDiv.style.padding = '12px 24px';
+        msgDiv.style.borderRadius = '60px';
+        msgDiv.style.fontWeight = 'bold';
+        msgDiv.style.zIndex = '10002';
+        msgDiv.style.boxShadow = '0 0 20px gold';
+        document.body.appendChild(msgDiv);
+        setTimeout(() => msgDiv.remove(), 3000);
+    }
+
+    // Рендер скрытых котиков (с сокрытием информации)
+    function renderSecretCats() {
+        hiddenGrid.innerHTML = '';
+        secretCats.forEach(cat => {
+            const isUnlocked = unlockedCats.includes(cat.id);
+            const card = document.createElement('div');
+            card.className = `cat-card ${!isUnlocked ? 'locked' : ''}`;
+            card.setAttribute('data-id', cat.id);
+            if (!isUnlocked) {
+                // Скрытый вид: силуэт, ???, цена скрыта? Показываем только цену и кнопку
+                card.innerHTML = `
+                    <div class="secret-badge">❓❓❓</div>
+                    <img src="https://cdn.pixabay.com/photo/2016/11/14/03/06/cat-1822562_640.jpg" style="filter: blur(10px) brightness(0.4);" onerror="this.style.filter='blur(8px)';">
+                    <h3>??? ???</h3>
+                    <p style="font-size:13px; color:#bbaacc;">????? ??? ?????</p>
+                    <div class="price">${cat.price}</div>
+                    <button class="unlock-btn" data-id="${cat.id}" data-price="${cat.price}" data-unlocked="false">🔓 Открыть за ❤️</button>
+                `;
+            } else {
+                card.innerHTML = `
+                    <img src="${cat.img}" onerror="this.src='https://placekitten.com/270/200';">
+                    <h3>${cat.name}</h3>
+                    <p style="font-size:13px; color:#ddccaa;">${cat.desc}</p>
+                    <div class="price">${cat.price}</div>
+                    <button class="unlock-btn" data-price="${cat.price}" data-unlocked="true" disabled>✅ Открыт</button>
+                `;
+            }
+            hiddenGrid.appendChild(card);
+            const btn = card.querySelector('.unlock-btn');
+            if(btn && !isUnlocked) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(unlockedCats.includes(cat.id)) return;
+                    if(heartBalance >= cat.price) unlockCat(cat);
+                    else {
+                        // эффект недостатка
+                        const warn = document.createElement('div');
+                        warn.textContent = 'Не хватает сердечек ❤️ чеши котиков!';
+                        warn.style.position = 'fixed';
+                        warn.style.bottom = '30%';
+                        warn.style.left = '50%';
+                        warn.style.transform = 'translateX(-50%)';
+                        warn.style.background = '#aa2e2e';
+                        warn.style.padding = '8px 20px';
+                        warn.style.borderRadius = '40px';
+                        warn.style.color = 'white';
+                        warn.style.zIndex = '10003';
+                        document.body.appendChild(warn);
+                        setTimeout(()=>warn.remove(), 1500);
+                    }
+                });
+            }
+            if(isUnlocked) btn.disabled = true;
+            else if(heartBalance < cat.price && !isUnlocked) btn.disabled = true;
+            else if(!isUnlocked) btn.disabled = false;
+        });
+    }
+
+    // Инициализация стартовых котов
+    function initStartCats() {
+        const allRows = document.querySelectorAll('#catsTableBody .cat-content');
+        allRows.forEach(row => {
+            const img = row.querySelector('.cat-img');
+            const wrapper = row.querySelector('.image-wrapper');
+            if(img) {
+                attachScratch(img, (x,y) => {
+                    const earn = Math.floor(Math.random()*3)+1;
+                    addHearts(earn, x, y);
+                    spawnVisualHearts(x, y, 6);
+                    spawnSpark(x, y);
+                });
+                attach3DEffect(wrapper, img);
+            }
+        });
+    }
+
+    // Обновление состояния кнопок при изменении баланса
+    function refreshButtons() {
+        document.querySelectorAll('.cat-card .unlock-btn').forEach(btn => {
+            const price = parseInt(btn.getAttribute('data-price'));
+            const unlocked = btn.getAttribute('data-unlocked') === 'true';
+            if(!unlocked) btn.disabled = (heartBalance < price);
+        });
+    }
+
+    // Подписка на обновление баланса
+    const origAddHearts = addHearts;
+    window.addHearts = addHearts;
+    setInterval(() => { refreshButtons(); }, 200);
+
+    // запуск
+    renderSecretCats();
+    initStartCats();
+    balanceSpan.innerText = heartBalance;
+</script>
+</body>
+</html>
