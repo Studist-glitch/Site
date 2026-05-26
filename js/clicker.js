@@ -21,7 +21,7 @@ window.clicker = {
     bankPercent: 0,
     eventTimer: 0,
     tickIntervalId: null,
-    tickRate: 1000, // ms
+    tickRate: 1000,
     magnetFieldActive: false,
     magnetInterval: 15,
     magnetPercent: 0,
@@ -34,49 +34,43 @@ window.clicker = {
     stats: { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 },
     ui: {},
 
-    // Улучшения сгруппированы по тирам
     upgrades: {
-        // Тир 0 (всегда)
         auto: { tier: 0, level: 0, baseCost: 15, costMult: 1.6, name: 'Автоклик', icon: '⚡', desc: '+1 пасс.доход', effect: function(lvl) { clicker.perSec += 1; } },
         power: { tier: 0, level: 0, baseCost: 10, costMult: 1.6, name: 'Сила клика', icon: '💪', desc: '+1 к урону клика', effect: function(lvl) { clicker.perClick += 1; } },
-        critChance: { tier: 0, level: 0, baseCost: 50, costMult: 1.7, name: 'Крит. шанс', icon: '🎯', desc: '+2% шанс крита (тек: ' + (clicker.critChance*100).toFixed(0) + '%)', effect: function(lvl) { clicker.critChance += 0.02; } },
-        critPower: { tier: 0, level: 0, baseCost: 80, costMult: 1.8, name: 'Крит. урон', icon: '💥', desc: '+0.5x крит.множитель (тек: ' + clicker.critMult.toFixed(1) + 'x)', effect: function(lvl) { clicker.critMult += 0.5; } },
-        // Тир 1 (открывается при 200)
+        critChance: { tier: 0, level: 0, baseCost: 50, costMult: 1.7, name: 'Крит. шанс', icon: '🎯', desc: '+2% шанс крита', effect: function(lvl) { clicker.critChance += 0.02; } },
+        critPower: { tier: 0, level: 0, baseCost: 80, costMult: 1.8, name: 'Крит. урон', icon: '💥', desc: '+0.5x крит.множитель', effect: function(lvl) { clicker.critMult += 0.5; } },
         magnet: { tier: 1, level: 0, baseCost: 30, costMult: 1.7, name: 'Магнит', icon: '🧲', desc: '+3 пасс.доход', unlock: 200, effect: function(lvl) { clicker.perSec += 3; } },
         luck: { tier: 1, level: 0, baseCost: 100, costMult: 1.9, name: 'Удача', icon: '🍀', desc: '+5% двойной клик', unlock: 200, effect: function(lvl) { clicker.doubleClickChance += 0.05; } },
-        goldRush: { tier: 1, level: 0, baseCost: 200, costMult: 2.0, name: 'Золотая лихорадка', icon: '✨', desc: 'Активирует x2 доход на ' + (5 + clicker.upgrades.goldRush.level) + ' сек', unlock: 200, effect: function(lvl) {
+        goldRush: { tier: 1, level: 0, baseCost: 200, costMult: 2.0, name: 'Золотая лихорадка', icon: '✨', desc: 'Активирует x2 доход', unlock: 200, effect: function(lvl) {
             clicker.goldRushActive = true;
             clicker.goldRushMult = 2;
             clicker.goldRushTimer = 5 + lvl;
         }},
-        comboMaster: { tier: 1, level: 0, baseCost: 150, costMult: 2.2, name: 'Комбо-мастер', icon: '🔥', desc: 'Макс. комбо +10, бонус за комбо +1%', unlock: 200, effect: function(lvl) {
+        comboMaster: { tier: 1, level: 0, baseCost: 150, costMult: 2.2, name: 'Комбо-мастер', icon: '🔥', desc: 'Макс. комбо +10, бонус +1%', unlock: 200, effect: function(lvl) {
             clicker.maxCombo = (clicker.maxCombo || 0) + 10;
             clicker.comboMultiplier = (clicker.comboMultiplier || 0) + 0.01;
         }},
-        // Тир 2 (открывается при 1000)
         poison: { tier: 2, level: 0, baseCost: 150, costMult: 2.2, name: 'Яд', icon: '☠️', desc: '+3 урона боссу/сек', unlock: 1000, effect: function(lvl) { clicker.poisonDps += 3; } },
-        meteor: { tier: 2, level: 0, baseCost: 250, costMult: 2.0, name: 'Метеоритный дождь', icon: '☄️', desc: 'Периодический бонус, интервал ' + clicker.meteorInterval + 'с', unlock: 1000, effect: function(lvl) {
+        meteor: { tier: 2, level: 0, baseCost: 250, costMult: 2.0, name: 'Метеоритный дождь', icon: '☄️', desc: 'Периодический бонус', unlock: 1000, effect: function(lvl) {
             clicker.meteorActive = true;
             clicker.meteorInterval = Math.max(5, 15 - lvl);
         }},
         clone: { tier: 2, level: 0, maxLevel: 1, baseCost: 500, costMult: 1, name: 'Клон', icon: '👥', desc: 'Удваивает силу клика', unlock: 1000, effect: function(lvl) { clicker.cloneActive = true; } },
-        acceleration: { tier: 2, level: 0, maxLevel: 5, baseCost: 1000, costMult: 2.0, name: 'Ускорение', icon: '⏩', desc: 'Тик на 0.1с быстрее (тек: ' + (clicker.tickRate/1000).toFixed(1) + 'с)', unlock: 1000, effect: function(lvl) {
+        acceleration: { tier: 2, level: 0, maxLevel: 5, baseCost: 1000, costMult: 2.0, name: 'Ускорение', icon: '⏩', desc: 'Тик быстрее', unlock: 1000, effect: function(lvl) {
             clicker.tickRate = Math.max(500, 1000 - lvl * 100);
             if (clicker.tickIntervalId) {
                 clearInterval(clicker.tickIntervalId);
                 clicker.tickIntervalId = setInterval(() => clicker.autoTick(), clicker.tickRate);
             }
         }},
-        // Тир 3 (открывается при 5000)
         bank: { tier: 3, level: 0, baseCost: 600, costMult: 2.5, name: 'Банк', icon: '🏦', desc: '+0.5% от счёта/сек', unlock: 5000, effect: function(lvl) { clicker.bankPercent += 0.5; } },
         aura: { tier: 3, level: 0, maxLevel: 1, baseCost: 800, costMult: 1, name: 'Аура', icon: '🟣', desc: 'x1.5 пассивный доход', unlock: 5000, effect: function(lvl) { clicker.perSec = Math.floor(clicker.perSec * 1.5); } },
-        magnetField: { tier: 3, level: 0, baseCost: 1500, costMult: 2.2, name: 'Магнитное поле', icon: '🌀', desc: 'Каждые ' + clicker.magnetInterval + 'с +5% от счёта', unlock: 5000, effect: function(lvl) {
+        magnetField: { tier: 3, level: 0, baseCost: 1500, costMult: 2.2, name: 'Магнитное поле', icon: '🌀', desc: 'Период. процент от счёта', unlock: 5000, effect: function(lvl) {
             clicker.magnetFieldActive = true;
             clicker.magnetPercent += 5;
             clicker.magnetInterval = Math.max(8, 15 - lvl);
         }},
         bossBounty: { tier: 3, level: 0, maxLevel: 5, baseCost: 2500, costMult: 2.5, name: 'Охота на боссов', icon: '💰', desc: 'Награда за босса +25%', unlock: 5000, effect: function(lvl) { clicker.bossBounty += 0.25; } },
-        // Тир 4 (открывается при 20000)
         superCrit: { tier: 4, level: 0, maxLevel: 1, baseCost: 2000, costMult: 1, name: 'Супер-крит', icon: '🌟', desc: 'Крит.шанс +10%, множитель x1.5', unlock: 20000, effect: function(lvl) {
             clicker.critChance += 0.1;
             clicker.critMult *= 1.5;
@@ -96,7 +90,6 @@ window.clicker = {
     },
 
     handleClick: function(event) {
-        // Комбо
         if (this.comboTimer) clearTimeout(this.comboTimer);
         this.combo++;
         if (this.maxCombo > 0 && this.combo > this.maxCombo) this.combo = this.maxCombo;
@@ -104,11 +97,9 @@ window.clicker = {
 
         let gain = this.perClick;
         if (this.cloneActive) gain *= 2;
-        // Комбо-бонус
         if (this.comboMultiplier > 0 && this.combo > 0) {
             gain *= (1 + this.combo * this.comboMultiplier);
         }
-        // Квантовый клик
         if (this.quantumActive) {
             this.quantumClicks = (this.quantumClicks || 0) + 1;
             if (this.quantumClicks >= 10) {
@@ -116,14 +107,13 @@ window.clicker = {
                 this.quantumClicks = 0;
             }
         }
-        // Криты и двойной клик
         if (Math.random() < this.critChance) gain *= this.critMult;
         if (this.doubleClickChance > 0 && Math.random() < this.doubleClickChance) gain *= 2;
 
         let bossDefeated = false;
         if (this.boss.active) {
             let dmg = gain;
-            if (this.bossWeakness !== 1) dmg *= this.bossWeakness; // на будущее
+            if (this.bossWeakness !== 1) dmg *= this.bossWeakness;
             this.boss.health -= dmg;
             if (this.boss.health <= 0) {
                 const reward = Math.floor(this.boss.reward * this.bossBounty);
@@ -160,7 +150,6 @@ window.clicker = {
         const size = Math.max(rect.width, rect.height);
         const x = e.clientX - rect.left - size / 2;
         const y = e.clientY - rect.top - size / 2;
-
         const ripple = document.createElement('span');
         ripple.className = 'ripple';
         ripple.style.width = ripple.style.height = size + 'px';
@@ -260,7 +249,6 @@ window.clicker = {
         if (this.goldRushActive) add *= this.goldRushMult;
         if (this.bankPercent > 0) add += this.score * (this.bankPercent / 100);
 
-        // Магнитное поле
         if (this.magnetFieldActive) {
             this._magnetTick = (this._magnetTick || 0) + this.tickRate/1000;
             if (this._magnetTick >= this.magnetInterval) {
@@ -273,8 +261,6 @@ window.clicker = {
 
         if (this.boss.active) {
             let bossDmg = add;
-            if (this.upgrades.slowBoss && this.upgrades.slowBoss.level > 0) bossDmg *= 0.7; // если бы было
-            this.boss.health -= bossDmg;
             if (this.blackHoleActive) {
                 this._blackHoleTick = (this._blackHoleTick || 0) + this.tickRate/1000;
                 if (this._blackHoleTick >= 2) {
@@ -282,6 +268,7 @@ window.clicker = {
                     this.boss.health -= this.boss.maxHealth * 0.02;
                 }
             }
+            this.boss.health -= bossDmg;
             if (this.boss.health <= 0) {
                 const reward = Math.floor(this.boss.reward * this.bossBounty);
                 this.score += reward;
@@ -377,7 +364,6 @@ window.clicker = {
         }
     },
 
-    // Статистика для вкладки
     getStats: function() {
         return {
             score: Math.floor(this.score),

@@ -102,7 +102,6 @@
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
 
-        // Привязываем UI к кликеру
         window.clicker.attachUI({
             scoreEl: document.getElementById('clickerScore'),
             perSecEl: document.getElementById('clickerPerSec'),
@@ -114,7 +113,27 @@
             window.clicker.handleClick(e);
         };
 
-        // Вкладки
+        // Переопределяем buyUpgrade внутри showClicker
+        window.clicker.buyUpgrade = function(key) {
+            const up = this.upgrades[key];
+            const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
+            if (this.score < cost || (up.maxLevel && up.level >= up.maxLevel)) return;
+            this.score -= cost;
+            up.effect(up.level + 1);
+            if (key === 'goldRush') {
+                this.goldRushActive = true;
+                this.goldRushMult = 2;
+                this.goldRushTimer = 5 + (up.level + 1);
+            }
+            if (key === 'comboMaster') {
+                this.maxCombo = (this.maxCombo || 0) + 10;
+                this.comboMultiplier = (this.comboMultiplier || 0) + 0.01;
+            }
+            up.level++;
+            this.updateUI();
+            renderUpgradesList();
+        };
+
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -160,11 +179,12 @@
                 const canBuy = score >= cost && unlocked;
                 const maxed = up.maxLevel && up.level >= up.maxLevel;
                 let desc = up.desc;
+                // Подстановка актуальных значений
                 if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
                 if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
                 if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + up.level} сек`;
                 if (key === 'meteor') desc = `Периодический бонус, интервал ${Math.max(5, 15 - up.level)}с`;
-                if (key === 'acceleration') desc = `Тик на 0.1с быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
+                if (key === 'acceleration') desc = `Тик быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
                 if (key === 'magnetField') desc = `Каждые ${window.clicker.magnetInterval}с +${window.clicker.magnetPercent}% от счёта`;
 
                 const item = document.createElement('div');
@@ -208,28 +228,6 @@
             <tr><td>Интервал тика</td><td>${(stats.tickRate/1000).toFixed(1)}с</td></tr>
         `;
     }
-
-    // Подменяем buyUpgrade, чтобы использовался renderUpgradesList
-    const originalBuyUpgrade = window.clicker.buyUpgrade;
-    window.clicker.buyUpgrade = function(key) {
-        const up = this.upgrades[key];
-        const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
-        if (this.score < cost || (up.maxLevel && up.level >= up.maxLevel)) return;
-        this.score -= cost;
-        up.effect(up.level + 1);
-        if (key === 'goldRush') {
-            this.goldRushActive = true;
-            this.goldRushMult = 2;
-            this.goldRushTimer = 5 + (up.level + 1);
-        }
-        if (key === 'comboMaster') {
-            this.maxCombo = (this.maxCombo || 0) + 10;
-            this.comboMultiplier = (this.comboMultiplier || 0) + 0.01;
-        }
-        up.level++;
-        this.updateUI();
-        renderUpgradesList(); // используем локальную функцию
-    };
 
     // ========== ТЕТРИС ==========
     function showTetrisMode() {
@@ -308,7 +306,6 @@
             rotate: document.getElementById(playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`),
             drop: document.getElementById(playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`)
         };
-
         if (btnMap.left) btnMap.left.onclick = () => window.tetris.move(playerIdx, -1, 0, blockSize);
         if (btnMap.down) btnMap.down.onclick = () => window.tetris.move(playerIdx, 0, 1, blockSize);
         if (btnMap.right) btnMap.right.onclick = () => window.tetris.move(playerIdx, 1, 0, blockSize);
@@ -376,13 +373,7 @@
     }
 
     function attachSnakeControls(playerIdx) {
-        const dirMap = {
-            up: {x:0, y:-1},
-            down: {x:0, y:1},
-            left: {x:-1, y:0},
-            right: {x:1, y:0}
-        };
-        const prefix = playerIdx === 0 ? '' : 'P'+(playerIdx+1);
+        const dirMap = { up: {x:0, y:-1}, down: {x:0, y:1}, left: {x:-1, y:0}, right: {x:1, y:0} };
         for (let dir in dirMap) {
             const btn = document.getElementById(`snake${dir.charAt(0).toUpperCase()+dir.slice(1)}`);
             if (btn) {
@@ -391,9 +382,7 @@
                     const s = window.snake;
                     const newDir = dirMap[dir];
                     const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
-                    if (!opposite) {
-                        s.nextDirs[playerIdx] = newDir;
-                    }
+                    if (!opposite) s.nextDirs[playerIdx] = newDir;
                 };
             }
         }
@@ -415,16 +404,6 @@
     };
 
     // ========== КЛАВИАТУРА ==========
-    function mapKey(key) {
-        const map = {
-            'ц': 'w', 'Ц': 'W',
-            'ф': 'a', 'Ф': 'A',
-            'ы': 's', 'Ы': 'S',
-            'в': 'd', 'В': 'D'
-        };
-        return map[key] || key;
-    }
-
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
     function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
     function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
@@ -437,14 +416,11 @@
         const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
                           'w','a','s','d','W','A','S','D',
                           'ц','ф','ы','в','Ц','Ф','Ы','В'];
-        if (gameKeys.includes(key)) {
-            e.preventDefault();
-        }
+        if (gameKeys.includes(key)) e.preventDefault();
 
         if (activeGame === 'tetris' && window.tetris.active) {
             const t = window.tetris;
             const bSize = t.players === 1 ? 18 : 15;
-
             if (t.players === 1) {
                 if (isLeft(key)) t.move(0, -1, 0, bSize);
                 else if (isRight(key)) t.move(0, 1, 0, bSize);
@@ -452,13 +428,11 @@
                 else if (isUp(key)) t.rotate(0, bSize);
                 else if (isSpace(key)) t.drop(0, bSize);
             } else {
-                // Игрок 1: WASD
                 if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') t.move(0, -1, 0, bSize);
                 else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') t.move(0, 1, 0, bSize);
                 else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') t.move(0, 0, 1, bSize);
                 else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') t.rotate(0, bSize);
                 else if (key === ' ') t.drop(0, bSize);
-                // Игрок 2: Стрелки
                 else if (key === 'ArrowLeft') t.move(1, -1, 0, bSize);
                 else if (key === 'ArrowRight') t.move(1, 1, 0, bSize);
                 else if (key === 'ArrowDown') t.move(1, 0, 1, bSize);
@@ -469,22 +443,19 @@
             const s = window.snake;
             function setDir(pIdx, newDir) {
                 const cur = s.dirs[pIdx];
-                if (newDir.x === -cur.x && newDir.y === -cur.y) return; // нельзя развернуться
+                if (newDir.x === -cur.x && newDir.y === -cur.y) return;
                 s.nextDirs[pIdx] = newDir;
             }
-
             if (s.players === 1) {
                 if (isLeft(key)) setDir(0, {x:-1, y:0});
                 else if (isRight(key)) setDir(0, {x:1, y:0});
                 else if (isUp(key)) setDir(0, {x:0, y:-1});
                 else if (isDown(key)) setDir(0, {x:0, y:1});
             } else {
-                // P1: WASD
                 if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') setDir(0, {x:-1, y:0});
                 else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') setDir(0, {x:1, y:0});
                 else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') setDir(0, {x:0, y:-1});
                 else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') setDir(0, {x:0, y:1});
-                // P2: стрелки
                 else if (key === 'ArrowLeft') setDir(1, {x:-1, y:0});
                 else if (key === 'ArrowRight') setDir(1, {x:1, y:0});
                 else if (key === 'ArrowUp') setDir(1, {x:0, y:-1});
