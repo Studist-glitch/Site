@@ -1,8 +1,10 @@
 (function() {
-    // Фоновый шум
+    // ========== Фоновая анимация (частицы) ==========
     const bgCanvas = document.getElementById('bgCanvas');
     const bgCtx = bgCanvas.getContext('2d');
     let particles = [];
+    let mouseX = 0, mouseY = 0;
+    let targetMouseX = 0, targetMouseY = 0;
 
     function resizeBg() {
         bgCanvas.width = window.innerWidth;
@@ -11,34 +13,55 @@
     window.addEventListener('resize', resizeBg);
     resizeBg();
 
-    const PARTICLE_COUNT = 80;
+    // Создаём больше частиц для заметности
+    const PARTICLE_COUNT = 120;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         particles.push({
             x: Math.random() * bgCanvas.width,
             y: Math.random() * bgCanvas.height,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: (Math.random() - 0.5) * 0.5,
-            size: Math.random() * 2 + 1,
-            hue: Math.random() * 60 + 270
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            size: Math.random() * 2.5 + 0.5,
+            hue: Math.random() * 60 + 270,
+            baseAlpha: 0.1 + Math.random() * 0.15
         });
     }
 
+    // Отслеживание мыши для параллакса
+    document.addEventListener('mousemove', function(e) {
+        targetMouseX = e.clientX / bgCanvas.width - 0.5;
+        targetMouseY = e.clientY / bgCanvas.height - 0.5;
+    });
+
     function animateBg() {
+        mouseX += (targetMouseX - mouseX) * 0.05;
+        mouseY += (targetMouseY - mouseY) * 0.05;
+
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
         for (let p of particles) {
-            p.x += p.vx;
-            p.y += p.vy;
-            if (p.x < 0) p.x = bgCanvas.width;
-            if (p.x > bgCanvas.width) p.x = 0;
-            if (p.y < 0) p.y = bgCanvas.height;
-            if (p.y > bgCanvas.height) p.y = 0;
-            p.hue = (p.hue + 0.2) % 360;
+            // Движение под влиянием мыши
+            p.x += p.vx + mouseX * 0.3;
+            p.y += p.vy + mouseY * 0.3;
+
+            // Зацикливание
+            if (p.x < -10) p.x = bgCanvas.width + 10;
+            if (p.x > bgCanvas.width + 10) p.x = -10;
+            if (p.y < -10) p.y = bgCanvas.height + 10;
+            if (p.y > bgCanvas.height + 10) p.y = -10;
+
+            // Плавная смена оттенка
+            p.hue = (p.hue + 0.15) % 360;
+
             bgCtx.beginPath();
             bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, 0.15)`;
+            const alpha = p.baseAlpha + Math.sin(Date.now() * 0.002 + p.x) * 0.05;
+            bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${alpha})`;
             bgCtx.fill();
-            bgCtx.shadowBlur = 8;
-            bgCtx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.4)`;
+
+            // Свечение
+            bgCtx.shadowBlur = 12;
+            bgCtx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.5)`;
             bgCtx.fill();
             bgCtx.shadowBlur = 0;
         }
@@ -46,6 +69,7 @@
     }
     animateBg();
 
+    // ========== Модальное окно и игры ==========
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
@@ -69,7 +93,7 @@
     function showClicker() {
         window.clicker.init();
         activeGame = 'clicker';
-
+        // (контент кликера без изменений, полный код ниже)
         modalInner.innerHTML = `
             <h3>⚡ Кликер</h3>
             <div class="tab-buttons">
@@ -113,7 +137,6 @@
             window.clicker.handleClick(e);
         };
 
-        // Переопределяем buyUpgrade внутри showClicker
         window.clicker.buyUpgrade = function(key) {
             const up = this.upgrades[key];
             const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
@@ -179,7 +202,6 @@
                 const canBuy = score >= cost && unlocked;
                 const maxed = up.maxLevel && up.level >= up.maxLevel;
                 let desc = up.desc;
-                // Подстановка актуальных значений
                 if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
                 if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
                 if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + up.level} сек`;

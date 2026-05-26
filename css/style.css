@@ -13,8 +13,10 @@ body {
     display: flex;
     justify-content: center;
     overflow-x: hidden;
+    position: relative;
 }
 
+/* Фоновый шум (частицы) */
 #bgCanvas {
     position: fixed;
     top: 0;
@@ -23,12 +25,14 @@ body {
     height: 100%;
     z-index: -1;
     pointer-events: none;
-    opacity: 0.25;
+    opacity: 0.35;
 }
 
 .container {
     width: 100%;
     max-width: 650px;
+    position: relative;
+    z-index: 1;
 }
 
 /* Заголовок с шумовым эффектом */
@@ -51,20 +55,24 @@ h1 {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: #c44eff;
-    animation: noiseMove 6s linear infinite;
-    position: relative;
+    animation: noiseMove 6s linear infinite, textGlow 2s ease-in-out infinite alternate;
     filter: drop-shadow(0 0 6px rgba(196,78,255,0.4));
 }
 
 .line.accent {
     -webkit-text-fill-color: #c44eff;
     filter: drop-shadow(0 0 10px rgba(196,78,255,0.6));
-    animation: noiseMove 6s linear infinite reverse;
+    animation: noiseMove 6s linear infinite reverse, textGlow 2s ease-in-out infinite alternate;
 }
 
 @keyframes noiseMove {
     0% { background-position: 0 0; }
     100% { background-position: 150px 150px; }
+}
+
+@keyframes textGlow {
+    0% { text-shadow: 0 0 8px #c44eff; }
+    100% { text-shadow: 0 0 18px #ff44cc, 0 0 30px #c44eff; }
 }
 
 h2 {
@@ -354,7 +362,7 @@ footer a:hover {
 .mode-select label { cursor: pointer; color: #aaa; }
 .mode-select input { margin-right: 0.2rem; }
 
-/* --- Кликер (улучшенный интерфейс) --- */
+/* --- Кликер --- */
 .tab-buttons {
     display: flex;
     gap: 0.3rem;
@@ -474,7 +482,6 @@ footer a:hover {
     100% { transform: translate(0); }
 }
 
-/* Улучшения */
 .upgrades-list {
     display: flex;
     flex-direction: column;
@@ -616,7 +623,6 @@ canvas {
     100% { opacity: 0; transform: translateX(5px); }
 }
 
-/* Статистика */
 .stats-table {
     width: 100%;
     text-align: left;
@@ -635,6 +641,7 @@ canvas {
     font-weight: 600;
 }
 
+/* Кнопки управления */
 .ctrl-btn {
     display: inline-block;
     width: 36px;
