@@ -3,7 +3,7 @@ window.pong = {
     W: 800, H: 400,
     active: false,
     interval: null,
-    players: 1,          // 1 - соло, 2 - мультиплеер
+    players: 1,
     mode: 'single',
 
     // Игроки
@@ -15,15 +15,14 @@ window.pong = {
 
     // События
     activeEvent: null,
-    eventTimer: 0,
     eventInterval: null,
 
     // Прокачка
     upgradeTimer: 60,
     upgradeInterval: null,
     waitingForUpgrade: false,
-    pendingUpgradePlayer: 0,   // для мультиплеера: кто выбирает
-    upgradeDialog: null,       // временный div для выбора
+    pendingUpgradePlayer: 0,
+    upgradeDialog: null,
 
     // Бот
     bot: { level: 0, reactionDelay: 0.3, speedMultiplier: 1 },
@@ -34,23 +33,22 @@ window.pong = {
     animationId: null,
     keys: { ArrowUp: false, ArrowDown: false, w: false, s: false },
 
-    // Список всех улучшений
+    // Список улучшений
     allUpgrades: [
-        { id: 'speed', name: 'Скорость ракетки', desc: '+25% скорости', apply: (p, val) => { p.tempBonus.speed = (p.tempBonus.speed || 1) + 0.25; } },
-        { id: 'size', name: 'Размер ракетки', desc: '+15px высоты', apply: (p, val) => { p.height = Math.min(160, p.height + 15); } },
+        { id: 'speed', name: 'Скорость ракетки', desc: '+25% скорости', apply: (p, val, ball, opp) => { p.tempBonus.speed = (p.tempBonus.speed || 1) + 0.25; } },
+        { id: 'size', name: 'Размер ракетки', desc: '+15px высоты', apply: (p) => { p.height = Math.min(160, p.height + 15); } },
         { id: 'power', name: 'Сила удара', desc: '+20% скорости мяча', apply: (p, val, ball) => { if(ball) ball.baseSpeed *= 1.2; } },
         { id: 'shield', name: 'Щит', desc: 'Защита от 1 пропущенного гола', apply: (p) => { p.shield = (p.shield || 0) + 1; } },
         { id: 'magnet', name: 'Магнит', desc: 'Мяч притягивается к ракетке', apply: (p) => { p.tempBonus.magnet = true; } },
         { id: 'portal', name: 'Портал', desc: 'При ударе телепорт на другую сторону', apply: (p) => { p.tempBonus.portal = true; } },
-        { id: 'slowEnemy', name: 'Замедление врага', desc: 'Замедляет соперника на 5с', apply: (p, val, opponent) => { if(opponent) opponent.tempBonus.slow = 5; } },
+        { id: 'slowEnemy', name: 'Замедление врага', desc: 'Замедляет соперника на 5с', apply: (p, val, ball, opp) => { if(opp) opp.tempBonus.slow = 5; } },
         { id: 'doubleScore', name: 'Двойные очки', desc: 'Гол приносит 2 очка', apply: (p) => { p.tempBonus.doubleScore = true; } },
         { id: 'ballSize', name: 'Увеличение мяча', desc: '+4px к радиусу', apply: (p, val, ball) => { if(ball) ball.radius = Math.min(14, ball.radius + 4); } },
         { id: 'fastBall', name: 'Быстрый мяч', desc: '+50% скорости мяча', apply: (p, val, ball) => { if(ball) ball.baseSpeed *= 1.5; } },
-        { id: 'invertControls', name: 'Инверсия', desc: 'Переворачивает управление врага на 3с', apply: (p, val, opponent) => { if(opponent) opponent.tempBonus.invert = 3; } },
+        { id: 'invertControls', name: 'Инверсия', desc: 'Переворачивает управление врага на 3с', apply: (p, val, ball, opp) => { if(opp) opp.tempBonus.invert = 3; } },
         { id: 'heal', name: 'Восстановление', desc: 'Восстанавливает 1 щит', apply: (p) => { p.shield = (p.shield || 0) + 1; } }
     ],
 
-    // События на поле
     allEvents: [
         { name: '🌀 Портал', duration: 8, apply: (game) => {
             game.activeEvent = { name: 'Портал', duration: 8 };
@@ -96,13 +94,14 @@ window.pong = {
         this.players = (mode === 'multi') ? 2 : 1;
         this.active = true;
 
-        // Сброс состояния
+        // Сброс
         this.paddles[0] = { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         this.paddles[1] = { x: this.W - 30, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         this.ball = { x: this.W/2, y: this.H/2, vx: (Math.random() > 0.5 ? 4 : -4), vy: (Math.random() - 0.5) * 6, radius: 6, baseSpeed: 5 };
         this.activeEvent = null;
         this.waitingForUpgrade = false;
         this.upgradeTimer = 60;
+        this.upgradeDialog = null;
         if (this.mode === 'single') this.bot = { level: 0, reactionDelay: 0.3, speedMultiplier: 1 };
 
         this.canvas = document.getElementById('pongCanvas');
@@ -149,19 +148,20 @@ window.pong = {
     update: function() {
         if (!this.active || this.waitingForUpgrade) return;
 
-        // Управление игроками
+        // Игрок 0 (левый)
         let speed0 = 6 * (this.paddles[0].tempBonus.speed || 1);
         if (this.keys.w) this.paddles[0].y -= speed0;
         if (this.keys.s) this.paddles[0].y += speed0;
         this.paddles[0].y = Math.max(0, Math.min(this.H - this.paddles[0].height, this.paddles[0].y));
 
+        // Игрок 1 или бот
         if (this.players === 2) {
             let speed1 = 6 * (this.paddles[1].tempBonus.speed || 1);
             if (this.keys.ArrowUp) this.paddles[1].y -= speed1;
             if (this.keys.ArrowDown) this.paddles[1].y += speed1;
             this.paddles[1].y = Math.max(0, Math.min(this.H - this.paddles[1].height, this.paddles[1].y));
         } else {
-            // Бот с задержкой реакции
+            // Бот
             let targetY = this.ball.y - this.paddles[1].height/2;
             let diff = targetY - this.paddles[1].y;
             let botSpeed = 4.5 * (this.bot.speedMultiplier || 1) * (this.paddles[1].tempBonus.slow ? 0.5 : 1);
@@ -173,14 +173,13 @@ window.pong = {
         this.ball.x += this.ball.vx;
         this.ball.y += this.ball.vy;
 
-        // Событие "Гравитация"
+        // Гравитация
         if (this.activeEvent && this.activeEvent.gravity) {
             this.ball.vy += 0.2;
         }
 
-        // Столкновение с верхней/нижней стеной с учетом кривых стен
+        // Стены
         if (this.activeEvent && this.activeEvent.curvedWalls) {
-            // Кривые стены: отскок с искажением
             if (this.ball.y - this.ball.radius <= 0) { this.ball.y = this.ball.radius; this.ball.vy = -this.ball.vy * 0.9; this.ball.vx += (Math.random() - 0.5) * 2; }
             if (this.ball.y + this.ball.radius >= this.H) { this.ball.y = this.H - this.ball.radius; this.ball.vy = -this.ball.vy * 0.9; this.ball.vx += (Math.random() - 0.5) * 2; }
         } else {
@@ -211,7 +210,6 @@ window.pong = {
             }
         }
 
-        // Столкновения с ракетками
         this.checkPaddleCollision(0);
         this.checkPaddleCollision(1);
 
@@ -226,26 +224,19 @@ window.pong = {
                 if (this.paddles[i].tempBonus.invert <= 0) delete this.paddles[i].tempBonus.invert;
             }
             if (this.paddles[i].tempBonus.chaos) {
-                // хаотичное смещение ракетки
                 this.paddles[i].y += (Math.random() - 0.5) * 8;
                 this.paddles[i].y = Math.max(0, Math.min(this.H - this.paddles[i].height, this.paddles[i].y));
             }
         }
 
-        // Обновление активного события
         if (this.activeEvent) {
             this.activeEvent.duration -= 1/60;
-            if (this.activeEvent.duration <= 0) {
-                this.endEvent();
-            }
+            if (this.activeEvent.duration <= 0) this.endEvent();
         }
 
-        // Таймер улучшений
         if (!this.waitingForUpgrade) {
             this.upgradeTimer -= 1/60;
-            if (this.upgradeTimer <= 0) {
-                this.showUpgradeChoice();
-            }
+            if (this.upgradeTimer <= 0) this.showUpgradeChoice();
         }
         const timerEl = document.getElementById('pongTimer');
         if (timerEl) timerEl.textContent = `След. улучшение: ${Math.ceil(this.upgradeTimer)}с`;
@@ -262,35 +253,25 @@ window.pong = {
         if (ball.x + ball.radius >= padLeft && ball.x - ball.radius <= padRight &&
             ball.y + ball.radius >= padTop && ball.y - ball.radius <= padBottom) {
 
-            // Вычисляем точку удара относительно центра ракетки
             let collidePoint = ball.y - (pad.y + pad.height/2);
             collidePoint = Math.max(-1, Math.min(1, collidePoint / (pad.height/2)));
-            let angleRad = collidePoint * Math.PI/3; // -60..60 градусов
+            let angleRad = collidePoint * Math.PI/3;
             let direction = (paddleIdx === 0) ? 1 : -1;
             let currentSpeed = Math.hypot(ball.vx, ball.vy);
             let newVx = direction * currentSpeed * Math.cos(angleRad);
             let newVy = currentSpeed * Math.sin(angleRad);
-            
-            // Применяем силу удара (power)
             let power = (pad.tempBonus.power ? 1.2 : 1);
             ball.vx = newVx * power;
             ball.vy = newVy * power;
 
-            // Магнит
             if (pad.tempBonus.magnet) {
                 let centerY = pad.y + pad.height/2;
                 ball.vy += (centerY - ball.y) * 0.2;
             }
-            // Портал
             if (pad.tempBonus.portal) {
                 if (paddleIdx === 0) ball.x = this.W - ball.radius - 10;
                 else ball.x = ball.radius + 10;
             }
-            // Инверсия управления у противника (если есть активный эффект)
-            if (pad.tempBonus.invert && this.players === 2) {
-                // меняем местами управление у врага - реализовано через флаг, но для простоты пропустим
-            }
-            // Небольшое смещение, чтобы избежать застревания
             ball.x += (paddleIdx === 0 ? 1 : -1);
         }
     },
@@ -303,9 +284,7 @@ window.pong = {
         this.ball.vy = (Math.random() - 0.5) * 6;
         if (resetEffects) {
             for (let i = 0; i < this.players; i++) {
-                // Сохраняем только постоянные улучшения (upgrades) и щиты, сбрасываем временные бонусы
                 this.paddles[i].tempBonus = {};
-                // но не сбрасываем shield, он хранится отдельно
             }
         }
     },
@@ -321,7 +300,6 @@ window.pong = {
 
     endEvent: function() {
         if (this.activeEvent) {
-            // Ищем событие по имени и вызываем его end-обработчик
             const evDef = this.allEvents.find(e => e.name === this.activeEvent.name);
             if (evDef && evDef.end) evDef.end(this);
             this.activeEvent = null;
@@ -340,8 +318,12 @@ window.pong = {
     },
 
     promptUpgradeForPlayer: function(playerIdx) {
-        // Создаём временное диалоговое окно поверх canvas
-        if (this.upgradeDialog) document.body.removeChild(this.upgradeDialog);
+        // Закрываем предыдущий диалог, если он есть
+        if (this.upgradeDialog && this.upgradeDialog.parentNode) {
+            this.upgradeDialog.parentNode.removeChild(this.upgradeDialog);
+            this.upgradeDialog = null;
+        }
+
         const dialog = document.createElement('div');
         dialog.style.position = 'fixed';
         dialog.style.top = '50%';
@@ -358,7 +340,6 @@ window.pong = {
         dialog.style.width = '80%';
         dialog.innerHTML = `<h3>Выберите улучшение для ${playerIdx === 0 ? 'Левого игрока' : 'Правого игрока'}</h3>`;
 
-        // Выбираем 3 случайных улучшения
         const shuffled = [...this.allUpgrades];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -382,7 +363,6 @@ window.pong = {
             btn.style.cursor = 'pointer';
             btn.style.fontSize = '12px';
             btn.onclick = () => {
-                // Применяем улучшение
                 let val = 1;
                 if (up.id === 'size') val = 15;
                 if (up.id === 'speed') val = 0.25;
@@ -391,14 +371,15 @@ window.pong = {
                 if (up.id === 'fastBall') val = 1.5;
                 up.apply(this.paddles[playerIdx], val, this.ball, this.paddles[1-playerIdx]);
                 this.paddles[playerIdx].upgrades[up.id] = (this.paddles[playerIdx].upgrades[up.id] || 0) + 1;
-                document.body.removeChild(dialog);
+                // Закрываем диалог
+                if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
+                this.upgradeDialog = null;
                 if (this.players === 2 && playerIdx === 0) {
-                    this.pendingUpgradePlayer = 1;
+                    // После выбора первым игроком, даём выбор второму
                     this.promptUpgradeForPlayer(1);
                 } else {
                     this.waitingForUpgrade = false;
                     this.upgradeTimer = 60;
-                    // Для бота даём случайное улучшение
                     if (this.players === 1) this.upgradeBot();
                 }
             };
@@ -435,7 +416,6 @@ window.pong = {
         this.ctx.stroke();
         this.ctx.setLineDash([]);
 
-        // Ракетки
         for (let i = 0; i < this.players; i++) {
             const p = this.paddles[i];
             let color = i === 0 ? '#44ff44' : '#ff4444';
@@ -443,13 +423,18 @@ window.pong = {
             if (p.tempBonus.slow) color = '#88aaff';
             this.ctx.fillStyle = color;
             this.ctx.fillRect(p.x, p.y, p.width, p.height);
-            // Отображение щита
             if (p.shield > 0) {
                 this.ctx.fillStyle = 'rgba(255,255,0,0.5)';
                 this.ctx.fillRect(p.x-2, p.y-2, p.width+4, 4);
             }
         }
-        // Мяч
+        // Визуальная метка бота
+        if (this.mode === 'single') {
+            this.ctx.font = '10px monospace';
+            this.ctx.fillStyle = '#ff8888';
+            this.ctx.fillText('🤖 BOT', this.paddles[1].x-15, this.paddles[1].y+40);
+        }
+
         this.ctx.fillStyle = '#ffffff';
         this.ctx.shadowBlur = 10;
         this.ctx.beginPath();
@@ -457,13 +442,11 @@ window.pong = {
         this.ctx.fill();
         this.ctx.shadowBlur = 0;
 
-        // Счёт
         this.ctx.font = '24px monospace';
         this.ctx.fillStyle = '#c44eff';
         this.ctx.fillText(this.paddles[0].score, this.W/4, 40);
         this.ctx.fillText(this.paddles[1].score, 3*this.W/4, 40);
 
-        // Активное событие
         if (this.activeEvent) {
             this.ctx.font = '12px monospace';
             this.ctx.fillStyle = '#ffaa44';
