@@ -1,52 +1,56 @@
 window.pong = {
-    // Конфигурация
     W: 800, H: 400,
     active: false,
     interval: null,
     players: 1,
     mode: 'single',
 
-    // Игроки
     paddles: [
         { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 },
         { x: 770, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 }
     ],
     ball: { x: 400, y: 200, vx: 4, vy: 3, radius: 6, baseSpeed: 5 },
 
-    // События
     activeEvent: null,
     eventInterval: null,
 
-    // Прокачка
     upgradeTimer: 60,
     upgradeInterval: null,
     waitingForUpgrade: false,
     pendingUpgradePlayer: 0,
     upgradeDialog: null,
 
-    // Бот
+    // Бот (без текстовой метки, просто ракетка)
     bot: { level: 0, reactionDelay: 0.3, speedMultiplier: 1 },
 
-    // UI
+    // Враги и боссы (редкие, их нужно поразить мячом)
+    enemies: [],
+    boss: null,
+    enemySpawnTimer: 0,
+    enemySpawnInterval: 45, // секунд между появлением врага
+
     canvas: null,
     ctx: null,
     animationId: null,
     keys: { ArrowUp: false, ArrowDown: false, w: false, s: false },
 
-    // Список улучшений
     allUpgrades: [
-        { id: 'speed', name: 'Скорость ракетки', desc: '+25% скорости', apply: (p, val, ball, opp) => { p.tempBonus.speed = (p.tempBonus.speed || 1) + 0.25; } },
+        { id: 'speed', name: 'Скорость ракетки', desc: '+25% скорости', apply: (p) => { p.tempBonus.speed = (p.tempBonus.speed || 1) + 0.25; } },
         { id: 'size', name: 'Размер ракетки', desc: '+15px высоты', apply: (p) => { p.height = Math.min(160, p.height + 15); } },
         { id: 'power', name: 'Сила удара', desc: '+20% скорости мяча', apply: (p, val, ball) => { if(ball) ball.baseSpeed *= 1.2; } },
         { id: 'shield', name: 'Щит', desc: 'Защита от 1 пропущенного гола', apply: (p) => { p.shield = (p.shield || 0) + 1; } },
         { id: 'magnet', name: 'Магнит', desc: 'Мяч притягивается к ракетке', apply: (p) => { p.tempBonus.magnet = true; } },
-        { id: 'portal', name: 'Портал', desc: 'При ударе телепорт на другую сторону', apply: (p) => { p.tempBonus.portal = true; } },
+        { id: 'portal', name: 'Портал', desc: 'При ударе телепорт на половину поля', apply: (p) => { p.tempBonus.portal = true; } },
         { id: 'slowEnemy', name: 'Замедление врага', desc: 'Замедляет соперника на 5с', apply: (p, val, ball, opp) => { if(opp) opp.tempBonus.slow = 5; } },
         { id: 'doubleScore', name: 'Двойные очки', desc: 'Гол приносит 2 очка', apply: (p) => { p.tempBonus.doubleScore = true; } },
         { id: 'ballSize', name: 'Увеличение мяча', desc: '+4px к радиусу', apply: (p, val, ball) => { if(ball) ball.radius = Math.min(14, ball.radius + 4); } },
         { id: 'fastBall', name: 'Быстрый мяч', desc: '+50% скорости мяча', apply: (p, val, ball) => { if(ball) ball.baseSpeed *= 1.5; } },
         { id: 'invertControls', name: 'Инверсия', desc: 'Переворачивает управление врага на 3с', apply: (p, val, ball, opp) => { if(opp) opp.tempBonus.invert = 3; } },
-        { id: 'heal', name: 'Восстановление', desc: 'Восстанавливает 1 щит', apply: (p) => { p.shield = (p.shield || 0) + 1; } }
+        { id: 'heal', name: 'Восстановление', desc: 'Восстанавливает 1 щит', apply: (p) => { p.shield = (p.shield || 0) + 1; } },
+        { id: 'ghost', name: 'Призрак', desc: 'Ракетка становится прозрачной (уклонение)', apply: (p) => { p.tempBonus.ghost = true; } },
+        { id: 'ricochet', name: 'Рикошет', desc: 'Мяч отскакивает от стен под острым углом', apply: (p, val, ball) => { p.tempBonus.ricochet = true; } },
+        { id: 'freezeEnemy', name: 'Заморозка врага', desc: 'Останавливает врага на 2с', apply: (p, val, ball, opp) => { if(opp) opp.tempBonus.freeze = 2; } },
+        { id: 'extraLife', name: 'Доп. жизнь', desc: '+1 щит', apply: (p) => { p.shield = (p.shield || 0) + 1; } }
     ],
 
     allEvents: [
@@ -71,7 +75,7 @@ window.pong = {
         { name: '🛡️ Щит всем', duration: 10, apply: (game) => {
             game.activeEvent = { name: 'Щит', duration: 10 };
             game.paddles.forEach(p => p.shield = (p.shield || 0) + 1);
-        }, end: (game) => {} },
+        }, end: () => {} },
         { name: '✨ Хаос', duration: 7, apply: (game) => {
             game.activeEvent = { name: 'Хаос', duration: 7 };
             game.paddles.forEach(p => { p.tempBonus.chaos = true; });
@@ -80,13 +84,22 @@ window.pong = {
         } },
         { name: '🌊 Гравитация', duration: 6, apply: (game) => {
             game.activeEvent = { name: 'Гравитация', duration: 6, gravity: true };
-        }, end: (game) => {} },
+        }, end: () => {} },
         { name: '🌀 Кривые стены', duration: 8, apply: (game) => {
             game.activeEvent = { name: 'Кривые стены', duration: 8, curvedWalls: true };
-        }, end: (game) => {} },
+        }, end: () => {} },
         { name: '💥 Множитель очков x2', duration: 10, apply: (game) => {
             game.activeEvent = { name: 'x2 очков', duration: 10, scoreMult: 2 };
-        }, end: (game) => {} }
+        }, end: () => {} },
+        { name: '🕯️ Невидимость', duration: 6, apply: (game) => {
+            game.activeEvent = { name: 'Невидимость', duration: 6 };
+            game.paddles.forEach(p => p.tempBonus.invisible = true);
+        }, end: (game) => {
+            game.paddles.forEach(p => delete p.tempBonus.invisible);
+        } },
+        { name: '💫 Отскок', duration: 5, apply: (game) => {
+            game.activeEvent = { name: 'Отскок', duration: 5, doubleBounce: true };
+        }, end: () => {} }
     ],
 
     init: function(mode) {
@@ -94,7 +107,6 @@ window.pong = {
         this.players = (mode === 'multi') ? 2 : 1;
         this.active = true;
 
-        // Сброс
         this.paddles[0] = { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         this.paddles[1] = { x: this.W - 30, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         this.ball = { x: this.W/2, y: this.H/2, vx: (Math.random() > 0.5 ? 4 : -4), vy: (Math.random() - 0.5) * 6, radius: 6, baseSpeed: 5 };
@@ -102,6 +114,10 @@ window.pong = {
         this.waitingForUpgrade = false;
         this.upgradeTimer = 60;
         this.upgradeDialog = null;
+        this.enemies = [];
+        this.boss = null;
+        this.enemySpawnTimer = 0;
+
         if (this.mode === 'single') this.bot = { level: 0, reactionDelay: 0.3, speedMultiplier: 1 };
 
         this.canvas = document.getElementById('pongCanvas');
@@ -148,23 +164,23 @@ window.pong = {
     update: function() {
         if (!this.active || this.waitingForUpgrade) return;
 
-        // Игрок 0 (левый)
+        // Управление игроком 0
         let speed0 = 6 * (this.paddles[0].tempBonus.speed || 1);
         if (this.keys.w) this.paddles[0].y -= speed0;
         if (this.keys.s) this.paddles[0].y += speed0;
         this.paddles[0].y = Math.max(0, Math.min(this.H - this.paddles[0].height, this.paddles[0].y));
 
-        // Игрок 1 или бот
+        // Управление игроком 1 или ботом (ракетка как у игрока, без текста)
         if (this.players === 2) {
             let speed1 = 6 * (this.paddles[1].tempBonus.speed || 1);
             if (this.keys.ArrowUp) this.paddles[1].y -= speed1;
             if (this.keys.ArrowDown) this.paddles[1].y += speed1;
             this.paddles[1].y = Math.max(0, Math.min(this.H - this.paddles[1].height, this.paddles[1].y));
         } else {
-            // Бот
             let targetY = this.ball.y - this.paddles[1].height/2;
             let diff = targetY - this.paddles[1].y;
             let botSpeed = 4.5 * (this.bot.speedMultiplier || 1) * (this.paddles[1].tempBonus.slow ? 0.5 : 1);
+            if (this.paddles[1].tempBonus.freeze) botSpeed = 0;
             this.paddles[1].y += Math.min(Math.max(diff * 0.15, -botSpeed), botSpeed);
             this.paddles[1].y = Math.max(0, Math.min(this.H - this.paddles[1].height, this.paddles[1].y));
         }
@@ -173,12 +189,9 @@ window.pong = {
         this.ball.x += this.ball.vx;
         this.ball.y += this.ball.vy;
 
-        // Гравитация
-        if (this.activeEvent && this.activeEvent.gravity) {
-            this.ball.vy += 0.2;
-        }
+        if (this.activeEvent && this.activeEvent.gravity) this.ball.vy += 0.2;
 
-        // Стены
+        // Стены (с учётом события кривых стен)
         if (this.activeEvent && this.activeEvent.curvedWalls) {
             if (this.ball.y - this.ball.radius <= 0) { this.ball.y = this.ball.radius; this.ball.vy = -this.ball.vy * 0.9; this.ball.vx += (Math.random() - 0.5) * 2; }
             if (this.ball.y + this.ball.radius >= this.H) { this.ball.y = this.H - this.ball.radius; this.ball.vy = -this.ball.vy * 0.9; this.ball.vx += (Math.random() - 0.5) * 2; }
@@ -190,39 +203,25 @@ window.pong = {
         // Голы
         let scoreMult = (this.activeEvent && this.activeEvent.scoreMult) ? this.activeEvent.scoreMult : 1;
         if (this.ball.x + this.ball.radius <= 0) {
-            if (this.paddles[0].shield > 0) {
-                this.paddles[0].shield--;
-                this.resetBall(1, false);
-            } else {
-                let add = (this.paddles[1].tempBonus.doubleScore ? 2 : 1) * scoreMult;
-                this.paddles[1].score += add;
-                this.resetBall(1, true);
-            }
+            if (this.paddles[0].shield > 0) { this.paddles[0].shield--; this.resetBall(1, false); }
+            else { let add = (this.paddles[1].tempBonus.doubleScore ? 2 : 1) * scoreMult; this.paddles[1].score += add; this.resetBall(1, true); }
         }
         if (this.ball.x - this.ball.radius >= this.W) {
-            if (this.paddles[1].shield > 0) {
-                this.paddles[1].shield--;
-                this.resetBall(0, false);
-            } else {
-                let add = (this.paddles[0].tempBonus.doubleScore ? 2 : 1) * scoreMult;
-                this.paddles[0].score += add;
-                this.resetBall(0, true);
-            }
+            if (this.paddles[1].shield > 0) { this.paddles[1].shield--; this.resetBall(0, false); }
+            else { let add = (this.paddles[0].tempBonus.doubleScore ? 2 : 1) * scoreMult; this.paddles[0].score += add; this.resetBall(0, true); }
         }
 
         this.checkPaddleCollision(0);
         this.checkPaddleCollision(1);
 
+        // Враги и боссы
+        this.updateEnemies();
+
         // Обновление временных эффектов
         for (let i = 0; i < this.players; i++) {
-            if (this.paddles[i].tempBonus.slow) {
-                this.paddles[i].tempBonus.slow -= 1/60;
-                if (this.paddles[i].tempBonus.slow <= 0) delete this.paddles[i].tempBonus.slow;
-            }
-            if (this.paddles[i].tempBonus.invert) {
-                this.paddles[i].tempBonus.invert -= 1/60;
-                if (this.paddles[i].tempBonus.invert <= 0) delete this.paddles[i].tempBonus.invert;
-            }
+            if (this.paddles[i].tempBonus.slow) { this.paddles[i].tempBonus.slow -= 1/60; if (this.paddles[i].tempBonus.slow <= 0) delete this.paddles[i].tempBonus.slow; }
+            if (this.paddles[i].tempBonus.invert) { this.paddles[i].tempBonus.invert -= 1/60; if (this.paddles[i].tempBonus.invert <= 0) delete this.paddles[i].tempBonus.invert; }
+            if (this.paddles[i].tempBonus.freeze) { this.paddles[i].tempBonus.freeze -= 1/60; if (this.paddles[i].tempBonus.freeze <= 0) delete this.paddles[i].tempBonus.freeze; }
             if (this.paddles[i].tempBonus.chaos) {
                 this.paddles[i].y += (Math.random() - 0.5) * 8;
                 this.paddles[i].y = Math.max(0, Math.min(this.H - this.paddles[i].height, this.paddles[i].y));
@@ -240,6 +239,13 @@ window.pong = {
         }
         const timerEl = document.getElementById('pongTimer');
         if (timerEl) timerEl.textContent = `След. улучшение: ${Math.ceil(this.upgradeTimer)}с`;
+
+        // Спавн врагов
+        this.enemySpawnTimer += 1/60;
+        if (!this.boss && this.enemySpawnTimer >= this.enemySpawnInterval && Math.random() < 0.02) {
+            this.spawnEnemy();
+            this.enemySpawnTimer = 0;
+        }
     },
 
     checkPaddleCollision: function(paddleIdx) {
@@ -252,6 +258,8 @@ window.pong = {
 
         if (ball.x + ball.radius >= padLeft && ball.x - ball.radius <= padRight &&
             ball.y + ball.radius >= padTop && ball.y - ball.radius <= padBottom) {
+
+            if (pad.tempBonus.ghost) return; // призрак пропускает мяч
 
             let collidePoint = ball.y - (pad.y + pad.height/2);
             collidePoint = Math.max(-1, Math.min(1, collidePoint / (pad.height/2)));
@@ -268,11 +276,19 @@ window.pong = {
                 let centerY = pad.y + pad.height/2;
                 ball.vy += (centerY - ball.y) * 0.2;
             }
+            // Исправленный портал: телепортирует мяч на противоположную половину поля, но не за ракетку
             if (pad.tempBonus.portal) {
-                if (paddleIdx === 0) ball.x = this.W - ball.radius - 10;
-                else ball.x = ball.radius + 10;
+                let mid = this.W / 2;
+                if (paddleIdx === 0 && ball.x < mid) ball.x = mid + 50;
+                else if (paddleIdx === 1 && ball.x > mid) ball.x = mid - 50;
+                ball.x = Math.max(10, Math.min(this.W-10, ball.x));
             }
             ball.x += (paddleIdx === 0 ? 1 : -1);
+
+            // Рикошет от стен (дополнительный эффект)
+            if (pad.tempBonus.ricochet && (ball.x < 50 || ball.x > this.W-50)) {
+                ball.vx = -ball.vx;
+            }
         }
     },
 
@@ -289,13 +305,83 @@ window.pong = {
         }
     },
 
+    spawnEnemy: function() {
+        let isBoss = Math.random() < 0.2; // 20% босс
+        if (isBoss && !this.boss) {
+            this.boss = {
+                x: this.W/2 - 20, y: 50, width: 40, height: 40,
+                health: 5, maxHealth: 5,
+                name: 'Огненный элементаль'
+            };
+            this.addEvent('🔥 Босс появился! Порази его мячом 5 раз!');
+        } else if (!this.boss) {
+            this.enemies.push({
+                x: Math.random() * (this.W - 60) + 30,
+                y: Math.random() * (this.H - 40) + 20,
+                width: 25, height: 25,
+                health: 1,
+                name: 'Теневой сгусток'
+            });
+            this.addEvent('👾 Враг появился! Ударь мячом!');
+        }
+    },
+
+    updateEnemies: function() {
+        // Столкновение мяча с врагами
+        for (let i=0; i<this.enemies.length; i++) {
+            let e = this.enemies[i];
+            if (this.ball.x + this.ball.radius > e.x && this.ball.x - this.ball.radius < e.x+e.width &&
+                this.ball.y + this.ball.radius > e.y && this.ball.y - this.ball.radius < e.y+e.height) {
+                e.health--;
+                if (e.health <= 0) {
+                    this.enemies.splice(i,1);
+                    this.addEvent('💀 Враг уничтожен! +5 очков');
+                    this.paddles[0].score += 5;
+                } else {
+                    this.addEvent('💥 Попадание по врагу!');
+                }
+                // Отскок мяча
+                this.ball.vx = -this.ball.vx;
+                this.ball.vy = -this.ball.vy;
+                break;
+            }
+        }
+        // Босс
+        if (this.boss) {
+            let b = this.boss;
+            if (this.ball.x + this.ball.radius > b.x && this.ball.x - this.ball.radius < b.x+b.width &&
+                this.ball.y + this.ball.radius > b.y && this.ball.y - this.ball.radius < b.y+b.height) {
+                b.health--;
+                this.addEvent(`🔥 Попадание по боссу! Осталось ${b.health} хитов`);
+                this.ball.vx = -this.ball.vx;
+                this.ball.vy = -this.ball.vy;
+                if (b.health <= 0) {
+                    this.boss = null;
+                    this.addEvent('🏆 Босс повержен! +50 очков');
+                    this.paddles[0].score += 50;
+                }
+            }
+            // Движение босса (медленно)
+            b.x += Math.sin(Date.now() * 0.002) * 1.5;
+            b.y += Math.cos(Date.now() * 0.0015) * 1;
+            b.x = Math.max(10, Math.min(this.W - b.width - 10, b.x));
+            b.y = Math.max(30, Math.min(this.H - b.height - 30, b.y));
+        }
+    },
+
+    addEvent: function(msg) {
+        const eventDiv = document.getElementById('pongEvent');
+        if (eventDiv) {
+            eventDiv.textContent = msg;
+            setTimeout(() => { if(eventDiv && eventDiv.textContent === msg) eventDiv.textContent = ''; }, 3000);
+        }
+    },
+
     triggerRandomEvent: function() {
         if (!this.active || this.waitingForUpgrade) return;
         const ev = this.allEvents[Math.floor(Math.random() * this.allEvents.length)];
         ev.apply(this);
-        const eventDiv = document.getElementById('pongEvent');
-        if (eventDiv) eventDiv.textContent = `Событие: ${ev.name}`;
-        setTimeout(() => { if(eventDiv) eventDiv.textContent = ''; }, 3000);
+        this.addEvent(`Событие: ${ev.name}`);
     },
 
     endEvent: function() {
@@ -309,21 +395,15 @@ window.pong = {
     showUpgradeChoice: function() {
         if (this.waitingForUpgrade) return;
         this.waitingForUpgrade = true;
-        if (this.players === 2) {
-            this.pendingUpgradePlayer = 0;
-            this.promptUpgradeForPlayer(0);
-        } else {
-            this.promptUpgradeForPlayer(0);
-        }
+        if (this.players === 2) this.promptUpgradeForPlayer(0);
+        else this.promptUpgradeForPlayer(0);
     },
 
     promptUpgradeForPlayer: function(playerIdx) {
-        // Закрываем предыдущий диалог, если он есть
         if (this.upgradeDialog && this.upgradeDialog.parentNode) {
             this.upgradeDialog.parentNode.removeChild(this.upgradeDialog);
             this.upgradeDialog = null;
         }
-
         const dialog = document.createElement('div');
         dialog.style.position = 'fixed';
         dialog.style.top = '50%';
@@ -371,11 +451,9 @@ window.pong = {
                 if (up.id === 'fastBall') val = 1.5;
                 up.apply(this.paddles[playerIdx], val, this.ball, this.paddles[1-playerIdx]);
                 this.paddles[playerIdx].upgrades[up.id] = (this.paddles[playerIdx].upgrades[up.id] || 0) + 1;
-                // Закрываем диалог
                 if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
                 this.upgradeDialog = null;
                 if (this.players === 2 && playerIdx === 0) {
-                    // После выбора первым игроком, даём выбор второму
                     this.promptUpgradeForPlayer(1);
                 } else {
                     this.waitingForUpgrade = false;
@@ -398,9 +476,7 @@ window.pong = {
         if (up.id === 'power') val = 1.2;
         up.apply(this.paddles[1], val, this.ball, this.paddles[0]);
         this.bot.speedMultiplier += 0.1;
-        const eventDiv = document.getElementById('pongEvent');
-        if (eventDiv) eventDiv.textContent = `Бот получил улучшение: ${up.name}`;
-        setTimeout(() => { if(eventDiv) eventDiv.textContent = ''; }, 3000);
+        this.addEvent(`Бот получил улучшение: ${up.name}`);
     },
 
     draw: function() {
@@ -416,11 +492,13 @@ window.pong = {
         this.ctx.stroke();
         this.ctx.setLineDash([]);
 
+        // Ракетки (бот визуально как обычный игрок, без текста)
         for (let i = 0; i < this.players; i++) {
             const p = this.paddles[i];
             let color = i === 0 ? '#44ff44' : '#ff4444';
             if (p.shield > 0) color = '#ffcc00';
             if (p.tempBonus.slow) color = '#88aaff';
+            if (p.tempBonus.invisible) color = 'rgba(255,255,255,0.2)';
             this.ctx.fillStyle = color;
             this.ctx.fillRect(p.x, p.y, p.width, p.height);
             if (p.shield > 0) {
@@ -428,11 +506,22 @@ window.pong = {
                 this.ctx.fillRect(p.x-2, p.y-2, p.width+4, 4);
             }
         }
-        // Визуальная метка бота
-        if (this.mode === 'single') {
+
+        // Враги
+        this.enemies.forEach(e => {
+            this.ctx.fillStyle = '#aa44ff';
+            this.ctx.fillRect(e.x, e.y, e.width, e.height);
+            this.ctx.fillStyle = '#fff';
             this.ctx.font = '10px monospace';
-            this.ctx.fillStyle = '#ff8888';
-            this.ctx.fillText('🤖 BOT', this.paddles[1].x-15, this.paddles[1].y+40);
+            this.ctx.fillText(e.name, e.x, e.y-2);
+        });
+        if (this.boss) {
+            let b = this.boss;
+            this.ctx.fillStyle = '#ff4400';
+            this.ctx.fillRect(b.x, b.y, b.width, b.height);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '12px monospace';
+            this.ctx.fillText(`${b.name} ${b.health}/${b.maxHealth}`, b.x, b.y-5);
         }
 
         this.ctx.fillStyle = '#ffffff';
