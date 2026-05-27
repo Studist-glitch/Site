@@ -128,7 +128,6 @@ window.tetris = {
 
         const blockSize = players === 1 ? 18 : 15;
         this.drawAll(blockSize);
-        // Исправление: скорость теперь замедляет игру (больше интервал -> легче)
         const baseInterval = 500;
         const interval = Math.min(800, baseInterval + this.upgrades.speed * 50);
         this.interval = setInterval(() => this.tick(blockSize), interval);
@@ -197,7 +196,6 @@ window.tetris = {
             }
         }
 
-        // Бонусные блоки – теперь они сдвигаются при удалении линий
         if (this.bonusBlocks[playerIdx]) {
             this.bonusBlocks[playerIdx].forEach(b => {
                 const color = b.type === 'score' ? '#ffd700' : '#00ff88';
@@ -327,69 +325,81 @@ window.tetris = {
     getFullLines: function(board) {
         const lines = [];
         for (let r = 0; r < this.ROWS; r++) {
-            if (board[r].every(cell => cell)) lines.push(r);
+            if (board[r].every(cell => cell !== 0)) lines.push(r);
         }
         return lines;
     },
 
     clearLines: function(board, playerIdx) {
         let lines = this.getFullLines(board);
-        if (lines.length > 0 && !this.clearingLines[playerIdx]) {
-            this.clearingLines[playerIdx] = true;
-            this.comboCnt[playerIdx]++;
-            this.comboMultiplier[playerIdx] = 1 + this.comboCnt[playerIdx] * 0.2;
-            lines.forEach(r => {
-                this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].filter(b => b.y !== r);
-            });
-            const canvasId = this.players === 1 ? 'tetrisCanvas' : `tetrisCanvasP${playerIdx+1}`;
-            let flashes = 0;
-            const flashInterval = setInterval(() => {
-                const cvs = document.getElementById(canvasId);
-                if (!cvs) { clearInterval(flashInterval); this.finishClear(lines, board, playerIdx); return; }
-                const ctx = cvs.getContext('2d');
-                if (flashes % 2 === 0) {
-                    lines.forEach(r => {
-                        ctx.fillStyle = '#fff';
-                        ctx.shadowBlur = 12;
-                        ctx.fillRect(0, r * (this.players===1?18:15), this.COLS*(this.players===1?18:15), (this.players===1?18:15));
-                        ctx.shadowBlur = 0;
-                    });
-                } else {
-                    this.drawBoard(board, this.pieces[playerIdx], this.holdPieces[playerIdx], canvasId, (this.players===1?18:15), playerIdx);
-                }
-                flashes++;
-                if (flashes >= 4) { clearInterval(flashInterval); this.finishClear(lines, board, playerIdx); }
-            }, 80);
-            this.clearTimers[playerIdx] = flashInterval;
-        } else if (lines.length === 0) {
+        if (lines.length === 0) {
             this.comboCnt[playerIdx] = 0;
             this.comboMultiplier[playerIdx] = 1;
+            return;
         }
+        if (this.clearingLines[playerIdx]) return;
+
+        this.clearingLines[playerIdx] = true;
+        this.comboCnt[playerIdx]++;
+        this.comboMultiplier[playerIdx] = 1 + this.comboCnt[playerIdx] * 0.2;
+
+        const canvasId = this.players === 1 ? 'tetrisCanvas' : `tetrisCanvasP${playerIdx+1}`;
+        let flashes = 0;
+        const flashInterval = setInterval(() => {
+            const cvs = document.getElementById(canvasId);
+            if (!cvs) { clearInterval(flashInterval); this.finishClear(lines, board, playerIdx); return; }
+            const ctx = cvs.getContext('2d');
+            if (flashes % 2 === 0) {
+                lines.forEach(r => {
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(0, r * (this.players===1?18:15), this.COLS*(this.players===1?18:15), (this.players===1?18:15));
+                    ctx.shadowBlur = 0;
+                });
+            } else {
+                this.drawBoard(board, this.pieces[playerIdx], this.holdPieces[playerIdx], canvasId, (this.players===1?18:15), playerIdx);
+            }
+            flashes++;
+            if (flashes >= 4) {
+                clearInterval(flashInterval);
+                this.finishClear(lines, board, playerIdx);
+            }
+        }, 80);
+        this.clearTimers[playerIdx] = flashInterval;
     },
 
     finishClear: function(lines, board, playerIdx) {
-        // Сначала сдвигаем бонусные блоки, которые находятся выше удаляемых линий
-        lines.sort((a,b) => a - b);
-        for (let r of lines) {
-            // Сдвигаем все бонусные блоки, у которых y < r, вниз на 1
+        // Сортируем линии по убыванию, чтобы удалять снизу вверх
+        const sortedLines = [...lines].sort((a,b) => b - a);
+        
+        // Удаляем бонусные блоки, находящиеся на удаляемых линиях
+        this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].filter(b => !sortedLines.includes(b.y));
+        
+        // Сдвигаем бонусные блоки, которые находятся выше удалённых линий
+        for (let r of sortedLines) {
             this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].map(b => {
                 if (b.y < r) return { ...b, y: b.y + 1 };
-                if (b.y === r) return null;
                 return b;
-            }).filter(b => b !== null);
+            });
         }
-        // Удаляем линии из доски
-        lines.sort((a,b) => b - a).forEach(r => {
+        
+        // Удаляем строки из доски
+        for (let r of sortedLines) {
             board.splice(r, 1);
             board.unshift(Array(this.COLS).fill(0));
-        });
+        }
+        
         const base = lines.length * 100 * this.comboMultiplier[playerIdx];
         const mult = 1 + this.upgrades.lineBonus * 0.2;
         this.scores[playerIdx] += Math.floor(base * mult);
+        
         this.clearingLines[playerIdx] = false;
+        
         const elId = this.players === 1 ? 'tetrisScore' : `tetrisScoreP${playerIdx+1}`;
         const el = document.getElementById(elId);
         if (el) el.textContent = (this.players === 1 ? 'Счёт: ' : `Игрок ${playerIdx+1}: `) + this.scores[playerIdx];
+        
+        // Шанс появления бонусного блока
         if (Math.random() < 0.05 + this.comboCnt[playerIdx] * 0.02) {
             this.placeBonusBlock(board, playerIdx);
         }

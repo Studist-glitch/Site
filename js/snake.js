@@ -132,7 +132,6 @@ window.snake = {
         }
 
         this.startAnimationLoop();
-        // Исправление: скорость теперь замедляет игру (больше интервал -> легче)
         const baseInterval = 150;
         const interval = Math.min(400, baseInterval + (this.upgrades.speed - 1) * 30);
         this.interval = setInterval(() => this.move(), interval);
@@ -379,7 +378,6 @@ window.snake = {
             const interval = Math.min(400, base + (this.upgrades.speed - 1) * 30);
             this.interval = setInterval(() => this.move(), interval);
         }
-        // ОБЯЗАТЕЛЬНО очищаем метеоритные блоки при завершении события
         this.meteorBlocks = [];
         this.tempWalls = false;
         this.eventActive = null;
@@ -391,7 +389,6 @@ window.snake = {
         this.updateEvents();
         for (let i = 0; i < this.players; i++) this.dirs[i] = this.nextDirs[i];
 
-        // ИСПРАВЛЕННЫЙ МАГНИТ: еда движется только в свободные клетки и съедается при контакте
         if (this.upgrades.magnet) {
             const head = this.snakes[0][0];
             for (let f of this.foods) {
@@ -402,14 +399,12 @@ window.snake = {
                     if (dy !== 0) ny += (dy > 0 ? 1 : -1);
                     nx = Math.max(0, Math.min(this.W-1, nx));
                     ny = Math.max(0, Math.min(this.H-1, ny));
-                    // Проверяем, свободна ли новая клетка
                     if (!this.isOccupied(nx, ny)) {
                         f.x = nx;
                         f.y = ny;
                     }
                 }
             }
-            // Повторно проверяем, не оказалась ли еда на голове
             for (let i = 0; i < this.foods.length; i++) {
                 if (this.foods[i].x === head.x && this.foods[i].y === head.y) {
                     this.eatFood(i, 0);
@@ -418,7 +413,6 @@ window.snake = {
             }
         }
 
-        // Бот
         if (this.bot && this.bot.alive) {
             const bot = this.bot;
             const head = {x: bot.segments[0].x + bot.dir.x, y: bot.segments[0].y + bot.dir.y};
@@ -447,7 +441,6 @@ window.snake = {
             }
         }
 
-        // Босс
         if (this.bossSnake && this.bossSnake.alive) {
             const boss = this.bossSnake;
             const head = {x: boss.segments[0].x + boss.dir.x, y: boss.segments[0].y + boss.dir.y};
@@ -472,31 +465,50 @@ window.snake = {
             }
         }
 
-        // Игроки
         for (let i = 0; i < this.players; i++) {
-            const head = {x: this.snakes[i][0].x + this.dirs[i].x, y: this.snakes[i][0].y + this.dirs[i].y};
-            const hasShield = this.activePowerups[i]?.some(p=>p.type==='shield');
-            const invincible = this.activePowerups[i]?.some(p=>p.type==='invincible');
+            let newX = this.snakes[i][0].x + this.dirs[i].x;
+            let newY = this.snakes[i][0].y + this.dirs[i].y;
+            let hasShield = this.activePowerups[i]?.some(p=>p.type==='shield');
+            let invincible = this.activePowerups[i]?.some(p=>p.type==='invincible');
+            let teleported = false;
+
+            // Телепортация через границы, если есть щит
+            if (hasShield && !invincible) {
+                if (newX < 0) { newX = this.W - 1; teleported = true; }
+                else if (newX >= this.W) { newX = 0; teleported = true; }
+                if (newY < 0) { newY = this.H - 1; teleported = true; }
+                else if (newY >= this.H) { newY = 0; teleported = true; }
+            }
+
             let dead = false;
-            if (this.tempWalls && (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H)) dead = !hasShield && !invincible;
-            else if (!this.tempWalls && (head.x<0||head.x>=this.W||head.y<0||head.y>=this.H)) dead = !hasShield && !invincible;
-            else if (this.snakes.some(s=>s.some(seg=>seg.x===head.x&&seg.y===head.y))) dead = !hasShield && !invincible;
-            else if (this.meteorBlocks.some(b=>b.x===head.x&&b.y===head.y)) dead = !hasShield && !invincible;
-            else if (this.bot && this.bot.alive && this.bot.segments.some(seg=>seg.x===head.x&&seg.y===head.y)) dead = !hasShield && !invincible;
-            else if (this.bossSnake && this.bossSnake.alive && this.bossSnake.segments.some(seg=>seg.x===head.x&&seg.y===head.y)) dead = !hasShield && !invincible;
+            if (!teleported && (newX < 0 || newX >= this.W || newY < 0 || newY >= this.H)) {
+                dead = !hasShield && !invincible;
+            } else if (this.snakes.some((s, idx) => idx !== i && s.some(seg => seg.x === newX && seg.y === newY))) {
+                dead = !hasShield && !invincible;
+            } else if (this.snakes[i].some(seg => seg.x === newX && seg.y === newY) && !(newX === this.snakes[i][0].x && newY === this.snakes[i][0].y)) {
+                dead = !hasShield && !invincible;
+            } else if (this.meteorBlocks.some(b => b.x === newX && b.y === newY)) {
+                dead = !hasShield && !invincible;
+            } else if (this.bot && this.bot.alive && this.bot.segments.some(seg => seg.x === newX && seg.y === newY)) {
+                dead = !hasShield && !invincible;
+            } else if (this.bossSnake && this.bossSnake.alive && this.bossSnake.segments.some(seg => seg.x === newX && seg.y === newY)) {
+                dead = !hasShield && !invincible;
+            }
             if (dead) {
                 if (hasShield) {
-                    const idx = this.activePowerups[i].findIndex(p=>p.type==='shield');
-                    if (idx!==-1) this.activePowerups[i].splice(idx,1);
+                    const idx = this.activePowerups[i].findIndex(p => p.type === 'shield');
+                    if (idx !== -1) this.activePowerups[i].splice(idx, 1);
                 } else {
                     this.kill(i); return;
                 }
             }
+
+            const head = {x: newX, y: newY};
             this.snakes[i].unshift(head);
             let ate = false;
-            for (let f=0; f<this.foods.length; f++) {
+            for (let f = 0; f < this.foods.length; f++) {
                 const food = this.foods[f];
-                if (head.x===food.x && head.y===food.y) {
+                if (head.x === food.x && head.y === food.y) {
                     this.eatFood(f, i);
                     ate = true;
                     break;
