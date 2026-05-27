@@ -60,7 +60,6 @@
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
 
-    // ---------- Общие функции для модального окна ----------
     function showSelection() {
         activeGame = null;
         modalInner.innerHTML = `
@@ -109,7 +108,7 @@
                 <div id="clickerUpgrades" class="upgrades-list"></div>
             </div>
             <div id="tab-stats" class="tab-content" style="display:none;">
-                <table class="stats-table" id="statsTable"></table>
+                <table class="stats-table" id="statsTable"></tr>
             </div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
@@ -325,7 +324,6 @@
         };
     }
 
-    // Улучшенное управление для тетриса: повтор при удержании кнопки (pointerdown/pointerup)
     function attachTetrisControls(playerIdx, blockSize) {
         const actions = {
             left: { btnId: playerIdx === 0 ? 'tetrisLeft' : `tetrisLeftP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, -1, 0, blockSize) },
@@ -335,8 +333,8 @@
             drop: { btnId: playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`, action: () => window.tetris.drop(playerIdx, blockSize) }
         };
 
-        const repeatDelay = 100; // задержка перед повторением
-        const repeatInterval = 50; // интервал повторов
+        const repeatDelay = 100;
+        const repeatInterval = 50;
         const heldTimers = {};
 
         for (let key in actions) {
@@ -366,7 +364,6 @@
             btn.addEventListener('pointerup', stopRepeat);
             btn.addEventListener('pointerleave', stopRepeat);
             btn.addEventListener('pointercancel', stopRepeat);
-            // Для сенсорных экранов предотвращаем стандартное поведение
             btn.addEventListener('touchstart', (e) => { e.preventDefault(); startRepeat(); });
             btn.addEventListener('touchend', stopRepeat);
         }
@@ -459,7 +456,6 @@
         }
     }
 
-    // Свайп-управление для змейки (1 игрок)
     function setupSnakeSwipe() {
         const canvas = document.getElementById('snakeCanvas');
         if (!canvas) return;
@@ -479,7 +475,7 @@
             const absDx = Math.abs(dx);
             const absDy = Math.abs(dy);
 
-            if (Math.max(absDx, absDy) < 20) { touchStart = null; return; } // слишком короткий свайп
+            if (Math.max(absDx, absDy) < 20) { touchStart = null; return; }
 
             let dir;
             if (absDx > absDy) {
@@ -504,7 +500,6 @@
         canvas.addEventListener('mouseleave', () => { touchStart = null; });
     }
 
-    // ---------- Глобальные обработчики для магазинов ----------
     document.addEventListener('startTetrisSingle', () => showTetrisSingle());
     document.addEventListener('startSnakeSingle', () => showSnakeSingle());
     document.addEventListener('openMiniGamesMenu', () => showSelection());
@@ -524,7 +519,6 @@
         if (e.target === modalOverlay) closeModal();
     };
 
-    // ---------- Обработка клавиатуры ----------
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
     function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
     function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }

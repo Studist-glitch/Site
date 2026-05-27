@@ -246,7 +246,8 @@ window.clicker = {
                 this.updateBossUI();
                 bossDefeated = true;
                 this.screenFlash();
-                this.screenShake();
+                // Тряска экрана УДАЛЕНА, чтобы меню не съезжало
+                // this.screenShake();
             }
         }
 
@@ -350,9 +351,8 @@ window.clicker = {
         setTimeout(() => flash.remove(), 400);
     },
 
-    screenShake: function() {
-        document.body.classList.add('screen-shake');
-        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
+    screenShake: function() { // оставлено для совместимости, но не используется
+        // intentionally empty to avoid shaking
     },
 
     spawnClickParticles: function(amount, bossDefeated) {
@@ -444,7 +444,7 @@ window.clicker = {
                 this.addEvent(`Босс ${this.boss.name} уничтожен! +${reward}💎`);
                 this.boss.active = false;
                 this.screenFlash();
-                this.screenShake();
+                // this.screenShake();
             }
             this.updateBossUI();
         } else {
@@ -460,7 +460,7 @@ window.clicker = {
                 this.addEvent(`Яд добил босса! +${reward}💎`);
                 this.boss.active = false;
                 this.screenFlash();
-                this.screenShake();
+                // this.screenShake();
             }
             this.updateBossUI();
         }

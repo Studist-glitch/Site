@@ -128,8 +128,9 @@ window.tetris = {
 
         const blockSize = players === 1 ? 18 : 15;
         this.drawAll(blockSize);
+        // Исправление: скорость теперь замедляет игру (больше интервал -> легче)
         const baseInterval = 500;
-        const interval = Math.max(120, baseInterval - this.upgrades.speed * 60);
+        const interval = Math.min(800, baseInterval + this.upgrades.speed * 50);
         this.interval = setInterval(() => this.tick(blockSize), interval);
         this.active = true;
     },
@@ -190,14 +191,13 @@ window.tetris = {
             ctx.beginPath(); ctx.moveTo(c * blockSize, 0); ctx.lineTo(c * blockSize, this.ROWS * blockSize); ctx.stroke();
         }
 
-        // Блоки доски
         for (let r = 0; r < this.ROWS; r++) {
             for (let c = 0; c < this.COLS; c++) {
                 if (board[r][c]) this.drawBlock(ctx, c, r, board[r][c], blockSize, 1);
             }
         }
 
-        // Бонусные блоки
+        // Бонусные блоки – теперь они сдвигаются при удалении линий
         if (this.bonusBlocks[playerIdx]) {
             this.bonusBlocks[playerIdx].forEach(b => {
                 const color = b.type === 'score' ? '#ffd700' : '#00ff88';
@@ -208,7 +208,6 @@ window.tetris = {
             });
         }
 
-        // Призрак
         if (this.upgrades.ghostPiece && piece && !this.clearingLines[playerIdx]) {
             const ghostY = this.getDropY(board, piece);
             if (ghostY !== piece.y) {
@@ -226,7 +225,6 @@ window.tetris = {
             }
         }
 
-        // Текущая фигура
         if (piece) {
             piece.shape.forEach((row, dy) => {
                 row.forEach((val, dx) => {
@@ -235,7 +233,6 @@ window.tetris = {
             });
         }
 
-        // Удержанная фигура
         if (holdPiece) {
             const holdX = 2, holdY = 2, smallSize = blockSize * 0.8;
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -371,6 +368,17 @@ window.tetris = {
     },
 
     finishClear: function(lines, board, playerIdx) {
+        // Сначала сдвигаем бонусные блоки, которые находятся выше удаляемых линий
+        lines.sort((a,b) => a - b);
+        for (let r of lines) {
+            // Сдвигаем все бонусные блоки, у которых y < r, вниз на 1
+            this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].map(b => {
+                if (b.y < r) return { ...b, y: b.y + 1 };
+                if (b.y === r) return null;
+                return b;
+            }).filter(b => b !== null);
+        }
+        // Удаляем линии из доски
         lines.sort((a,b) => b - a).forEach(r => {
             board.splice(r, 1);
             board.unshift(Array(this.COLS).fill(0));
@@ -483,7 +491,7 @@ window.tetris = {
         }
         if (this.players === 1) {
             this._cdTick = (this._cdTick||0)+1;
-            const tickTime = Math.max(120, 500 - this.upgrades.speed * 60);
+            const tickTime = Math.min(800, 500 + this.upgrades.speed * 50);
             if (this._cdTick >= Math.round(1000 / tickTime)) {
                 this._cdTick = 0;
                 for (let key in this.abilityCooldowns[0]) {
@@ -564,7 +572,7 @@ window.tetris = {
             `;
             const container = document.getElementById('tetrisShopUpgrades');
             const upgrades = [
-                { key: 'speed', name: 'Скорость', desc: 'Уменьшает интервал падения', cost: 100, inc: 60, max: 5, val: self.upgrades.speed },
+                { key: 'speed', name: 'Скорость', desc: 'Замедляет падение фигур (легче)', cost: 100, inc: 60, max: 5, val: self.upgrades.speed },
                 { key: 'lineBonus', name: 'Бонус за линии', desc: '+20% очков за линию', cost: 150, inc: 75, max: 5, val: self.upgrades.lineBonus },
                 { key: 'startRows', name: 'Начальные ряды', desc: '+2 заполненных строки внизу', cost: 50, inc: 25, max: 3, val: self.upgrades.startRows },
                 { key: 'specialChance', name: 'Спец. фигуры', desc: '+5% шанс спец. фигуры', cost: 200, inc: 100, max: 4, val: self.upgrades.specialChance },

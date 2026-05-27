@@ -132,8 +132,9 @@ window.snake = {
         }
 
         this.startAnimationLoop();
+        // Исправление: скорость теперь замедляет игру (больше интервал -> легче)
         const baseInterval = 150;
-        const interval = Math.max(50, Math.floor(baseInterval / (this.upgrades.speed || 1)));
+        const interval = Math.min(400, baseInterval + (this.upgrades.speed - 1) * 30);
         this.interval = setInterval(() => this.move(), interval);
     },
 
@@ -267,7 +268,6 @@ window.snake = {
             ctx.shadowBlur = 0;
         });
 
-        // Игроки
         const playerColors = [this.getSkinColor(0), '#44ff44'];
         this.snakes.forEach((snake, idx) => {
             snake.forEach((seg, i) => {
@@ -282,7 +282,6 @@ window.snake = {
             });
         });
 
-        // Бот
         if (this.bot && this.bot.alive) {
             this.bot.segments.forEach((seg, i) => {
                 const x = seg.x*this.SIZE, y = seg.y*this.SIZE;
@@ -292,7 +291,6 @@ window.snake = {
                 ctx.fillRect(x, y, this.SIZE-1, this.SIZE-1);
             });
         }
-        // Босс
         if (this.bossSnake && this.bossSnake.alive) {
             this.bossSnake.segments.forEach((seg, i) => {
                 const x = seg.x*this.SIZE, y = seg.y*this.SIZE;
@@ -300,7 +298,6 @@ window.snake = {
                 ctx.shadowColor = '#ff0000';
                 ctx.shadowBlur = 8;
                 ctx.fillRect(x, y, this.SIZE-1, this.SIZE-1);
-                // индикатор здоровья на хвосте
                 if (i === this.bossSnake.segments.length-1) {
                     ctx.fillStyle = '#fff';
                     ctx.font = '8px sans-serif';
@@ -308,7 +305,6 @@ window.snake = {
                 }
             });
         }
-        // Метеориты
         this.meteorBlocks.forEach(b => {
             ctx.fillStyle = '#888';
             ctx.fillRect(b.x*this.SIZE, b.y*this.SIZE, this.SIZE-1, this.SIZE-1);
@@ -367,7 +363,7 @@ window.snake = {
             this.addEvent('☄️ Метеоритный дождь! Препятствия на поле.');
         } else if (type === 'speedUp') {
             clearInterval(this.interval);
-            const interval = Math.max(30, Math.floor(100 / (this.upgrades.speed || 1)));
+            const interval = Math.min(400, 150 + (this.upgrades.speed - 1) * 30);
             this.interval = setInterval(() => this.move(), interval);
             this.addEvent('⚡ Ускорение времени!');
         } else if (type === 'walls') {
@@ -380,28 +376,46 @@ window.snake = {
         if (this.eventActive.type === 'speedUp') {
             clearInterval(this.interval);
             const base = 150;
-            this.interval = setInterval(() => this.move(), Math.max(50, Math.floor(base / (this.upgrades.speed || 1))));
+            const interval = Math.min(400, base + (this.upgrades.speed - 1) * 30);
+            this.interval = setInterval(() => this.move(), interval);
         }
+        // ОБЯЗАТЕЛЬНО очищаем метеоритные блоки при завершении события
         this.meteorBlocks = [];
         this.tempWalls = false;
         this.eventActive = null;
+        this.addEvent('✨ Событие закончилось.');
     },
 
     move: function() {
         if (!this.active) return;
         this.updateEvents();
         for (let i = 0; i < this.players; i++) this.dirs[i] = this.nextDirs[i];
+
+        // ИСПРАВЛЕННЫЙ МАГНИТ: еда движется только в свободные клетки и съедается при контакте
         if (this.upgrades.magnet) {
             const head = this.snakes[0][0];
-            this.foods.forEach(f => {
+            for (let f of this.foods) {
                 const dx = head.x - f.x, dy = head.y - f.y;
                 if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
-                    if (dx !== 0) f.x += dx > 0 ? 1 : -1;
-                    if (dy !== 0) f.y += dy > 0 ? 1 : -1;
-                    f.x = Math.max(0, Math.min(this.W-1, f.x));
-                    f.y = Math.max(0, Math.min(this.H-1, f.y));
+                    let nx = f.x, ny = f.y;
+                    if (dx !== 0) nx += (dx > 0 ? 1 : -1);
+                    if (dy !== 0) ny += (dy > 0 ? 1 : -1);
+                    nx = Math.max(0, Math.min(this.W-1, nx));
+                    ny = Math.max(0, Math.min(this.H-1, ny));
+                    // Проверяем, свободна ли новая клетка
+                    if (!this.isOccupied(nx, ny)) {
+                        f.x = nx;
+                        f.y = ny;
+                    }
                 }
-            });
+            }
+            // Повторно проверяем, не оказалась ли еда на голове
+            for (let i = 0; i < this.foods.length; i++) {
+                if (this.foods[i].x === head.x && this.foods[i].y === head.y) {
+                    this.eatFood(i, 0);
+                    i--;
+                }
+            }
         }
 
         // Бот
@@ -442,7 +456,6 @@ window.snake = {
             if (!bDied) {
                 boss.segments.unshift(head);
                 boss.segments.pop();
-                // проверка атаки игрока на хвост
                 const playerHead = this.snakes[0][0];
                 const tail = boss.segments[boss.segments.length-1];
                 if (playerHead.x === tail.x && playerHead.y === tail.y) {
@@ -484,19 +497,7 @@ window.snake = {
             for (let f=0; f<this.foods.length; f++) {
                 const food = this.foods[f];
                 if (head.x===food.x && head.y===food.y) {
-                    let points = 1;
-                    if (food.type==='gold') points = 5;
-                    if (this.activePowerups[i]?.some(p=>p.type==='double')) points *= 2;
-                    points = Math.floor(points * this.upgrades.scoreMult);
-                    this.scores[i] += points;
-                    if (this.comboTimers[i]) clearTimeout(this.comboTimers[i]);
-                    this.combos[i]++;
-                    this.comboTimers[i] = setTimeout(()=>{this.combos[i]=0;}, 2000);
-                    const comboBonus = this.combos[i]>1 ? Math.floor(points*(this.combos[i]-1)*0.1) : 0;
-                    this.scores[i] += comboBonus;
-                    this.addPowerup(i, food.type);
-                    this.foods.splice(f,1);
-                    this.placeFood();
+                    this.eatFood(f, i);
                     ate = true;
                     break;
                 }
@@ -506,6 +507,23 @@ window.snake = {
 
         this.checkAchievements();
         this.draw();
+    },
+
+    eatFood: function(foodIndex, playerIdx) {
+        const food = this.foods[foodIndex];
+        let points = 1;
+        if (food.type === 'gold') points = 5;
+        if (this.activePowerups[playerIdx]?.some(p=>p.type==='double')) points *= 2;
+        points = Math.floor(points * this.upgrades.scoreMult);
+        this.scores[playerIdx] += points;
+        if (this.comboTimers[playerIdx]) clearTimeout(this.comboTimers[playerIdx]);
+        this.combos[playerIdx]++;
+        this.comboTimers[playerIdx] = setTimeout(()=>{this.combos[playerIdx]=0;}, 2000);
+        const comboBonus = this.combos[playerIdx]>1 ? Math.floor(points*(this.combos[playerIdx]-1)*0.1) : 0;
+        this.scores[playerIdx] += comboBonus;
+        this.addPowerup(playerIdx, food.type);
+        this.foods.splice(foodIndex,1);
+        this.placeFood();
     },
 
     addPowerup: function(playerIdx, type) {
@@ -640,9 +658,9 @@ window.snake = {
             const container = document.getElementById('snakeShopUpgrades');
             const upgrades = [
                 { key: 'length', name: 'Длина +1', desc: 'Начальная длина', cost: 50, inc: 50, max: 5, val: self.upgrades.length },
-                { key: 'speed', name: 'Скорость +10%', desc: 'Быстрее движение', cost: 80, inc: 40, max: 5, val: Math.round((self.upgrades.speed-1)*10) },
+                { key: 'speed', name: 'Скорость', desc: 'Замедляет движение (легче)', cost: 80, inc: 40, max: 5, val: Math.round((self.upgrades.speed-1)*10) },
                 { key: 'scoreMult', name: 'Множитель очков +10%', desc: '', cost: 100, inc: 50, max: 5, val: Math.round((self.upgrades.scoreMult-1)*10) },
-                { key: 'magnet', name: 'Магнит', desc: 'Еда притягивается', cost: 200, max: 1, val: self.upgrades.magnet?1:0 },
+                { key: 'magnet', name: 'Магнит', desc: 'Еда притягивается (исправлено)', cost: 200, max: 1, val: self.upgrades.magnet?1:0 },
                 { key: 'shieldStart', name: 'Щит в начале', desc: '', cost: 150, max: 1, val: self.upgrades.shieldStart?1:0 },
                 { key: 'dashCooldown', name: 'Рывок быстрее', desc: 'Перезарядка рывка', cost: 120, inc: 60, max: 3, val: self.upgrades.dashCooldown },
                 { key: 'extraPowerups', name: 'Новые бонусы', desc: 'Добавляет новые типы еды', cost: 250, inc: 150, max: 3, val: self.upgrades.extraPowerups },
