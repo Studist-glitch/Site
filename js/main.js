@@ -67,11 +67,13 @@
             <button class="game-btn" id="playClicker">⚡ Кликер</button>
             <button class="game-btn" id="playTetris">🧱 Тетрис</button>
             <button class="game-btn" id="playSnake">🐍 Змейка</button>
+            <button class="game-btn" id="playPong">🏓 Пинг-понг</button>
             <button class="back-btn" id="closeModalBtn">Закрыть</button>
         `;
         document.getElementById('playClicker').onclick = showClicker;
         document.getElementById('playTetris').onclick = showTetrisMode;
         document.getElementById('playSnake').onclick = showSnakeMode;
+        document.getElementById('playPong').onclick = showPongMode;
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
@@ -108,7 +110,7 @@
                 <div id="clickerUpgrades" class="upgrades-list"></div>
             </div>
             <div id="tab-stats" class="tab-content" style="display:none;">
-                <table class="stats-table" id="statsTable"></tr>
+                <table class="stats-table" id="statsTable"></table>
             </div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
@@ -500,6 +502,42 @@
         canvas.addEventListener('mouseleave', () => { touchStart = null; });
     }
 
+    // ---------- Пинг-понг ----------
+    function showPongMode() {
+        modalInner.innerHTML = `
+            <h3>🏓 Пинг-понг</h3>
+            <div class="mode-select">
+                <label><input type="radio" name="pongMode" value="single" checked> 1 игрок (против бота)</label>
+                <label><input type="radio" name="pongMode" value="multi"> 2 игрока</label>
+            </div>
+            <button class="game-btn" id="startPongBtn">Старт</button>
+            <button class="back-btn" id="backPongMode">← Назад</button>
+        `;
+        document.getElementById('startPongBtn').onclick = function() {
+            const mode = document.querySelector('input[name="pongMode"]:checked').value;
+            activeGame = 'pong';
+            modalInner.innerHTML = `
+                <h3>🏓 Пинг-понг</h3>
+                <canvas id="pongCanvas" width="800" height="400" style="width:100%; height:auto; max-width:800px; background:#000; border-radius:8px;"></canvas>
+                <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                    <span id="pongTimer" style="color:#c44eff;">След. улучшение: 60с</span>
+                    <span id="pongEvent" style="color:#ffaa44;"></span>
+                </div>
+                <div class="game-controls" style="font-size:0.7rem;">
+                    Игрок 1: W/S | Игрок 2: ↑/↓
+                </div>
+                <button class="back-btn" id="backPong">← Назад</button>
+            `;
+            window.pong.init(mode);
+            document.getElementById('backPong').onclick = function() {
+                window.pong.stop();
+                showSelection();
+            };
+        };
+        document.getElementById('backPongMode').onclick = showSelection;
+    }
+
+    // ---------- Общие обработчики событий ----------
     document.addEventListener('startTetrisSingle', () => showTetrisSingle());
     document.addEventListener('startSnakeSingle', () => showSnakeSingle());
     document.addEventListener('openMiniGamesMenu', () => showSelection());
@@ -508,6 +546,7 @@
         modalOverlay.classList.remove('active');
         if (activeGame === 'tetris') window.tetris.stop();
         if (activeGame === 'snake') window.snake.stop();
+        if (activeGame === 'pong') window.pong.stop();
         activeGame = null;
     }
 
@@ -519,6 +558,7 @@
         if (e.target === modalOverlay) closeModal();
     };
 
+    // ---------- Глобальная клавиатура ----------
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
     function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
     function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
