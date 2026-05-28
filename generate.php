@@ -1,4 +1,7 @@
 <?php
+ob_start(); // Начать буферизацию вывода
+
+// Генерация чисел
 $a = rand(1, 100);
 $b = rand(1, 100);
 $c = rand(1, 100);
@@ -98,3 +101,6 @@ $sum = $a + $b + $c;
 </div>
 </body>
 </html>
+<?php
+// Сохраняем результат в index.html – это стандартная точка входа для GitHub Pages
+file_put_contents('Скрипт.html', ob_get_clean());
