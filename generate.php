@@ -1,5 +1,4 @@
 <?php
-// Генерация трёх случайных чисел от 1 до 100
 $a = rand(1, 100);
 $b = rand(1, 100);
 $c = rand(1, 100);
@@ -12,7 +11,6 @@ $sum = $a + $b + $c;
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>сумма | ячейки</title>
     <style>
-        /* стили без изменений — возьмите из вашего исходного HTML */
         * {
             margin: 0;
             padding: 0;
