@@ -1,7 +1,7 @@
 <?php
 ob_start();
 
-// Генерация чисел на PHP (для первого показа)
+// Генерация начальных чисел на PHP
 $arr = [rand(1, 100), rand(1, 100), rand(1, 100)];
 $sum = array_sum($arr);
 ?>
@@ -17,8 +17,9 @@ $sum = array_sum($arr);
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            background: #f4f6fa;
+            background: #0b0b0f;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
             min-height: 100vh;
             display: flex;
@@ -26,7 +27,52 @@ $sum = array_sum($arr);
             align-items: center;
             justify-content: center;
             padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
         }
+
+        /* Живой шум через SVG-фильтр */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.045'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 180px 180px;
+            animation: grain 0.4s steps(3) infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes grain {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(-2px, 1px); }
+            66% { transform: translate(2px, -1px); }
+        }
+
+        /* Canvas с летающими пылинками */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Основной контейнер поверх частиц */
+        .content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(130px, 160px));
@@ -35,10 +81,14 @@ $sum = array_sum($arr);
             align-items: center;
             margin-bottom: 2rem;
         }
+
         .cell {
-            background: #ffffff;
+            background: rgba(20, 22, 28, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 1.75rem;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.02), 0 1px 3px rgba(0,0,0,0.03);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -46,43 +96,51 @@ $sum = array_sum($arr);
             text-align: center;
             padding: 1.5rem 0.5rem;
             aspect-ratio: 1/1;
+            transition: none;
         }
+
         .number {
             font-size: 2.6rem;
             font-weight: 540;
-            color: #121826;
+            color: #e4e6ef;
             line-height: 1.2;
             margin-bottom: 0.5rem;
             letter-spacing: -0.01em;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.6);
         }
+
         .label {
             font-size: 0.7rem;
             font-weight: 430;
-            color: #7e8493;
+            color: #8b8fa6;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }
 
-        /* кнопка перегенерации – в стиле страницы */
         .refresh-btn {
-            background: #ffffff;
-            border: none;
+            background: rgba(20, 22, 28, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 2.5rem;
             padding: 0.9rem 2.2rem;
             font-size: 0.95rem;
             font-weight: 500;
-            color: #121826;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.02), 0 1px 3px rgba(0,0,0,0.03);
+            color: #d0d3e0;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
             cursor: pointer;
-            transition: background 0.15s;
+            transition: background 0.2s, border-color 0.2s;
             letter-spacing: -0.01em;
             outline: none;
         }
+
         .refresh-btn:hover {
-            background: #f0f2f5;
+            background: rgba(30, 33, 42, 0.85);
+            border-color: rgba(255, 255, 255, 0.12);
         }
+
         .refresh-btn:active {
-            background: #e4e7ec;
+            background: rgba(18, 20, 26, 0.9);
         }
 
         @media (max-width: 700px) {
@@ -91,12 +149,14 @@ $sum = array_sum($arr);
             .label { font-size: 0.65rem; }
             .cell { padding: 1.2rem 0.3rem; }
         }
+
         @media (max-width: 480px) {
             .grid { grid-template-columns: repeat(2, minmax(100px, 115px)); gap: 0.9rem; }
             .number { font-size: 1.9rem; }
             .label { font-size: 0.6rem; }
             .cell { padding: 1rem 0.2rem; }
         }
+
         @media (max-width: 380px) {
             .grid { grid-template-columns: repeat(2, minmax(92px, 105px)); gap: 0.75rem; }
             .number { font-size: 1.7rem; }
@@ -104,64 +164,119 @@ $sum = array_sum($arr);
     </style>
 </head>
 <body>
+    <!-- Холст для динамичных пылинок -->
+    <canvas id="particles-canvas"></canvas>
 
-<div class="grid">
-    <div class="cell">
-        <div class="number" id="val1"><?= $arr[0] ?></div>
-        <div class="label">число 1</div>
+    <div class="content">
+        <div class="grid">
+            <div class="cell">
+                <div class="number" id="val1"><?= $arr[0] ?></div>
+                <div class="label">число 1</div>
+            </div>
+            <div class="cell">
+                <div class="number" id="val2"><?= $arr[1] ?></div>
+                <div class="label">число 2</div>
+            </div>
+            <div class="cell">
+                <div class="number" id="val3"><?= $arr[2] ?></div>
+                <div class="label">число 3</div>
+            </div>
+            <div class="cell">
+                <div class="number" id="sumTotal"><?= $sum ?></div>
+                <div class="label">сумма</div>
+            </div>
+        </div>
+        <button class="refresh-btn" id="refreshButton">обновить числа</button>
     </div>
-    <div class="cell">
-        <div class="number" id="val2"><?= $arr[1] ?></div>
-        <div class="label">число 2</div>
-    </div>
-    <div class="cell">
-        <div class="number" id="val3"><?= $arr[2] ?></div>
-        <div class="label">число 3</div>
-    </div>
-    <div class="cell">
-        <div class="number" id="sumTotal"><?= $sum ?></div>
-        <div class="label">сумма</div>
-    </div>
-</div>
 
-<button class="refresh-btn" id="refreshButton">обновить числа</button>
+    <script>
+        (function() {
+            // ---------- Обновление чисел ----------
+            const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-<script>
-    (function() {
-        // Функция получения случайного целого в диапазоне [min, max]
-        const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-        
-        // Функция обновления всех ячеек
-        const refreshCells = () => {
-            const MIN = 1;
-            const MAX = 100;
-            
-            const a = getRandomInt(MIN, MAX);
-            const b = getRandomInt(MIN, MAX);
-            const c = getRandomInt(MIN, MAX);
-            const sum = a + b + c;
-            
-            document.getElementById('val1').textContent = a;
-            document.getElementById('val2').textContent = b;
-            document.getElementById('val3').textContent = c;
-            document.getElementById('sumTotal').textContent = sum;
-        };
-        
-        // Навешиваем обработчик на кнопку
-        const btn = document.getElementById('refreshButton');
-        if (btn) {
-            btn.addEventListener('click', refreshCells);
-        }
-        
-        // Дополнительно: можно обновлять числа при возврате на страницу (по желанию)
-        window.addEventListener('pageshow', (event) => {
-            // если хотите, чтобы при показе страницы из кэша тоже обновлялось – раскомментируйте:
-            // refreshCells();
-        });
-    })();
-</script>
+            const refreshCells = () => {
+                const MIN = 1;
+                const MAX = 100;
+                const a = getRandomInt(MIN, MAX);
+                const b = getRandomInt(MIN, MAX);
+                const c = getRandomInt(MIN, MAX);
+                const sum = a + b + c;
+                document.getElementById('val1').textContent = a;
+                document.getElementById('val2').textContent = b;
+                document.getElementById('val3').textContent = c;
+                document.getElementById('sumTotal').textContent = sum;
+            };
+
+            document.getElementById('refreshButton').addEventListener('click', refreshCells);
+
+            // ---------- Динамичные пылинки (canvas) ----------
+            const canvas = document.getElementById('particles-canvas');
+            const ctx = canvas.getContext('2d');
+
+            let width, height;
+            const particles = [];
+            const PARTICLE_COUNT = 55;    // количество пылинок
+            const MAX_SIZE = 2.2;
+            const MIN_SIZE = 0.8;
+            const SPEED_FACTOR = 0.25;    // медленное парение
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.size = Math.random() * (MAX_SIZE - MIN_SIZE) + MIN_SIZE;
+                    this.speedX = (Math.random() - 0.5) * SPEED_FACTOR;
+                    this.speedY = (Math.random() - 0.5) * SPEED_FACTOR;
+                    this.opacity = Math.random() * 0.25 + 0.08; // почти прозрачные
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    // Мягкое отражение от границ
+                    if (this.x < 0) { this.x = 0; this.speedX *= -1; }
+                    if (this.x > width) { this.x = width; this.speedX *= -1; }
+                    if (this.y < 0) { this.y = 0; this.speedY *= -1; }
+                    if (this.y > height) { this.y = height; this.speedY *= -1; }
+                }
+
+                draw(ctx) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                    ctx.fill();
+                }
+            }
+
+            function resizeCanvas() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                // Пересоздаём частицы при изменении размера окна
+                particles.length = 0;
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    particles.push(new Particle());
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                for (let p of particles) {
+                    p.update();
+                    p.draw(ctx);
+                }
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            animate();
+        })();
+    </script>
 </body>
 </html>
 <?php
-// Сохраняем сгенерированный HTML в index.html (стандартная точка входа для GitHub Pages)
+// Сохраняем результат в index.html – стандартная точка входа для GitHub Pages
 file_put_contents('Скрипт.html', ob_get_clean());
