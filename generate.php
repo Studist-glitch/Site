@@ -31,7 +31,7 @@ $sum = array_sum($arr);
             overflow: hidden;
         }
 
-        /* Живой шум через SVG-фильтр */
+        /* Живой шум */
         body::before {
             content: "";
             position: fixed;
@@ -64,7 +64,6 @@ $sum = array_sum($arr);
             pointer-events: none;
         }
 
-        /* Основной контейнер поверх частиц */
         .content {
             position: relative;
             z-index: 2;
@@ -96,7 +95,8 @@ $sum = array_sum($arr);
             text-align: center;
             padding: 1.5rem 0.5rem;
             aspect-ratio: 1/1;
-            transition: none;
+            transition: box-shadow 0.08s ease-out;  /* плавное движение тени */
+            position: relative;
         }
 
         .number {
@@ -107,6 +107,17 @@ $sum = array_sum($arr);
             margin-bottom: 0.5rem;
             letter-spacing: -0.01em;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+            transition: transform 0.15s, opacity 0.15s;  /* для анимации pop */
+        }
+
+        .number.pop {
+            animation: numberPop 0.35s cubic-bezier(0.2, 0.9, 0.4, 1);
+        }
+
+        @keyframes numberPop {
+            0% { transform: scale(1); opacity: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+            40% { transform: scale(1.25); opacity: 0.8; text-shadow: 0 0 12px rgba(255,255,255,0.5); }
+            100% { transform: scale(1); opacity: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
         }
 
         .label {
@@ -164,11 +175,10 @@ $sum = array_sum($arr);
     </style>
 </head>
 <body>
-    <!-- Холст для динамичных пылинок -->
     <canvas id="particles-canvas"></canvas>
 
     <div class="content">
-        <div class="grid">
+        <div class="grid" id="cellsGrid">
             <div class="cell">
                 <div class="number" id="val1"><?= $arr[0] ?></div>
                 <div class="label">число 1</div>
@@ -191,8 +201,16 @@ $sum = array_sum($arr);
 
     <script>
         (function() {
-            // ---------- Обновление чисел ----------
+            // ---------- Обновление чисел с анимацией ----------
             const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+            function animateNumber(el) {
+                el.classList.add('pop');
+                el.addEventListener('animationend', function handler() {
+                    el.classList.remove('pop');
+                    el.removeEventListener('animationend', handler);
+                });
+            }
 
             const refreshCells = () => {
                 const MIN = 1;
@@ -201,24 +219,67 @@ $sum = array_sum($arr);
                 const b = getRandomInt(MIN, MAX);
                 const c = getRandomInt(MIN, MAX);
                 const sum = a + b + c;
-                document.getElementById('val1').textContent = a;
-                document.getElementById('val2').textContent = b;
-                document.getElementById('val3').textContent = c;
-                document.getElementById('sumTotal').textContent = sum;
+                
+                const v1 = document.getElementById('val1');
+                const v2 = document.getElementById('val2');
+                const v3 = document.getElementById('val3');
+                const sumEl = document.getElementById('sumTotal');
+                
+                v1.textContent = a;
+                v2.textContent = b;
+                v3.textContent = c;
+                sumEl.textContent = sum;
+                
+                animateNumber(v1);
+                animateNumber(v2);
+                animateNumber(v3);
+                animateNumber(sumEl);
             };
 
             document.getElementById('refreshButton').addEventListener('click', refreshCells);
 
+            // ---------- Подсветка обводки в зависимости от курсора ----------
+            const cells = document.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                cell.addEventListener('mousemove', (e) => {
+                    const rect = cell.getBoundingClientRect();
+                    // Координаты курсора относительно центра ячейки, нормализованные к размерам
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    const dx = x / (rect.width / 2);   // от -1 до 1
+                    const dy = y / (rect.height / 2);
+                    
+                    // Смещение тени в ту же сторону, где курсор
+                    const offsetX = dx * 18;
+                    const offsetY = dy * 18;
+                    // Размытие и прозрачность зависят от расстояния до центра (чем ближе к краю, тем ярче)
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    const blur = 12 + distance * 6;
+                    const alpha = 0.1 + distance * 0.25;
+                    
+                    cell.style.boxShadow = `
+                        0 8px 18px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                        ${offsetX}px ${offsetY}px ${blur}px 2px rgba(255, 255, 255, ${alpha})
+                    `;
+                });
+                
+                cell.addEventListener('mouseleave', () => {
+                    // Возвращаем исходную тень
+                    cell.style.boxShadow = `0 8px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04)`;
+                });
+            });
+
             // ---------- Динамичные пылинки (canvas) ----------
             const canvas = document.getElementById('particles-canvas');
             const ctx = canvas.getContext('2d');
-
             let width, height;
             const particles = [];
-            const PARTICLE_COUNT = 55;    // количество пылинок
+            const PARTICLE_COUNT = 55;
             const MAX_SIZE = 2.2;
             const MIN_SIZE = 0.8;
-            const SPEED_FACTOR = 0.25;    // медленное парение
+            const SPEED_FACTOR = 0.25;
 
             class Particle {
                 constructor() {
@@ -227,20 +288,16 @@ $sum = array_sum($arr);
                     this.size = Math.random() * (MAX_SIZE - MIN_SIZE) + MIN_SIZE;
                     this.speedX = (Math.random() - 0.5) * SPEED_FACTOR;
                     this.speedY = (Math.random() - 0.5) * SPEED_FACTOR;
-                    this.opacity = Math.random() * 0.25 + 0.08; // почти прозрачные
+                    this.opacity = Math.random() * 0.25 + 0.08;
                 }
-
                 update() {
                     this.x += this.speedX;
                     this.y += this.speedY;
-
-                    // Мягкое отражение от границ
                     if (this.x < 0) { this.x = 0; this.speedX *= -1; }
                     if (this.x > width) { this.x = width; this.speedX *= -1; }
                     if (this.y < 0) { this.y = 0; this.speedY *= -1; }
                     if (this.y > height) { this.y = height; this.speedY *= -1; }
                 }
-
                 draw(ctx) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -254,7 +311,6 @@ $sum = array_sum($arr);
                 height = window.innerHeight;
                 canvas.width = width;
                 canvas.height = height;
-                // Пересоздаём частицы при изменении размера окна
                 particles.length = 0;
                 for (let i = 0; i < PARTICLE_COUNT; i++) {
                     particles.push(new Particle());
@@ -278,5 +334,4 @@ $sum = array_sum($arr);
 </body>
 </html>
 <?php
-// Сохраняем результат в index.html – стандартная точка входа для GitHub Pages
-file_put_contents('Скрипт.html', ob_get_clean());
+file_put_contents('Скрипты.html', ob_get_clean());
