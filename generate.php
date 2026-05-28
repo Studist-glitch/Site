@@ -83,15 +83,15 @@ foreach ($arr as $elem) { $sum += $elem; }
 <body>
 <div class="grid">
     <div class="cell">
-        <div class="number"><?= $$arr[0] ?></div>
+        <div class="number"><?= $arr[0] ?></div>
         <div class="label">число 1</div>
     </div>
     <div class="cell">
-        <div class="number"><?= $$arr[1] ?></div>
+        <div class="number"><?= $arr[1] ?></div>
         <div class="label">число 2</div>
     </div>
     <div class="cell">
-        <div class="number"><?= $$arr[2] ?></div>
+        <div class="number"><?= $arr[2] ?></div>
         <div class="label">число 3</div>
     </div>
     <div class="cell">
