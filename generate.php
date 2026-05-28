@@ -53,7 +53,6 @@ $sum = array_sum($arr);
             66% { transform: translate(2px, -1px); }
         }
 
-        /* Canvas с летающими пылинками */
         #particles-canvas {
             position: fixed;
             top: 0;
@@ -95,7 +94,6 @@ $sum = array_sum($arr);
             text-align: center;
             padding: 1.5rem 0.5rem;
             aspect-ratio: 1/1;
-            transition: box-shadow 0.08s ease-out;  /* плавное движение тени */
             position: relative;
         }
 
@@ -107,17 +105,16 @@ $sum = array_sum($arr);
             margin-bottom: 0.5rem;
             letter-spacing: -0.01em;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
-            transition: transform 0.15s, opacity 0.15s;  /* для анимации pop */
         }
 
         .number.pop {
-            animation: numberPop 0.35s cubic-bezier(0.2, 0.9, 0.4, 1);
+            animation: numberPop 0.45s cubic-bezier(0.2, 0.9, 0.4, 1.2) forwards;
         }
 
         @keyframes numberPop {
-            0% { transform: scale(1); opacity: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
-            40% { transform: scale(1.25); opacity: 0.8; text-shadow: 0 0 12px rgba(255,255,255,0.5); }
-            100% { transform: scale(1); opacity: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+            0% { transform: scale(1); filter: brightness(1); }
+            30% { transform: scale(1.5); filter: brightness(2.5); }
+            100% { transform: scale(1); filter: brightness(1); }
         }
 
         .label {
@@ -201,15 +198,17 @@ $sum = array_sum($arr);
 
     <script>
         (function() {
-            // ---------- Обновление чисел с анимацией ----------
+            // ---------- Обновление чисел с последовательной анимацией ----------
             const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-            function animateNumber(el) {
-                el.classList.add('pop');
-                el.addEventListener('animationend', function handler() {
-                    el.classList.remove('pop');
-                    el.removeEventListener('animationend', handler);
-                });
+            function animateNumber(el, delay = 0) {
+                setTimeout(() => {
+                    el.classList.add('pop');
+                    el.addEventListener('animationend', function handler() {
+                        el.classList.remove('pop');
+                        el.removeEventListener('animationend', handler);
+                    }, { once: true });
+                }, delay);
             }
 
             const refreshCells = () => {
@@ -230,43 +229,44 @@ $sum = array_sum($arr);
                 v3.textContent = c;
                 sumEl.textContent = sum;
                 
-                animateNumber(v1);
-                animateNumber(v2);
-                animateNumber(v3);
-                animateNumber(sumEl);
+                // Последовательный запуск анимации: 0ms, 60ms, 120ms, 180ms
+                animateNumber(v1, 0);
+                animateNumber(v2, 60);
+                animateNumber(v3, 120);
+                animateNumber(sumEl, 180);
             };
 
             document.getElementById('refreshButton').addEventListener('click', refreshCells);
 
-            // ---------- Подсветка обводки в зависимости от курсора ----------
+            // ---------- Направленная обводка (чёткая линия) ----------
             const cells = document.querySelectorAll('.cell');
             
             cells.forEach(cell => {
                 cell.addEventListener('mousemove', (e) => {
                     const rect = cell.getBoundingClientRect();
-                    // Координаты курсора относительно центра ячейки, нормализованные к размерам
+                    // Координаты курсора относительно центра (нормированы к -1..1)
                     const x = e.clientX - rect.left - rect.width / 2;
                     const y = e.clientY - rect.top - rect.height / 2;
-                    const dx = x / (rect.width / 2);   // от -1 до 1
+                    const dx = x / (rect.width / 2);
                     const dy = y / (rect.height / 2);
                     
-                    // Смещение тени в ту же сторону, где курсор
-                    const offsetX = dx * 18;
-                    const offsetY = dy * 18;
-                    // Размытие и прозрачность зависят от расстояния до центра (чем ближе к краю, тем ярче)
+                    // Небольшое смещение для чёткой линии (без размытия)
+                    const offsetX = dx * 8;
+                    const offsetY = dy * 8;
+                    // Яркость обводки зависит от расстояния до центра: чем ближе к краю, тем ярче
                     const distance = Math.sqrt(dx*dx + dy*dy);
-                    const blur = 12 + distance * 6;
-                    const alpha = 0.1 + distance * 0.25;
+                    const alpha = 0.05 + distance * 0.7;
                     
+                    // Чёткая обводка: spread 1px, blur 0, цвет белый с прозрачностью
                     cell.style.boxShadow = `
                         0 8px 18px rgba(0, 0, 0, 0.5),
                         inset 0 1px 0 rgba(255, 255, 255, 0.04),
-                        ${offsetX}px ${offsetY}px ${blur}px 2px rgba(255, 255, 255, ${alpha})
+                        ${offsetX}px ${offsetY}px 0 1px rgba(255, 255, 255, ${alpha})
                     `;
                 });
                 
                 cell.addEventListener('mouseleave', () => {
-                    // Возвращаем исходную тень
+                    // Возвращаем стандартную тень без обводки
                     cell.style.boxShadow = `0 8px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04)`;
                 });
             });
@@ -334,4 +334,4 @@ $sum = array_sum($arr);
 </body>
 </html>
 <?php
-file_put_contents('Скрипты.html', ob_get_clean());
+file_put_contents('Числа.html', ob_get_clean());
