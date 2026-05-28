@@ -3,6 +3,7 @@ ob_start(); // Начать буферизацию вывода
 
 // Генерация чисел
 $arr = [rand(1, 100), rand(1, 100), rand(1, 100)];
+echo $arr[0], $arr[1], $arr[2];
 $sum = $arr[0] + $arr[1] + $arr[2];
 ?>
 <!DOCTYPE html>
