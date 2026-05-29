@@ -6,7 +6,6 @@ const REPO_NAME = 'Site';
 const POSTS_PER_PAGE = 5;
 
 // Определяем ваши категории и соответствующие им метки (Labels) в GitHub Issues
-// Убедитесь, что метки с такими именами созданы в вашем репозитории
 const CATEGORY_LABELS = {
     'all': 'Все',
     'Новости': 'Новости',
@@ -19,15 +18,18 @@ const CATEGORY_LABELS = {
 const postsContainer = document.getElementById('posts-container');
 const paginationContainer = document.getElementById('pagination-container');
 const categoriesContainer = document.getElementById('categories-container');
-let currentPosts = [];
+
+let allPosts = [];          // все загруженные посты
+let currentPosts = [];      // отфильтрованные по категории
 let currentPage = 1;
 let currentCategory = 'all';
 let totalPages = 0;
 
 /**
- * Получает список Issues из репозитория GitHub.
+ * Загружает посты из GitHub Issues
  */
 async function fetchPosts() {
+    if (!postsContainer) return;
     showLoadingState();
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=open&per_page=100&sort=created&direction=desc`;
 
@@ -35,40 +37,50 @@ async function fetchPosts() {
         const response = await fetch(url, {
             headers: { 'Accept': 'application/vnd.github.v3+json' }
         });
-
         if (!response.ok) {
             throw new Error(`GitHub API error: ${response.status}`);
         }
-
         const issues = await response.json();
-        // Фильтруем: убираем Pull Requests (у них есть поле pull_request) и оставляем только с нашей кастомной меткой для постов
-        // Для упрощения пока убираем фильтр по метке, чтобы показывать любые Issue.
-        // Но вы можете добавить специальную метку, например "blog-post", и фильтровать по ней.
-        const posts = issues.filter(issue => !issue.pull_request);
-        currentPosts = posts;
-        setupCategories(currentPosts);
-        renderPostsForCurrentPage();
+        // Фильтруем: убираем Pull Requests (у них есть поле pull_request)
+        allPosts = issues.filter(issue => !issue.pull_request);
+        applyFilterAndRender();
     } catch (error) {
         console.error("Error fetching posts:", error);
-        postsContainer.innerHTML = `<p class="error-message">Не удалось загрузить новости. Пожалуйста, попробуйте позже.</p>`;
+        postsContainer.innerHTML = `<p class="error-message">❌ Не удалось загрузить новости. Пожалуйста, попробуйте позже.</p>`;
         paginationContainer.innerHTML = '';
     }
 }
 
 /**
- * Отображает индикатор загрузки.
+ * Применяет текущую категорию и перерисовывает
+ */
+function applyFilterAndRender() {
+    if (currentCategory === 'all') {
+        currentPosts = [...allPosts];
+    } else {
+        currentPosts = allPosts.filter(post =>
+            post.labels && post.labels.some(label => label.name === currentCategory)
+        );
+    }
+    currentPage = 1;
+    renderCategories();     // обновляем активную кнопку
+    renderPostsForCurrentPage();
+}
+
+/**
+ * Отображает индикатор загрузки
  */
 function showLoadingState() {
-    postsContainer.innerHTML = '<div class="loading-spinner">Загрузка новостей...</div>';
+    postsContainer.innerHTML = '<div class="loading-spinner">🌀 Загрузка новостей...</div>';
     paginationContainer.innerHTML = '';
 }
 
 /**
- * Настраивает кнопки фильтрации категорий на основе загруженных постов.
+ * Рендерит кнопки категорий на основе всех постов
  */
-function setupCategories(posts) {
+function renderCategories() {
     const availableLabels = new Set();
-    posts.forEach(post => {
+    allPosts.forEach(post => {
         if (post.labels && post.labels.length > 0) {
             post.labels.forEach(label => {
                 if (CATEGORY_LABELS[label.name]) {
@@ -79,91 +91,57 @@ function setupCategories(posts) {
     });
 
     let categoriesHtml = `<button class="category-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all">Все</button>`;
-    availableLabels.forEach(label => {
-        if (CATEGORY_LABELS[label]) {
-            categoriesHtml += `<button class="category-btn ${currentCategory === label ? 'active' : ''}" data-category="${label}">${CATEGORY_LABELS[label]}</button>`;
-        }
+    const sortedLabels = Array.from(availableLabels).sort();
+    sortedLabels.forEach(label => {
+        categoriesHtml += `<button class="category-btn ${currentCategory === label ? 'active' : ''}" data-category="${label}">${CATEGORY_LABELS[label]}</button>`;
     });
     categoriesContainer.innerHTML = categoriesHtml;
 
-    // Добавляем обработчики событий для кнопок категорий
+    // Добавляем обработчики
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const category = e.target.dataset.category;
             if (category === currentCategory) return;
             currentCategory = category;
-            currentPage = 1;
-            renderPostsForCurrentPage();
-            updateActiveCategoryButton(category);
+            applyFilterAndRender();
         });
     });
 }
 
 /**
- * Обновляет активное состояние кнопок категорий.
- */
-function updateActiveCategoryButton(activeCategory) {
-    document.querySelectorAll('.category-btn').forEach(btn => {
-        if (btn.dataset.category === activeCategory) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-}
-
-/**
- * Отображает посты для текущей страницы и категории.
+ * Отображает посты для текущей страницы
  */
 function renderPostsForCurrentPage() {
-    let filteredPosts = currentPosts;
-    if (currentCategory !== 'all') {
-        filteredPosts = currentPosts.filter(post =>
-            post.labels && post.labels.some(label => label.name === currentCategory)
-        );
-    }
-
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
     const endIndex = startIndex + POSTS_PER_PAGE;
-    const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
-    totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+    const paginatedPosts = currentPosts.slice(startIndex, endIndex);
+    totalPages = Math.ceil(currentPosts.length / POSTS_PER_PAGE);
 
-    renderPostCards(paginatedPosts);
-    renderPaginationControls();
-}
-
-/**
- * Отрисовывает HTML-код карточек постов.
- */
-function renderPostCards(postsToRender) {
-    if (!postsToRender.length) {
-        postsContainer.innerHTML = '<p class="info-message">В этой категории пока нет постов.</p>';
+    if (!paginatedPosts.length) {
+        postsContainer.innerHTML = '<p class="info-message">📭 В этой категории пока нет постов.</p>';
+        paginationContainer.innerHTML = '';
         return;
     }
 
     let postsHtml = '';
-    for (const post of postsToRender) {
-        // Форматируем дату
+    for (const post of paginatedPosts) {
         const publishDate = new Date(post.created_at);
         const formattedDate = publishDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        // Получаем метки для отображения
         let labelsHtml = '';
         if (post.labels && post.labels.length > 0) {
             labelsHtml = '<div class="post-labels">';
             post.labels.forEach(label => {
-                labelsHtml += `<span class="post-label">${CATEGORY_LABELS[label.name] || label.name}</span>`;
+                const displayName = CATEGORY_LABELS[label.name] || label.name;
+                labelsHtml += `<span class="post-label">${escapeHtml(displayName)}</span>`;
             });
             labelsHtml += '</div>';
         }
 
-        // Преобразуем Markdown в HTML (используем простой парсер или доверяемся API)
-        // GitHub API возвращает body в Markdown, но мы можем использовать simple-markdown или другой парсер.
-        // Для простоты оставим body как есть или обработаем через DOMPurify для безопасности.
-        // Здесь для примера я использую простую замену, но в реальном проекте лучше добавить библиотеку marked.js.
-        let postContent = post.body ? post.body.slice(0, 300) + '...' : '';
+        let postContent = post.body ? post.body.slice(0, 300) : '';
+        if (post.body && post.body.length > 300) postContent += '...';
         postContent = postContent.replace(/\n/g, '<br>');
-        
+
         postsHtml += `
             <article class="post-card" data-issue-id="${post.number}">
                 <div class="post-card-header">
@@ -184,10 +162,11 @@ function renderPostCards(postsToRender) {
         `;
     }
     postsContainer.innerHTML = postsHtml;
+    renderPaginationControls();
 }
 
 /**
- * Генерирует элементы управления пагинацией.
+ * Рендерит пагинацию
  */
 function renderPaginationControls() {
     if (totalPages <= 1) {
@@ -211,22 +190,20 @@ function renderPaginationControls() {
 
     paginationContainer.innerHTML = paginationHtml;
 
-    // Добавляем обработчики событий для кнопок пагинации
     document.querySelectorAll('.page-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const newPage = parseInt(e.target.dataset.page);
             if (!isNaN(newPage) && newPage !== currentPage) {
                 currentPage = newPage;
                 renderPostsForCurrentPage();
-                // Прокручиваем к началу ленты
-                document.getElementById('blog-posts').scrollIntoView({ behavior: 'smooth' });
+                document.querySelector('.blog-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
 }
 
 /**
- * Простая функция для экранирования HTML-символов.
+ * Экранирование HTML
  */
 function escapeHtml(str) {
     if (!str) return '';
@@ -235,16 +212,35 @@ function escapeHtml(str) {
         if (m === '<') return '&lt;';
         if (m === '>') return '&gt;';
         return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-        return c;
     });
 }
 
-// --- Инициализация при загрузке страницы ---
+// Обновление после создания нового поста (сохраняя категорию и страницу)
+async function refreshPosts() {
+    const savedCategory = currentCategory;
+    const savedPage = currentPage;
+    await fetchPosts();        // заново загружает allPosts, вызывает applyFilterAndRender
+    // После fetchPosts currentCategory и currentPage сбросятся на all и 1, поэтому восстанавливаем
+    if (savedCategory !== currentCategory) {
+        currentCategory = savedCategory;
+        applyFilterAndRender();
+        currentPage = Math.min(savedPage, totalPages);
+        renderPostsForCurrentPage();
+    } else {
+        currentPage = Math.min(savedPage, totalPages);
+        renderPostsForCurrentPage();
+    }
+}
+
+// Делаем функции доступными глобально для других скриптов (create-post.js)
+window.fetchPosts = fetchPosts;
+window.refreshPosts = refreshPosts;
+
+// Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', () => {
     if (postsContainer) {
         fetchPosts();
     } else {
-        console.warn("Элемент #posts-container не найден. Убедитесь, что блок для постов добавлен в index.html");
+        console.warn("Элемент #posts-container не найден");
     }
 });

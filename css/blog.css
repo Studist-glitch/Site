@@ -1,56 +1,84 @@
-/* css/blog.css */
-
-/* Стили для блога/новостей */
+/* blog.css - Стили для блога/новостей */
 .blog-section {
     margin-top: 2rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(196, 78, 255, 0.15);
+    padding: 0 0.5rem;
 }
 
 .blog-title {
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-family: 'Russo One', sans-serif;
-    color: #c44eff;
+    background: linear-gradient(135deg, #c44eff, #ff88ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     text-align: center;
     margin-bottom: 1.5rem;
-    text-transform: uppercase;
     letter-spacing: 1px;
+    position: relative;
 }
 
-/* Категории/фильтры */
+.blog-title::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, #c44eff, transparent);
+    margin: 8px auto 0;
+    border-radius: 2px;
+}
+
+/* Категории */
 .posts-categories {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.75rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .category-btn {
-    background: rgba(20, 22, 28, 0.6);
-    border: 1px solid rgba(196, 78, 255, 0.2);
-    color: #b0b0c0;
+    background: rgba(20, 22, 28, 0.7);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    color: #d0d0e0;
     padding: 0.5rem 1.25rem;
-    border-radius: 30px;
+    border-radius: 40px;
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(4px);
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
 }
 
 .category-btn:hover {
-    background: rgba(196, 78, 255, 0.15);
-    border-color: rgba(196, 78, 255, 0.5);
-    color: #fff;
+    background: rgba(196, 78, 255, 0.2);
+    border-color: #c44eff;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(196, 78, 255, 0.2);
 }
 
 .category-btn.active {
-    background: rgba(196, 78, 255, 0.25);
+    background: rgba(196, 78, 255, 0.3);
     border-color: #c44eff;
-    color: #fff;
-    box-shadow: 0 0 10px rgba(196, 78, 255, 0.3);
+    color: white;
+    box-shadow: 0 0 10px rgba(196, 78, 255, 0.4);
+}
+
+/* Кнопка создания поста */
+.create-post-wrapper {
+    text-align: right;
+    margin-bottom: 1rem;
+}
+
+#openCreatePostModal {
+    background: rgba(196, 78, 255, 0.15);
+    border-color: #c44eff;
+    transition: all 0.2s;
+}
+
+#openCreatePostModal:hover {
+    background: rgba(196, 78, 255, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 0 12px #c44eff;
 }
 
 /* Список постов */
@@ -62,24 +90,38 @@
 }
 
 .post-card {
-    background: rgba(18, 18, 26, 0.7);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(196, 78, 255, 0.15);
-    border-radius: 16px;
+    background: rgba(18, 18, 26, 0.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(196, 78, 255, 0.2);
+    border-radius: 20px;
     padding: 1.25rem;
-    transition: all 0.25s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.post-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(196,78,255,0.05) 0%, transparent 100%);
+    pointer-events: none;
 }
 
 .post-card:hover {
-    border-color: rgba(196, 78, 255, 0.4);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(196, 78, 255, 0.5);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
 }
 
 .post-title {
     font-size: 1.3rem;
+    font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #e0e0f0;
+    color: #f0f0ff;
 }
 
 .post-title a {
@@ -95,8 +137,8 @@
 .post-meta {
     display: flex;
     gap: 1rem;
-    font-size: 0.75rem;
-    color: #8a8aa0;
+    font-size: 0.7rem;
+    color: #a0a0b0;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
 }
@@ -105,7 +147,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin: 0.75rem 0;
+    margin: 0.5rem 0;
 }
 
 .post-label {
@@ -114,19 +156,26 @@
     padding: 0.2rem 0.7rem;
     font-size: 0.7rem;
     color: #c44eff;
-    border: 1px solid rgba(196, 78, 255, 0.2);
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    transition: all 0.2s;
+}
+
+.post-label:hover {
+    background: rgba(196, 78, 255, 0.3);
 }
 
 .post-excerpt {
     font-size: 0.9rem;
     line-height: 1.5;
-    color: #c0c0d0;
+    color: #c8c8d8;
     margin-bottom: 1rem;
     word-break: break-word;
 }
 
 .read-more-btn {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     background: transparent;
     border: 1px solid #c44eff;
     color: #c44eff;
@@ -135,13 +184,12 @@
     font-size: 0.8rem;
     font-weight: 500;
     text-decoration: none;
-    transition: all 0.2s ease;
-    margin-top: 0.5rem;
+    transition: all 0.2s;
 }
 
 .read-more-btn:hover {
-    background: rgba(196, 78, 255, 0.1);
-    box-shadow: 0 0 8px rgba(196, 78, 255, 0.3);
+    background: rgba(196, 78, 255, 0.15);
+    box-shadow: 0 0 8px rgba(196, 78, 255, 0.4);
     transform: translateX(3px);
 }
 
@@ -150,15 +198,15 @@
     display: flex;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 1rem;
     flex-wrap: wrap;
+    margin-top: 1rem;
 }
 
 .page-btn {
-    background: rgba(20, 22, 28, 0.6);
+    background: rgba(20, 22, 28, 0.7);
     border: 1px solid rgba(196, 78, 255, 0.3);
     color: #d0d0e0;
-    padding: 0.4rem 0.8rem;
+    padding: 0.4rem 0.9rem;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
@@ -171,44 +219,55 @@
 }
 
 .page-btn.active {
-    background: rgba(196, 78, 255, 0.3);
+    background: #c44eff;
+    color: #0a0a0f;
     border-color: #c44eff;
-    color: #fff;
     cursor: default;
 }
 
-/* Состояния загрузки и ошибок */
+/* Анимация загрузки */
 .loading-spinner {
     text-align: center;
     padding: 2rem;
     color: #c44eff;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
 
 .error-message, .info-message {
     text-align: center;
-    padding: 2rem;
-    background: rgba(255, 0, 0, 0.1);
-    border-radius: 12px;
+    padding: 1.5rem;
+    background: rgba(255, 50, 50, 0.1);
+    border-radius: 16px;
     color: #ff8888;
 }
 
-/* Адаптивность для мобильных устройств */
-@media (max-width: 768px) {
+.info-message {
+    background: rgba(196, 78, 255, 0.1);
+    color: #c44eff;
+}
+
+/* Адаптивность */
+@media (max-width: 680px) {
     .post-title {
         font-size: 1.1rem;
     }
-    
     .post-meta {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
-    
     .post-excerpt {
         font-size: 0.8rem;
     }
-    
     .category-btn {
         padding: 0.3rem 1rem;
         font-size: 0.75rem;
+    }
+    .blog-title {
+        font-size: 1.6rem;
     }
 }
