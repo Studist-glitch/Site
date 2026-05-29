@@ -48,7 +48,6 @@ window.snake = {
     onGameOver: null,
 
     loadUpgrades: function() {
-        // Гарантируем, что upgrades всегда объект
         if (!this.upgrades) this.upgrades = this.defaultUpgrades();
         if (!this.singlePlayerMode) {
             this.upgrades = this.defaultUpgrades();
@@ -687,8 +686,7 @@ window.snake = {
 
     showShop: function() {
         if (!this.singlePlayerMode) return;
-        // Убедимся, что upgrades загружены
-        this.loadUpgrades();
+        this.loadUpgrades();  // <--- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: загружаем upgrades перед показом магазина
         const self = this;
         const render = () => {
             const modalInner = document.getElementById('modalInner');
@@ -701,6 +699,8 @@ window.snake = {
                 <button class="back-btn" id="backToSnakeMenu">В меню</button>
             `;
             const container = document.getElementById('snakeShopUpgrades');
+            // Дополнительная проверка на случай, если upgrades всё ещё null (хотя loadUpgrades должен исправить)
+            if (!self.upgrades) self.upgrades = self.defaultUpgrades();
             const upgrades = [
                 { key: 'length', name: 'Длина +1', desc: 'Начальная длина', cost: 50, inc: 50, max: 5, val: self.upgrades.length },
                 { key: 'speed', name: 'Скорость', desc: 'Замедляет движение (легче)', cost: 80, inc: 40, max: 5, val: Math.round((self.upgrades.speed-1)*10) },
