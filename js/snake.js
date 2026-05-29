@@ -19,6 +19,9 @@ window.snake = {
     animFrame: null,
     foodPhase: 0,
 
+    // Однопользовательский режим (с улучшениями) или мультиплеер (без улучшений)
+    singlePlayerMode: true,
+
     bot: null,
     botMoveTimer: null,
     botSpawnTimer: null,
@@ -44,6 +47,11 @@ window.snake = {
     upgrades: null,
 
     loadUpgrades: function() {
+        if (!this.singlePlayerMode) {
+            this.upgrades = this.defaultUpgrades();
+            this.currency = 0;
+            return;
+        }
         try {
             const saved = localStorage.getItem('snakeUpgrades');
             this.upgrades = saved ? JSON.parse(saved) : this.defaultUpgrades();
@@ -67,6 +75,7 @@ window.snake = {
     },
 
     saveUpgrades: function() {
+        if (!this.singlePlayerMode) return;
         try {
             localStorage.setItem('snakeUpgrades', JSON.stringify(this.upgrades));
             localStorage.setItem('snakeCurrency', this.currency);
@@ -75,12 +84,15 @@ window.snake = {
 
     getSkinColor: function(idx) {
         const skins = ['#c44eff', '#44ff44', '#ffcc00', '#ff44cc', '#44ccff'];
+        if (!this.singlePlayerMode) return skins[0];
         return skins[Math.min(this.upgrades.skinLevel, skins.length-1)];
     },
 
     init: function(players) {
-        this.loadUpgrades();
         this.players = players;
+        this.singlePlayerMode = (players === 1);
+        this.loadUpgrades();
+
         this.snakes = [];
         this.dirs = [];
         this.nextDirs = [];
@@ -101,7 +113,7 @@ window.snake = {
         this.bossSnake = null;
         this.bossTimer = null;
 
-        const startLen = 3 + (this.upgrades.length || 0);
+        const startLen = 3 + (this.singlePlayerMode ? (this.upgrades.length || 0) : 0);
         for (let i = 0; i < players; i++) {
             const snake = [];
             const startX = i === 0 ? 10 : 5;
@@ -115,29 +127,34 @@ window.snake = {
             this.scores.push(0);
             this.combos.push(0);
             this.comboTimers.push(null);
-            this.dashCharges.push(this.upgrades.dashCooldown ? 3 : 3);
-            this.dashCooldowns.push(this.upgrades.dashCooldown || 0);
+            const dashBase = this.singlePlayerMode ? (this.upgrades.dashCooldown || 0) : 0;
+            this.dashCharges.push(dashBase ? 3 : 3);
+            this.dashCooldowns.push(dashBase);
             this.dashTimers.push(null);
             this.lastDirTap.push({dir: '', time: 0});
             this.activePowerups.push([]);
             this.powerupTimers.push([]);
-            if (this.upgrades.shieldStart) this.addPowerup(i, 'shield');
+            if (this.singlePlayerMode && this.upgrades.shieldStart) this.addPowerup(i, 'shield');
         }
 
         for (let i = 0; i < 4; i++) this.placeFood();
         this.active = true;
-        if (players === 1) {
+        if (players === 1 && this.singlePlayerMode) {
             this.scheduleBotSpawn();
             this.scheduleBossSpawn();
         }
 
         this.startAnimationLoop();
         const baseInterval = 150;
-        const interval = Math.min(400, baseInterval + (this.upgrades.speed - 1) * 30);
+        let interval = baseInterval;
+        if (this.singlePlayerMode) {
+            interval = Math.min(400, baseInterval + (this.upgrades.speed - 1) * 30);
+        }
         this.interval = setInterval(() => this.move(), interval);
     },
 
     scheduleBotSpawn: function() {
+        if (!this.singlePlayerMode) return;
         if (this.botSpawnTimer) clearTimeout(this.botSpawnTimer);
         this.botSpawnTimer = setTimeout(() => {
             if (this.active && !this.bot && !this.bossSnake) this.spawnBot();
@@ -195,6 +212,7 @@ window.snake = {
     },
 
     scheduleBossSpawn: function() {
+        if (!this.singlePlayerMode) return;
         if (this.bossTimer) clearTimeout(this.bossTimer);
         this.bossTimer = setTimeout(() => {
             if (this.active && !this.bossSnake) this.spawnBoss();
@@ -225,7 +243,8 @@ window.snake = {
     placeFood: function() {
         let pos, type;
         const rand = Math.random();
-        const hasExtra = this.upgrades.extraPowerups;
+        let hasExtra = 0;
+        if (this.singlePlayerMode) hasExtra = this.upgrades.extraPowerups;
         if (rand < 0.55) type = 'normal';
         else if (rand < 0.7) type = 'gold';
         else if (rand < 0.8) type = 'speed';
@@ -331,6 +350,7 @@ window.snake = {
     },
 
     updateEvents: function() {
+        if (!this.singlePlayerMode) return;
         if (!this.eventActive) {
             this.eventTimer++;
             if (this.eventTimer > 600) {
@@ -389,7 +409,7 @@ window.snake = {
         this.updateEvents();
         for (let i = 0; i < this.players; i++) this.dirs[i] = this.nextDirs[i];
 
-        if (this.upgrades.magnet) {
+        if (this.singlePlayerMode && this.upgrades.magnet) {
             const head = this.snakes[0][0];
             for (let f of this.foods) {
                 const dx = head.x - f.x, dy = head.y - f.y;
@@ -433,8 +453,10 @@ window.snake = {
             } else {
                 bot.alive = false;
                 clearInterval(this.botMoveTimer);
-                this.scores[0] += 50 * (this.upgrades.scoreMult || 1);
-                this.addEvent('🦎 Вражеская змея уничтожена! +50 очков');
+                let reward = 50;
+                if (this.singlePlayerMode) reward = Math.floor(50 * (this.upgrades.scoreMult || 1));
+                this.scores[0] += reward;
+                this.addEvent('🦎 Вражеская змея уничтожена! +' + reward + ' очков');
                 this.checkAchievements();
                 this.bot = null;
                 this.scheduleBotSpawn();
@@ -472,7 +494,6 @@ window.snake = {
             let invincible = this.activePowerups[i]?.some(p=>p.type==='invincible');
             let teleported = false;
 
-            // Телепортация через границы, если есть щит
             if (hasShield && !invincible) {
                 if (newX < 0) { newX = this.W - 1; teleported = true; }
                 else if (newX >= this.W) { newX = 0; teleported = true; }
@@ -526,7 +547,7 @@ window.snake = {
         let points = 1;
         if (food.type === 'gold') points = 5;
         if (this.activePowerups[playerIdx]?.some(p=>p.type==='double')) points *= 2;
-        points = Math.floor(points * this.upgrades.scoreMult);
+        if (this.singlePlayerMode) points = Math.floor(points * (this.upgrades.scoreMult || 1));
         this.scores[playerIdx] += points;
         if (this.comboTimers[playerIdx]) clearTimeout(this.comboTimers[playerIdx]);
         this.combos[playerIdx]++;
@@ -539,6 +560,7 @@ window.snake = {
     },
 
     addPowerup: function(playerIdx, type) {
+        if (!this.singlePlayerMode) return;
         const pwList = this.activePowerups[playerIdx];
         const config = {
             speed: {name:'Скорость', color:'#44ccff', dur:8},
@@ -606,6 +628,7 @@ window.snake = {
     },
 
     checkAchievements: function() {
+        if (!this.singlePlayerMode) return;
         this.allAchievements.forEach(a => {
             if (this.achievements.includes(a.id)) return;
             let earned = false;
@@ -631,8 +654,10 @@ window.snake = {
         if (this.bot) { clearInterval(this.botMoveTimer); this.bot = null; }
         if (this.botSpawnTimer) clearTimeout(this.botSpawnTimer);
         if (this.bossTimer) clearTimeout(this.bossTimer);
-        this.currency += this.scores[idx];
-        this.saveUpgrades();
+        if (this.singlePlayerMode) {
+            this.currency += this.scores[idx];
+            this.saveUpgrades();
+        }
         if (this.onGameOver) this.onGameOver();
     },
 
@@ -656,6 +681,7 @@ window.snake = {
     },
 
     showShop: function() {
+        if (!this.singlePlayerMode) return;
         const self = this;
         const render = () => {
             const modalInner = document.getElementById('modalInner');
@@ -672,7 +698,7 @@ window.snake = {
                 { key: 'length', name: 'Длина +1', desc: 'Начальная длина', cost: 50, inc: 50, max: 5, val: self.upgrades.length },
                 { key: 'speed', name: 'Скорость', desc: 'Замедляет движение (легче)', cost: 80, inc: 40, max: 5, val: Math.round((self.upgrades.speed-1)*10) },
                 { key: 'scoreMult', name: 'Множитель очков +10%', desc: '', cost: 100, inc: 50, max: 5, val: Math.round((self.upgrades.scoreMult-1)*10) },
-                { key: 'magnet', name: 'Магнит', desc: 'Еда притягивается (исправлено)', cost: 200, max: 1, val: self.upgrades.magnet?1:0 },
+                { key: 'magnet', name: 'Магнит', desc: 'Еда притягивается', cost: 200, max: 1, val: self.upgrades.magnet?1:0 },
                 { key: 'shieldStart', name: 'Щит в начале', desc: '', cost: 150, max: 1, val: self.upgrades.shieldStart?1:0 },
                 { key: 'dashCooldown', name: 'Рывок быстрее', desc: 'Перезарядка рывка', cost: 120, inc: 60, max: 3, val: self.upgrades.dashCooldown },
                 { key: 'extraPowerups', name: 'Новые бонусы', desc: 'Добавляет новые типы еды', cost: 250, inc: 150, max: 3, val: self.upgrades.extraPowerups },
@@ -702,5 +728,27 @@ window.snake = {
             document.getElementById('backToSnakeMenu').onclick = () => document.dispatchEvent(new CustomEvent('openMiniGamesMenu'));
         };
         render();
+    },
+
+    // --- Методы экспорта/импорта для GitHub ---
+    exportState: function() {
+        if (!this.singlePlayerMode) return { currency: 0, upgrades: this.defaultUpgrades() };
+        return {
+            currency: this.currency,
+            upgrades: { ...this.upgrades }
+        };
+    },
+
+    importState: function(state) {
+        if (!state || !this.singlePlayerMode) return;
+        this.currency = state.currency || 0;
+        if (state.upgrades) {
+            for (let k in state.upgrades) {
+                if (this.upgrades.hasOwnProperty(k)) {
+                    this.upgrades[k] = state.upgrades[k];
+                }
+            }
+        }
+        this.saveUpgrades();
     }
 };

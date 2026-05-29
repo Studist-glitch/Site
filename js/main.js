@@ -537,7 +537,7 @@
         document.getElementById('backPongMode').onclick = showSelection;
     }
 
-    // ---------- Общие обработчики событий ----------
+    // ---------- Общие обработчики ----------
     document.addEventListener('startTetrisSingle', () => showTetrisSingle());
     document.addEventListener('startSnakeSingle', () => showSnakeSingle());
     document.addEventListener('openMiniGamesMenu', () => showSelection());
@@ -630,4 +630,80 @@
             }
         }
     });
+
+    // ---------- GitHub Auth Integration ----------
+    const auth = window.GitHubAuth;
+    auth.init();
+
+    const authStatusDiv = document.getElementById('authStatus');
+    const tokenModal = document.getElementById('tokenModal');
+    const githubTokenInput = document.getElementById('githubTokenInput');
+    const submitTokenBtn = document.getElementById('submitTokenBtn');
+    const cancelTokenBtn = document.getElementById('cancelTokenBtn');
+    const logoutGithubBtn = document.getElementById('logoutGithubBtn');
+    const githubLoginBtn = document.getElementById('githubLoginBtn');
+
+    function updateAuthUI() {
+        if (auth.isAuthenticated && auth.username) {
+            authStatusDiv.innerHTML = `✅ GitHub: ${auth.username} | <button id="syncSaveBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">💾 Синхр.</button>`;
+            const syncBtn = document.getElementById('syncSaveBtn');
+            if (syncBtn) {
+                syncBtn.onclick = () => {
+                    auth.syncSave();
+                };
+            }
+        } else {
+            authStatusDiv.innerHTML = `🔒 Не авторизован | <button id="manualLoginBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">Войти через GitHub</button>`;
+            const loginBtn = document.getElementById('manualLoginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = () => { tokenModal.style.display = 'flex'; };
+            }
+        }
+    }
+
+    githubLoginBtn.onclick = () => { tokenModal.style.display = 'flex'; };
+    cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
+    logoutGithubBtn.onclick = () => {
+        auth.logout();
+        tokenModal.style.display = 'none';
+        updateAuthUI();
+        window.location.reload();
+    };
+    submitTokenBtn.onclick = async () => {
+        const token = githubTokenInput.value.trim();
+        if (!token) { alert('Введите токен'); return; }
+        submitTokenBtn.disabled = true;
+        submitTokenBtn.textContent = 'Проверка...';
+        try {
+            await auth.register(token);
+            await auth.syncLoad();
+            tokenModal.style.display = 'none';
+            githubTokenInput.value = '';
+            updateAuthUI();
+            alert(`Добро пожаловать, ${auth.username}! Прогресс загружен.`);
+        } catch(err) {
+            alert('Ошибка: ' + err.message);
+        } finally {
+            submitTokenBtn.disabled = false;
+            submitTokenBtn.textContent = '✅ Зарегистрироваться / Войти';
+        }
+    };
+
+    // Автоматическая синхронизация каждые 30 секунд
+    setInterval(() => {
+        if (auth.isAuthenticated) {
+            auth.syncSave().catch(console.warn);
+        }
+    }, 30000);
+
+    updateAuthUI();
+
+    // Глобальный toast (для уведомлений)
+    window.showToast = function(msg, duration = 3000) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-msg';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), duration);
+    };
 })();

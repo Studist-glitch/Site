@@ -9,6 +9,24 @@
 <body>
     <canvas id="bgCanvas"></canvas>
 
+    <!-- Авторизация через GitHub -->
+    <div class="auth-bar">
+        <button id="githubLoginBtn" class="mini-games-float" style="bottom:70px; right:10px; width:auto; border-radius:20px; padding:0 12px;">🔑 GitHub</button>
+        <div id="authStatus" style="position:fixed; bottom:10px; left:10px; z-index:200; font-size:0.7rem; background:rgba(0,0,0,0.6); padding:4px 8px; border-radius:16px; backdrop-filter:blur(4px);"></div>
+    </div>
+
+    <!-- Модальное окно ввода токена -->
+    <div id="tokenModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:350px;">
+            <h3>🔐 Регистрация через GitHub токен</h3>
+            <p style="font-size:0.7rem; margin-bottom:6px;">Введите ваш <strong>классический токен</strong> GitHub<br>с правами <strong>`gist`</strong> и <strong>`user`</strong></p>
+            <input type="password" id="githubTokenInput" placeholder="ghp_..." style="width:100%; padding:8px; margin-bottom:12px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
+            <button id="submitTokenBtn" class="game-btn" style="margin-bottom:6px;">✅ Зарегистрироваться / Войти</button>
+            <button id="cancelTokenBtn" class="back-btn">Отмена</button>
+            <button id="logoutGithubBtn" class="back-btn" style="margin-top:8px;">🚪 Выйти</button>
+        </div>
+    </div>
+
     <div class="container">
         <h1>
             <span class="line">STARVE</span>
@@ -68,6 +86,7 @@
         <div class="modal-content" id="modalInner"></div>
     </div>
 
+    <script src="js/github-auth.js"></script>
     <script src="js/clicker.js"></script>
     <script src="js/tetris.js"></script>
     <script src="js/snake.js"></script>

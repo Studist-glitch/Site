@@ -200,6 +200,81 @@ window.clicker = {
         } catch(e) {}
     },
 
+    // --- Методы экспорта/импорта для GitHub синхронизации ---
+    exportState: function() {
+        const upgradesLevels = {};
+        for (let key in this.upgrades) {
+            upgradesLevels[key] = this.upgrades[key].level;
+        }
+        return {
+            score: this.score,
+            perClick: this.perClick,
+            perSec: this.perSec,
+            critChance: this.critChance,
+            critMult: this.critMult,
+            doubleClickChance: this.doubleClickChance,
+            maxCombo: this.maxCombo,
+            comboMultiplier: this.comboMultiplier,
+            poisonDps: this.poisonDps,
+            meteorActive: this.meteorActive,
+            meteorInterval: this.meteorInterval,
+            cloneActive: this.cloneActive,
+            bankPercent: this.bankPercent,
+            tickRate: this.tickRate,
+            magnetFieldActive: this.magnetFieldActive,
+            magnetPercent: this.magnetPercent,
+            magnetInterval: this.magnetInterval,
+            bossBounty: this.bossBounty,
+            quantumActive: this.quantumActive,
+            blackHoleActive: this.blackHoleActive,
+            stats: { ...this.stats },
+            prestige: { ...this.prestige },
+            upgrades: upgradesLevels
+        };
+    },
+
+    importState: function(state) {
+        if (!state) return;
+        this.score = state.score || 0;
+        this.perClick = state.perClick || 1;
+        this.perSec = state.perSec || 0;
+        this.critChance = state.critChance || 0.1;
+        this.critMult = state.critMult || 2;
+        this.doubleClickChance = state.doubleClickChance || 0;
+        this.maxCombo = state.maxCombo || 0;
+        this.comboMultiplier = state.comboMultiplier || 0;
+        this.poisonDps = state.poisonDps || 0;
+        this.meteorActive = state.meteorActive || false;
+        this.meteorInterval = state.meteorInterval || 15;
+        this.cloneActive = state.cloneActive || false;
+        this.bankPercent = state.bankPercent || 0;
+        this.tickRate = state.tickRate || 1000;
+        this.magnetFieldActive = state.magnetFieldActive || false;
+        this.magnetPercent = state.magnetPercent || 0;
+        this.magnetInterval = state.magnetInterval || 15;
+        this.bossBounty = state.bossBounty || 1;
+        this.quantumActive = state.quantumActive || false;
+        this.blackHoleActive = state.blackHoleActive || false;
+        if (state.stats) this.stats = { ...state.stats };
+        if (state.prestige) this.prestige = { ...state.prestige };
+        if (state.upgrades) {
+            for (let key in state.upgrades) {
+                if (this.upgrades[key]) this.upgrades[key].level = state.upgrades[key];
+            }
+        }
+        // Переприменяем эффекты улучшений
+        for (let key in this.upgrades) {
+            const up = this.upgrades[key];
+            for (let i = 1; i <= up.level; i++) {
+                up.effect(i);
+            }
+        }
+        if (this.tickIntervalId) clearInterval(this.tickIntervalId);
+        this.tickIntervalId = setInterval(() => this.autoTick(), this.tickRate);
+        this.updateUI();
+        this.save();
+    },
+
     handleClick: function(event) {
         if (this.comboTimer) clearTimeout(this.comboTimer);
         this.combo++;
@@ -246,8 +321,6 @@ window.clicker = {
                 this.updateBossUI();
                 bossDefeated = true;
                 this.screenFlash();
-                // Тряска экрана УДАЛЕНА, чтобы меню не съезжало
-                // this.screenShake();
             }
         }
 
@@ -351,10 +424,6 @@ window.clicker = {
         setTimeout(() => flash.remove(), 400);
     },
 
-    screenShake: function() { // оставлено для совместимости, но не используется
-        // intentionally empty to avoid shaking
-    },
-
     spawnClickParticles: function(amount, bossDefeated) {
         const btn = document.getElementById('clickerBtn');
         if (!btn) return;
@@ -444,7 +513,6 @@ window.clicker = {
                 this.addEvent(`Босс ${this.boss.name} уничтожен! +${reward}💎`);
                 this.boss.active = false;
                 this.screenFlash();
-                // this.screenShake();
             }
             this.updateBossUI();
         } else {
@@ -460,7 +528,6 @@ window.clicker = {
                 this.addEvent(`Яд добил босса! +${reward}💎`);
                 this.boss.active = false;
                 this.screenFlash();
-                // this.screenShake();
             }
             this.updateBossUI();
         }

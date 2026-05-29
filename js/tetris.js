@@ -43,6 +43,9 @@ window.tetris = {
     comboMultiplier: [1],
     bonusBlocks: [],
 
+    // Флаг: используется ли одиночный режим (с улучшениями) или мультиплеер (без улучшений)
+    singlePlayerMode: true,
+
     loadUpgrades: function() {
         try {
             const saved = localStorage.getItem('tetrisUpgrades');
@@ -67,6 +70,7 @@ window.tetris = {
     },
 
     saveUpgrades: function() {
+        if (!this.singlePlayerMode) return; // в мультиплеере не сохраняем
         try {
             localStorage.setItem('tetrisUpgrades', JSON.stringify(this.upgrades));
             localStorage.setItem('tetrisCurrency', this.currency);
@@ -75,15 +79,26 @@ window.tetris = {
 
     getAllPieces: function() {
         let pieces = this.BASE_PIECES.slice();
-        for (let i = 0; i < this.upgrades.pieceSet && i < this.EXTRA_SETS.length; i++) {
-            pieces = pieces.concat(this.EXTRA_SETS[i]);
+        if (this.singlePlayerMode) {
+            for (let i = 0; i < this.upgrades.pieceSet && i < this.EXTRA_SETS.length; i++) {
+                pieces = pieces.concat(this.EXTRA_SETS[i]);
+            }
         }
         return pieces;
     },
 
     init: function(players) {
-        this.loadUpgrades();
         this.players = players;
+        this.singlePlayerMode = (players === 1);
+        
+        if (this.singlePlayerMode) {
+            this.loadUpgrades();
+        } else {
+            // В мультиплеере сбрасываем улучшения и валюту
+            this.upgrades = this.defaultUpgrades();
+            this.currency = 0;
+        }
+
         this.boards = [];
         this.pieces = [];
         this.holdPieces = [];
@@ -98,13 +113,13 @@ window.tetris = {
         this.comboMultiplier = [];
         this.bonusBlocks = [];
 
-        if (this.upgrades.abilityPower >= 1) {
+        if (this.singlePlayerMode && this.upgrades.abilityPower >= 1) {
             this.abilities.push({ name: 'Молния', key: 'lightning', cooldown: Math.max(6, 12 - this.upgrades.abilityPower * 2) });
         }
-        if (this.upgrades.abilityPower >= 2) {
+        if (this.singlePlayerMode && this.upgrades.abilityPower >= 2) {
             this.abilities.push({ name: 'Заморозка', key: 'freeze', cooldown: 16 - this.upgrades.abilityPower });
         }
-        if (this.upgrades.abilityPower >= 3) {
+        if (this.singlePlayerMode && this.upgrades.abilityPower >= 3) {
             this.abilities.push({ name: 'Очистка', key: 'clear', cooldown: 22 - this.upgrades.abilityPower * 3 });
         }
 
@@ -129,17 +144,22 @@ window.tetris = {
         const blockSize = players === 1 ? 18 : 15;
         this.drawAll(blockSize);
         const baseInterval = 500;
-        const interval = Math.min(800, baseInterval + this.upgrades.speed * 50);
+        let interval = baseInterval;
+        if (this.singlePlayerMode) {
+            interval = Math.min(800, baseInterval + this.upgrades.speed * 50);
+        }
         this.interval = setInterval(() => this.tick(blockSize), interval);
         this.active = true;
     },
 
     initBoard: function() {
         const board = Array(this.ROWS).fill().map(() => Array(this.COLS).fill(0));
-        const rows = this.upgrades.startRows * 2;
-        for (let r = this.ROWS - rows; r < this.ROWS; r++) {
-            for (let c = 0; c < this.COLS; c++) {
-                board[r][c] = '#555';
+        if (this.singlePlayerMode) {
+            const rows = this.upgrades.startRows * 2;
+            for (let r = this.ROWS - rows; r < this.ROWS; r++) {
+                for (let c = 0; c < this.COLS; c++) {
+                    board[r][c] = '#555';
+                }
             }
         }
         return board;
@@ -147,7 +167,8 @@ window.tetris = {
 
     randomPiece: function() {
         const allPieces = this.getAllPieces();
-        const specialChance = this.upgrades.specialChance * 0.05;
+        let specialChance = 0;
+        if (this.singlePlayerMode) specialChance = this.upgrades.specialChance * 0.05;
         if (Math.random() < specialChance && this.SPECIAL_PIECES.length > 0) {
             const sp = this.SPECIAL_PIECES[Math.floor(Math.random() * this.SPECIAL_PIECES.length)];
             return {
@@ -206,7 +227,7 @@ window.tetris = {
             });
         }
 
-        if (this.upgrades.ghostPiece && piece && !this.clearingLines[playerIdx]) {
+        if (this.singlePlayerMode && this.upgrades.ghostPiece && piece && !this.clearingLines[playerIdx]) {
             const ghostY = this.getDropY(board, piece);
             if (ghostY !== piece.y) {
                 piece.shape.forEach((row, dy) => {
@@ -369,13 +390,10 @@ window.tetris = {
     },
 
     finishClear: function(lines, board, playerIdx) {
-        // Сортируем линии по убыванию, чтобы удалять снизу вверх
         const sortedLines = [...lines].sort((a,b) => b - a);
         
-        // Удаляем бонусные блоки, находящиеся на удаляемых линиях
         this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].filter(b => !sortedLines.includes(b.y));
         
-        // Сдвигаем бонусные блоки, которые находятся выше удалённых линий
         for (let r of sortedLines) {
             this.bonusBlocks[playerIdx] = this.bonusBlocks[playerIdx].map(b => {
                 if (b.y < r) return { ...b, y: b.y + 1 };
@@ -383,15 +401,17 @@ window.tetris = {
             });
         }
         
-        // Удаляем строки из доски
         for (let r of sortedLines) {
             board.splice(r, 1);
             board.unshift(Array(this.COLS).fill(0));
         }
         
-        const base = lines.length * 100 * this.comboMultiplier[playerIdx];
-        const mult = 1 + this.upgrades.lineBonus * 0.2;
-        this.scores[playerIdx] += Math.floor(base * mult);
+        let base = lines.length * 100 * this.comboMultiplier[playerIdx];
+        if (this.singlePlayerMode) {
+            const mult = 1 + this.upgrades.lineBonus * 0.2;
+            base = Math.floor(base * mult);
+        }
+        this.scores[playerIdx] += base;
         
         this.clearingLines[playerIdx] = false;
         
@@ -399,8 +419,7 @@ window.tetris = {
         const el = document.getElementById(elId);
         if (el) el.textContent = (this.players === 1 ? 'Счёт: ' : `Игрок ${playerIdx+1}: `) + this.scores[playerIdx];
         
-        // Шанс появления бонусного блока
-        if (Math.random() < 0.05 + this.comboCnt[playerIdx] * 0.02) {
+        if (this.singlePlayerMode && Math.random() < 0.05 + this.comboCnt[playerIdx] * 0.02) {
             this.placeBonusBlock(board, playerIdx);
         }
     },
@@ -419,7 +438,8 @@ window.tetris = {
     },
 
     hold: function(playerIdx, blockSize) {
-        if (!this.active || this.clearingLines[playerIdx] || !this.upgrades.holdPiece) return;
+        if (!this.active || this.clearingLines[playerIdx]) return;
+        if (this.singlePlayerMode && !this.upgrades.holdPiece) return;
         if (!this.canHold[playerIdx]) return;
         const current = this.pieces[playerIdx];
         const held = this.holdPieces[playerIdx];
@@ -499,7 +519,7 @@ window.tetris = {
                 this.move(i, 0, 1, blockSize);
             }
         }
-        if (this.players === 1) {
+        if (this.players === 1 && this.singlePlayerMode) {
             this._cdTick = (this._cdTick||0)+1;
             const tickTime = Math.min(800, 500 + this.upgrades.speed * 50);
             if (this._cdTick >= Math.round(1000 / tickTime)) {
@@ -512,7 +532,7 @@ window.tetris = {
     },
 
     useAbility: function(playerIdx, key, blockSize) {
-        if (!this.active || this.clearingLines[playerIdx] || !this.abilities) return;
+        if (!this.active || this.clearingLines[playerIdx] || !this.singlePlayerMode) return;
         const cd = this.abilityCooldowns[playerIdx][key];
         if (cd > 0) return;
         const ability = this.abilities.find(a => a.key === key);
@@ -549,7 +569,7 @@ window.tetris = {
         clearInterval(this.interval);
         this.clearTimers.forEach(t => clearInterval(t));
         this.freezeTimers.forEach(t => clearTimeout(t));
-        if (this.players === 1) {
+        if (this.players === 1 && this.singlePlayerMode) {
             this.currency += this.scores[0];
             this.saveUpgrades();
             if (this.onGameOver) this.onGameOver();
@@ -569,6 +589,7 @@ window.tetris = {
     },
 
     showShop: function() {
+        if (!this.singlePlayerMode) return;
         const self = this;
         const render = () => {
             const modalInner = document.getElementById('modalInner');
@@ -615,5 +636,27 @@ window.tetris = {
             document.getElementById('backToTetrisMenu').onclick = () => document.dispatchEvent(new CustomEvent('openMiniGamesMenu'));
         };
         render();
+    },
+
+    // --- Методы экспорта/импорта для GitHub ---
+    exportState: function() {
+        if (!this.singlePlayerMode) return { currency: 0, upgrades: this.defaultUpgrades() };
+        return {
+            currency: this.currency,
+            upgrades: { ...this.upgrades }
+        };
+    },
+
+    importState: function(state) {
+        if (!state || !this.singlePlayerMode) return;
+        this.currency = state.currency || 0;
+        if (state.upgrades) {
+            for (let k in state.upgrades) {
+                if (this.upgrades.hasOwnProperty(k)) {
+                    this.upgrades[k] = state.upgrades[k];
+                }
+            }
+        }
+        this.saveUpgrades();
     }
 };
