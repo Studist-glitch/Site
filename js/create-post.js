@@ -1,20 +1,22 @@
 // js/create-post.js
 
 (function() {
-    const modal = document.getElementById('createPostModal');
+    // Элементы для создания поста
+    const createModal = document.getElementById('createPostModal');
     const editModal = document.getElementById('editPostModal');
-    const openBtn = document.getElementById('openCreatePostModal');
+    const openCreateBtn = document.getElementById('openCreatePostModal');
     const closeCreateBtn = document.getElementById('closeCreatePostModal');
     const closeEditBtn = document.getElementById('closeEditPostModal');
     const createForm = document.getElementById('createPostForm');
     const editForm = document.getElementById('editPostForm');
-    const statusDiv = document.getElementById('postCreationStatus');
-    const editStatusDiv = document.getElementById('editPostStatus');
+    const createStatus = document.getElementById('postCreationStatus');
+    const editStatus = document.getElementById('editPostStatus');
     const wrapper = document.getElementById('createPostBtnWrapper');
-    
+
     let currentEditIssueNumber = null;
 
     function updateCreatePostButtonVisibility() {
+        if (!wrapper) return;
         if (window.GitHubAuth && window.GitHubAuth.isAuthenticated && window.GitHubAuth.token) {
             wrapper.style.display = 'block';
         } else {
@@ -23,23 +25,27 @@
     }
 
     function openCreateModal() {
-        if (!modal) return;
-        modal.style.display = 'flex';
-        if (statusDiv) statusDiv.innerHTML = '';
-        if (createForm) createForm.reset();
+        if (createModal) {
+            createModal.style.display = 'flex';
+            if (createStatus) createStatus.innerHTML = '';
+            if (createForm) createForm.reset();
+        }
     }
 
     function closeCreateModal() {
-        if (modal) modal.style.display = 'none';
+        if (createModal) createModal.style.display = 'none';
     }
 
     function openEditModal(issueNumber, title, body, labels) {
         if (!editModal) return;
         currentEditIssueNumber = issueNumber;
-        document.getElementById('editPostTitle').value = title;
-        document.getElementById('editPostBody').value = body;
-        document.getElementById('editPostLabels').value = labels;
-        if (editStatusDiv) editStatusDiv.innerHTML = '';
+        const titleInput = document.getElementById('editPostTitle');
+        const bodyInput = document.getElementById('editPostBody');
+        const labelsInput = document.getElementById('editPostLabels');
+        if (titleInput) titleInput.value = title;
+        if (bodyInput) bodyInput.value = body;
+        if (labelsInput) labelsInput.value = labels;
+        if (editStatus) editStatus.innerHTML = '';
         editModal.style.display = 'flex';
     }
 
@@ -86,52 +92,68 @@
         return await response.json();
     }
 
-    createForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('postTitle').value.trim();
-        const body = document.getElementById('postBody').value.trim();
-        const labelsInput = document.getElementById('postLabels').value.trim();
-        let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
-        if (!title || !body) {
-            statusDiv.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
-            return;
-        }
-        statusDiv.innerHTML = '<span>⏳ Публикация...</span>';
-        try {
-            await createIssue(title, body, labelsArray);
-            statusDiv.innerHTML = '<span style="color:#88ff88;">✅ Пост опубликован! Обновление...</span>';
-            if (window.refreshPosts) await window.refreshPosts();
-            setTimeout(closeCreateModal, 1500);
-        } catch (err) {
-            statusDiv.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
-        }
-    });
+    // Обработчик создания
+    if (createForm) {
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('postTitle')?.value.trim();
+            const body = document.getElementById('postBody')?.value.trim();
+            const labelsInput = document.getElementById('postLabels')?.value.trim();
+            let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
+            if (!title || !body) {
+                if (createStatus) createStatus.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
+                return;
+            }
+            if (createStatus) createStatus.innerHTML = '<span>⏳ Публикация...</span>';
+            try {
+                await createIssue(title, body, labelsArray);
+                if (createStatus) createStatus.innerHTML = '<span style="color:#88ff88;">✅ Пост опубликован! Обновление...</span>';
+                if (window.refreshPosts) await window.refreshPosts();
+                setTimeout(closeCreateModal, 1500);
+            } catch (err) {
+                if (createStatus) createStatus.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
+            }
+        });
+    }
 
-    editForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!currentEditIssueNumber) return;
-        const title = document.getElementById('editPostTitle').value.trim();
-        const body = document.getElementById('editPostBody').value.trim();
-        const labelsInput = document.getElementById('editPostLabels').value.trim();
-        let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
-        if (!title || !body) {
-            editStatusDiv.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
-            return;
-        }
-        editStatusDiv.innerHTML = '<span>⏳ Сохранение...</span>';
-        try {
-            await updateIssue(currentEditIssueNumber, title, body, labelsArray);
-            editStatusDiv.innerHTML = '<span style="color:#88ff88;">✅ Пост обновлён! Обновление...</span>';
-            if (window.refreshPosts) await window.refreshPosts();
-            setTimeout(closeEditModal, 1500);
-        } catch (err) {
-            editStatusDiv.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
-        }
-    });
+    // Обработчик редактирования
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentEditIssueNumber) return;
+            const title = document.getElementById('editPostTitle')?.value.trim();
+            const body = document.getElementById('editPostBody')?.value.trim();
+            const labelsInput = document.getElementById('editPostLabels')?.value.trim();
+            let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
+            if (!title || !body) {
+                if (editStatus) editStatus.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
+                return;
+            }
+            if (editStatus) editStatus.innerHTML = '<span>⏳ Сохранение...</span>';
+            try {
+                await updateIssue(currentEditIssueNumber, title, body, labelsArray);
+                if (editStatus) editStatus.innerHTML = '<span style="color:#88ff88;">✅ Пост обновлён! Обновление...</span>';
+                if (window.refreshPosts) await window.refreshPosts();
+                setTimeout(closeEditModal, 1500);
+            } catch (err) {
+                if (editStatus) editStatus.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
+            }
+        });
+    }
 
-    // Глобальный вызов для открытия модалки редактирования
+    // Глобальная функция для открытия модалки редактирования
     window.openEditPostModal = openEditModal;
 
+    // Навешиваем обработчики открытия/закрытия, если элементы существуют
+    if (openCreateBtn) openCreateBtn.addEventListener('click', openCreateModal);
+    if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeCreateModal);
+    if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
+    window.addEventListener('click', (e) => {
+        if (e.target === createModal) closeCreateModal();
+        if (e.target === editModal) closeEditModal();
+    });
+
+    // Отслеживание авторизации
     if (window.GitHubAuth) {
         updateCreatePostButtonVisibility();
         const originalRegister = window.GitHubAuth.register;
@@ -152,12 +174,4 @@
         }
         setInterval(updateCreatePostButtonVisibility, 5000);
     }
-
-    if (openBtn) openBtn.addEventListener('click', openCreateModal);
-    if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeCreateModal);
-    if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) closeCreateModal();
-        if (e.target === editModal) closeEditModal();
-    });
 })();
