@@ -1,7 +1,7 @@
 // js/create-post.js
 
 (function() {
-    // Элементы для создания поста
+    // Элементы
     const createModal = document.getElementById('createPostModal');
     const editModal = document.getElementById('editPostModal');
     const openCreateBtn = document.getElementById('openCreatePostModal');
@@ -15,6 +15,59 @@
 
     let currentEditIssueNumber = null;
 
+    // --- Панель инструментов для вставки markdown ---
+    function setupToolbar(textareaId, toolbarId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const toolbar = document.getElementById(toolbarId);
+        if (!toolbar) return;
+
+        const insertText = (before, after, defaultText = 'текст') => {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selected = textarea.value.substring(start, end);
+            const replacement = before + (selected || defaultText) + after;
+            textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+            textarea.focus();
+            textarea.selectionStart = start + before.length;
+            textarea.selectionEnd = start + before.length + (selected || defaultText).length;
+        };
+
+        const commands = {
+            bold: () => insertText('**', '**', 'жирный текст'),
+            italic: () => insertText('*', '*', 'курсив'),
+            h1: () => insertText('# ', '', 'Заголовок 1'),
+            h2: () => insertText('## ', '', 'Заголовок 2'),
+            ul: () => insertText('- ', '', 'пункт списка'),
+            ol: () => insertText('1. ', '', 'пункт'),
+            link: () => {
+                const url = prompt('Введите URL:', 'https://');
+                if (url) insertText('[', `](${url})`, 'текст ссылки');
+            },
+            table: () => {
+                const tableMarkdown = `
+| Заголовок 1 | Заголовок 2 |
+|-------------|-------------|
+| Ячейка 1    | Ячейка 2    |
+| Ячейка 3    | Ячейка 4    |
+`.trim();
+                insertText('', '', tableMarkdown);
+            }
+        };
+
+        toolbar.querySelectorAll('[data-cmd]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cmd = btn.dataset.cmd;
+                if (commands[cmd]) commands[cmd]();
+            });
+        });
+    }
+
+    // --- Инициализация тулбаров для создания и редактирования ---
+    setupToolbar('postBody', 'createToolbar');
+    setupToolbar('editPostBody', 'editToolbar');
+
+    // --- Функции видимости кнопки создания ---
     function updateCreatePostButtonVisibility() {
         if (!wrapper) return;
         if (window.GitHubAuth && window.GitHubAuth.isAuthenticated && window.GitHubAuth.token) {
@@ -24,6 +77,7 @@
         }
     }
 
+    // --- Открытие/закрытие модалок ---
     function openCreateModal() {
         if (createModal) {
             createModal.style.display = 'flex';
@@ -54,6 +108,7 @@
         currentEditIssueNumber = null;
     }
 
+    // --- API вызовы ---
     async function createIssue(title, body, labelsArray) {
         const token = window.GitHubAuth.token;
         if (!token) throw new Error('Не авторизован');
@@ -92,7 +147,7 @@
         return await response.json();
     }
 
-    // Обработчик создания
+    // --- Обработчики форм ---
     if (createForm) {
         createForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -116,7 +171,6 @@
         });
     }
 
-    // Обработчик редактирования
     if (editForm) {
         editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -141,10 +195,9 @@
         });
     }
 
-    // Глобальная функция для открытия модалки редактирования
     window.openEditPostModal = openEditModal;
 
-    // Навешиваем обработчики открытия/закрытия, если элементы существуют
+    // --- Навешивание событий ---
     if (openCreateBtn) openCreateBtn.addEventListener('click', openCreateModal);
     if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeCreateModal);
     if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
@@ -153,7 +206,7 @@
         if (e.target === editModal) closeEditModal();
     });
 
-    // Отслеживание авторизации
+    // --- Авторизация ---
     if (window.GitHubAuth) {
         updateCreatePostButtonVisibility();
         const originalRegister = window.GitHubAuth.register;

@@ -318,3 +318,76 @@
     align-items: center;
     gap: 0.5rem;
 }
+/* Панель инструментов Markdown */
+.markdown-toolbar {
+    background: rgba(20, 22, 28, 0.9);
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 0.3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+.markdown-toolbar button {
+    background: rgba(196, 78, 255, 0.15);
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    color: #c44eff;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+.markdown-toolbar button:hover {
+    background: rgba(196, 78, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Модальное окно просмотра поста */
+.view-post-modal {
+    max-width: 750px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+.view-post-body {
+    margin-top: 1rem;
+    line-height: 1.6;
+}
+.view-post-body h1, .view-post-body h2, .view-post-body h3 {
+    color: #c44eff;
+    margin: 0.8rem 0 0.5rem;
+}
+.view-post-body p {
+    margin-bottom: 0.8rem;
+}
+.view-post-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+.view-post-body th, .view-post-body td {
+    border: 1px solid rgba(196,78,255,0.3);
+    padding: 0.5rem;
+}
+.view-post-body th {
+    background: rgba(196,78,255,0.2);
+}
+.view-post-body a {
+    color: #ffaa44;
+    text-decoration: none;
+}
+.view-post-body a:hover {
+    text-decoration: underline;
+}
+
+/* Стили для заголовка поста как ссылки */
+.post-title-link {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.post-title-link:hover {
+    color: #c44eff;
+    text-decoration: underline;
+}

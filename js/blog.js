@@ -24,34 +24,30 @@ let currentPage = 1;
 let currentCategory = 'all';
 let totalPages = 0;
 
+// Модалка просмотра поста
+let viewModal = null;
+let viewModalContent = null;
+
 /**
- * Рендеринг Markdown в HTML с поддержкой таблиц
- * Если подключена библиотека marked, используем её, иначе простой парсер таблиц.
+ * Рендеринг Markdown в HTML с поддержкой таблиц (используем marked)
  */
 function renderMarkdown(markdown) {
     if (!markdown) return '';
     if (typeof marked !== 'undefined') {
-        // Используем marked.js с поддержкой таблиц (включена по умолчанию)
         return marked.parse(markdown);
     }
-    // Встроенный простой парсер для таблиц (базовый)
     return simpleMarkdownParser(markdown);
 }
 
 function simpleMarkdownParser(md) {
-    // Сначала обрабатываем таблицы: ищем блоки вида | ... | ... |
     const lines = md.split('\n');
     let inTable = false;
     let tableRows = [];
     let result = '';
-    
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.startsWith('|') && line.endsWith('|')) {
-            if (!inTable) {
-                inTable = true;
-                tableRows = [];
-            }
+            if (!inTable) { inTable = true; tableRows = []; }
             tableRows.push(line);
             continue;
         } else {
@@ -60,7 +56,6 @@ function simpleMarkdownParser(md) {
                 inTable = false;
                 tableRows = [];
             }
-            // Обработка обычного текста (базовые Markdown элементы)
             let htmlLine = line
                 .replace(/^# (.*)$/, '<h1>$1</h1>')
                 .replace(/^## (.*)$/, '<h2>$1</h2>')
@@ -70,26 +65,21 @@ function simpleMarkdownParser(md) {
                 .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
                 .replace(/^- (.*)$/gm, '<li>$1</li>')
                 .replace(/^\d+\. (.*)$/gm, '<li>$1</li>');
-            if (htmlLine.match(/<li>/)) {
-                htmlLine = '<ul>' + htmlLine + '</ul>';
-            }
+            if (htmlLine.match(/<li>/)) htmlLine = '<ul>' + htmlLine + '</ul>';
             result += htmlLine + (line === '' ? '' : '<br>');
         }
     }
-    if (inTable && tableRows.length) {
-        result += renderSimpleTable(tableRows);
-    }
+    if (inTable && tableRows.length) result += renderSimpleTable(tableRows);
     return result;
 }
 
 function renderSimpleTable(rows) {
     if (!rows.length) return '';
-    // Определяем количество столбцов по первой строке
     const headers = rows[0].split('|').slice(1, -1).map(h => h.trim());
     let html = '<table class="markdown-table"><thead><tr>';
     headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
     html += '</tr></thead><tbody>';
-    for (let i = 2; i < rows.length; i++) { // пропускаем строку с разделителями ---
+    for (let i = 2; i < rows.length; i++) {
         const cells = rows[i].split('|').slice(1, -1).map(c => c.trim());
         html += '<tr>';
         cells.forEach(cell => html += `<td>${escapeHtml(cell)}</td>`);
@@ -191,10 +181,7 @@ function renderPostsForCurrentPage() {
             labelsHtml += '</div>';
         }
 
-        // Рендерим тело поста в HTML (с таблицами)
         const renderedBody = renderMarkdown(post.body || '');
-        
-        // Обрезаем для превью (первые 400 символов текста, без HTML-тегов)
         let excerpt = renderedBody.replace(/<[^>]*>/g, '').slice(0, 300);
         if (excerpt.length >= 300) excerpt += '...';
 
@@ -204,7 +191,7 @@ function renderPostsForCurrentPage() {
         postsHtml += `
             <article class="post-card" data-issue-id="${post.number}">
                 <div class="post-card-header">
-                    <h3 class="post-title">${escapeHtml(post.title)}</h3>
+                    <h3 class="post-title post-title-link" data-issue-number="${post.number}">${escapeHtml(post.title)}</h3>
                     <div class="post-meta">
                         <span class="post-date">📅 ${formattedDate}</span>
                         <span class="post-author">✍️ ${escapeHtml(post.user.login)}</span>
@@ -215,7 +202,7 @@ function renderPostsForCurrentPage() {
                     <p>${excerpt}</p>
                 </div>
                 <div class="post-card-footer">
-                    <a href="${post.html_url}" class="read-more-btn" target="_blank" rel="noopener noreferrer">Читать полностью →</a>
+                    <button class="read-more-btn" data-issue-number="${post.number}">Читать полностью →</button>
                     ${editButton}
                 </div>
             </article>
@@ -223,7 +210,14 @@ function renderPostsForCurrentPage() {
     }
     postsContainer.innerHTML = postsHtml;
 
-    // Добавляем обработчики для кнопок редактирования
+    // Обработчики для кнопок "Читать далее" и заголовков
+    document.querySelectorAll('.read-more-btn, .post-title-link').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const issueNumber = el.dataset.issueNumber;
+            if (issueNumber) openPostModal(issueNumber);
+        });
+    });
+
     document.querySelectorAll('.edit-post-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const issueNumber = btn.dataset.issueNumber;
@@ -262,6 +256,65 @@ function renderPaginationControls() {
             }
         });
     });
+}
+
+/**
+ * Открывает модальное окно с полным содержимым поста
+ */
+async function openPostModal(issueNumber) {
+    // Ищем пост в уже загруженных
+    let post = allPosts.find(p => p.number == issueNumber);
+    if (!post) {
+        // Если нет, загружаем отдельно
+        try {
+            const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issueNumber}`, {
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
+            if (!response.ok) throw new Error('Пост не найден');
+            post = await response.json();
+        } catch (err) {
+            console.error(err);
+            return;
+        }
+    }
+
+    if (!viewModal) {
+        // Создаём модальное окно, если его нет
+        viewModal = document.createElement('div');
+        viewModal.id = 'viewPostModal';
+        viewModal.className = 'modal-overlay';
+        viewModal.style.display = 'none';
+        viewModal.innerHTML = `
+            <div class="modal-content view-post-modal">
+                <div id="viewPostContent"></div>
+                <button id="closeViewPostModal" class="back-btn" style="margin-top:1rem;">Закрыть</button>
+            </div>
+        `;
+        document.body.appendChild(viewModal);
+        viewModalContent = document.getElementById('viewPostContent');
+        const closeBtn = document.getElementById('closeViewPostModal');
+        closeBtn.addEventListener('click', () => viewModal.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === viewModal) viewModal.style.display = 'none'; });
+    }
+
+    const publishDate = new Date(post.created_at);
+    const formattedDate = publishDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    let labelsHtml = '';
+    if (post.labels && post.labels.length) {
+        labelsHtml = '<div class="post-labels">' + post.labels.map(label => `<span class="post-label">${escapeHtml(CATEGORY_LABELS[label.name] || label.name)}</span>`).join('') + '</div>';
+    }
+    const fullHtml = renderMarkdown(post.body || '');
+
+    viewModalContent.innerHTML = `
+        <h2>${escapeHtml(post.title)}</h2>
+        <div class="post-meta">
+            <span>📅 ${formattedDate}</span>
+            <span>✍️ ${escapeHtml(post.user.login)}</span>
+        </div>
+        ${labelsHtml}
+        <div class="view-post-body">${fullHtml}</div>
+    `;
+    viewModal.style.display = 'flex';
 }
 
 function escapeHtml(str) {
