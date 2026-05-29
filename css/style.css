@@ -848,3 +848,27 @@ canvas {
     0% { transform: scale(1); opacity: 1; }
     100% { transform: scale(2.5); opacity: 0; }
 }
+
+/* Стили для кнопки создания поста */
+.create-post-wrapper {
+    margin-bottom: 1rem;
+}
+
+/* Стили для модального окна создания поста */
+#createPostModal .modal-content {
+    background: #12121a;
+    border: 2px solid #c44eff;
+    box-shadow: 0 0 25px rgba(196,78,255,0.3);
+}
+#createPostForm input, #createPostForm textarea {
+    font-family: inherit;
+}
+#createPostForm button {
+    transition: all 0.2s;
+}
+#createPostForm button:active {
+    transform: scale(0.97);
+}
+#postCreationStatus {
+    text-align: center;
+}

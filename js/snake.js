@@ -48,6 +48,7 @@ window.snake = {
     onGameOver: null,
 
     loadUpgrades: function() {
+        // Гарантируем, что upgrades всегда объект
         if (!this.upgrades) this.upgrades = this.defaultUpgrades();
         if (!this.singlePlayerMode) {
             this.upgrades = this.defaultUpgrades();
@@ -686,6 +687,8 @@ window.snake = {
 
     showShop: function() {
         if (!this.singlePlayerMode) return;
+        // Убедимся, что upgrades загружены
+        this.loadUpgrades();
         const self = this;
         const render = () => {
             const modalInner = document.getElementById('modalInner');
