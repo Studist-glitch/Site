@@ -15,60 +15,197 @@
 
     let currentEditIssueNumber = null;
 
-    // ---------- Функция для вставки таблицы в текущую позицию курсора ----------
-    function insertTableInTextarea(textareaId) {
+    // ---------- Визуальный редактор таблиц (заменяет старый диалог) ----------
+    function openTableEditor(textareaId) {
         const textarea = document.getElementById(textareaId);
         if (!textarea) return;
 
-        // Создаём диалог для ввода размеров таблицы
-        const dialog = document.createElement('div');
-        dialog.className = 'modal-overlay';
-        dialog.style.display = 'flex';
-        dialog.style.position = 'fixed';
-        dialog.style.top = '0';
-        dialog.style.left = '0';
-        dialog.style.zIndex = '10001';
-        dialog.innerHTML = `
-            <div class="modal-content" style="max-width: 350px;">
-                <h4>Вставить таблицу</h4>
-                <label>Строки: <input type="number" id="tableRows" min="1" max="20" value="3"></label>
-                <label>Столбцы: <input type="number" id="tableCols" min="1" max="10" value="3"></label>
-                <div style="display: flex; gap: 10px; margin-top: 1rem;">
-                    <button id="insertTableConfirm" class="game-btn">Вставить</button>
-                    <button id="insertTableCancel" class="back-btn">Отмена</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(dialog);
+        // Начальные размеры: 3 строки, 3 столбца
+        let rows = 3, cols = 3;
+        let tableData = Array(rows).fill().map(() => Array(cols).fill(''));
 
-        const confirmBtn = dialog.querySelector('#insertTableConfirm');
-        const cancelBtn = dialog.querySelector('#insertTableCancel');
-        const rowsInput = dialog.querySelector('#tableRows');
-        const colsInput = dialog.querySelector('#tableCols');
+        // Функция перестроения таблицы по данным
+        function rebuildTable(container) {
+            container.innerHTML = '';
+            const table = document.createElement('table');
+            table.className = 'visual-table-editor';
 
-        const closeDialog = () => dialog.remove();
-
-        confirmBtn.onclick = () => {
-            const rows = parseInt(rowsInput.value) || 3;
-            const cols = parseInt(colsInput.value) || 3;
-            let tableMd = '';
-            // Заголовок
-            for (let c = 0; c < cols; c++) tableMd += `| Столбец ${c+1} `;
-            tableMd += '|\n|' + Array(cols).fill('---').join('|') + '|\n';
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) tableMd += `| Ячейка ${r+1}:${c+1} `;
-                tableMd += '|\n';
+            // Заголовки (только для удобства, не влияют на Markdown)
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            for (let c = 0; c < cols; c++) {
+                const th = document.createElement('th');
+                th.textContent = `Столбец ${c+1}`;
+                th.style.position = 'relative';
+                // Кнопка удаления столбца
+                const delColBtn = document.createElement('button');
+                delColBtn.textContent = '✖';
+                delColBtn.className = 'table-col-del';
+                delColBtn.style.position = 'absolute';
+                delColBtn.style.right = '2px';
+                delColBtn.style.top = '2px';
+                delColBtn.style.fontSize = '10px';
+                delColBtn.style.padding = '0 4px';
+                delColBtn.style.background = 'rgba(200,0,0,0.6)';
+                delColBtn.style.border = 'none';
+                delColBtn.style.borderRadius = '10px';
+                delColBtn.style.cursor = 'pointer';
+                delColBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (cols <= 1) return;
+                    // Удаляем столбец
+                    for (let r = 0; r < rows; r++) {
+                        tableData[r].splice(c, 1);
+                    }
+                    cols--;
+                    rebuildTable(container);
+                });
+                th.appendChild(delColBtn);
+                headerRow.appendChild(th);
             }
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            for (let r = 0; r < rows; r++) {
+                const tr = document.createElement('tr');
+                for (let c = 0; c < cols; c++) {
+                    const td = document.createElement('td');
+                    td.contentEditable = 'true';
+                    td.textContent = tableData[r][c];
+                    td.addEventListener('input', (e) => {
+                        tableData[r][c] = e.target.textContent;
+                    });
+                    tr.appendChild(td);
+                }
+                // Кнопка удаления строки
+                const delRowTd = document.createElement('td');
+                delRowTd.style.width = '30px';
+                delRowTd.style.textAlign = 'center';
+                const delRowBtn = document.createElement('button');
+                delRowBtn.textContent = '✖';
+                delRowBtn.className = 'table-row-del';
+                delRowBtn.style.background = 'rgba(200,0,0,0.6)';
+                delRowBtn.style.border = 'none';
+                delRowBtn.style.borderRadius = '12px';
+                delRowBtn.style.cursor = 'pointer';
+                delRowBtn.style.padding = '2px 6px';
+                delRowBtn.addEventListener('click', () => {
+                    if (rows <= 1) return;
+                    tableData.splice(r, 1);
+                    rows--;
+                    rebuildTable(container);
+                });
+                delRowTd.appendChild(delRowBtn);
+                tr.appendChild(delRowTd);
+                tbody.appendChild(tr);
+            }
+            table.appendChild(tbody);
+
+            container.appendChild(table);
+        }
+
+        // Создание модального окна редактора
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        modal.style.zIndex = '10001';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.style.maxWidth = '90vw';
+        modalContent.style.maxHeight = '85vh';
+        modalContent.style.overflow = 'auto';
+        modalContent.style.backgroundColor = '#12121a';
+        modalContent.style.border = '2px solid #c44eff';
+        modalContent.style.borderRadius = '12px';
+        modalContent.style.padding = '1rem';
+
+        modalContent.innerHTML = `
+            <h3 style="color:#c44eff; margin-bottom:0.8rem;">✏️ Редактор таблицы</h3>
+            <div class="table-editor-toolbar" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
+                <button type="button" id="addRowBtn" class="game-btn" style="width:auto;">➕ Добавить строку</button>
+                <button type="button" id="addColBtn" class="game-btn" style="width:auto;">➕ Добавить столбец</button>
+                <button type="button" id="clearTableBtn" class="game-btn" style="width:auto;">🗑 Очистить</button>
+                <button type="button" id="insertTableBtn" class="game-btn" style="width:auto;">✅ Вставить таблицу</button>
+                <button type="button" id="cancelTableBtn" class="back-btn" style="margin:0;">Отмена</button>
+            </div>
+            <div id="tableEditorContainer" style="overflow-x:auto;"></div>
+        `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        const container = modalContent.querySelector('#tableEditorContainer');
+        function refreshUI() {
+            rebuildTable(container);
+        }
+        refreshUI();
+
+        // Обработчики кнопок
+        modalContent.querySelector('#addRowBtn').addEventListener('click', () => {
+            rows++;
+            tableData.push(Array(cols).fill(''));
+            refreshUI();
+        });
+        modalContent.querySelector('#addColBtn').addEventListener('click', () => {
+            cols++;
+            for (let r = 0; r < rows; r++) {
+                tableData[r].push('');
+            }
+            refreshUI();
+        });
+        modalContent.querySelector('#clearTableBtn').addEventListener('click', () => {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    tableData[r][c] = '';
+                }
+            }
+            refreshUI();
+        });
+        modalContent.querySelector('#insertTableBtn').addEventListener('click', () => {
+            // Генерация Markdown
+            let md = '';
+            // Заголовок (первая строка)
+            for (let c = 0; c < cols; c++) {
+                md += `| Столбец ${c+1} `;
+            }
+            md += '|\n|' + Array(cols).fill('---').join('|') + '|\n';
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let cellText = tableData[r][c] || '';
+                    // Экранируем только опасные символы для Markdown (но оставляем возможность форматирования)
+                    cellText = cellText.replace(/\|/g, '\\|');
+                    md += `| ${cellText} `;
+                }
+                md += '|\n';
+            }
+            // Вставка в textarea
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
             const currentText = textarea.value;
-            textarea.value = currentText.substring(0, start) + '\n\n' + tableMd + '\n\n' + currentText.substring(end);
+            textarea.value = currentText.substring(0, start) + '\n\n' + md + '\n\n' + currentText.substring(end);
             textarea.focus();
-            textarea.selectionStart = start + tableMd.length + 4;
-            textarea.selectionEnd = start + tableMd.length + 4;
-            closeDialog();
-        };
-        cancelBtn.onclick = closeDialog;
+            textarea.selectionStart = start + md.length + 4;
+            textarea.selectionEnd = start + md.length + 4;
+            // Закрыть модалку
+            modal.remove();
+        });
+        modalContent.querySelector('#cancelTableBtn').addEventListener('click', () => {
+            modal.remove();
+        });
+        // Закрытие по клику на фон
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     // ---------- Панель инструментов для Markdown ----------
@@ -96,7 +233,7 @@
             ul: () => insertText('- ', '', 'пункт списка'),
             ol: () => insertText('1. ', '', 'пункт'),
             link: () => { const url = prompt('Введите URL:', 'https://'); if (url) insertText('[', `](${url})`, 'текст ссылки'); },
-            table: () => insertTableInTextarea(textareaId)
+            table: () => openTableEditor(textareaId)   // ВЫЗОВ НОВОГО РЕДАКТОРА
         };
 
         toolbar.querySelectorAll('[data-cmd]').forEach(btn => {

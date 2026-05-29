@@ -440,3 +440,65 @@
     padding: 0.2rem;
     border-radius: 3px;
 }
+/* Визуальный редактор таблиц (используется в create-post.js) */
+.table-editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    justify-content: center;
+}
+
+.visual-table-editor {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(20, 22, 28, 0.8);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.visual-table-editor th,
+.visual-table-editor td {
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    padding: 0.5rem;
+    text-align: left;
+    vertical-align: top;
+    min-width: 80px;
+}
+
+.visual-table-editor th {
+    background: rgba(196, 78, 255, 0.2);
+    color: #c44eff;
+    font-weight: 600;
+    position: relative;
+}
+
+.visual-table-editor td[contenteditable="true"] {
+    background: #1e1e2a;
+    color: #f0f0f0;
+    outline: none;
+    cursor: text;
+}
+
+.visual-table-editor td[contenteditable="true"]:focus {
+    background: #2a2a3a;
+    border-color: #c44eff;
+    box-shadow: inset 0 0 4px #c44eff;
+}
+
+.table-col-del,
+.table-row-del {
+    background: rgba(200, 60, 60, 0.8);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 10px;
+    cursor: pointer;
+    transition: 0.1s;
+}
+
+.table-col-del:hover,
+.table-row-del:hover {
+    background: #ff4444;
+    transform: scale(1.05);
+}
