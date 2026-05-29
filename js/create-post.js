@@ -2,13 +2,18 @@
 
 (function() {
     const modal = document.getElementById('createPostModal');
+    const editModal = document.getElementById('editPostModal');
     const openBtn = document.getElementById('openCreatePostModal');
-    const closeBtn = document.getElementById('closeCreatePostModal');
-    const form = document.getElementById('createPostForm');
+    const closeCreateBtn = document.getElementById('closeCreatePostModal');
+    const closeEditBtn = document.getElementById('closeEditPostModal');
+    const createForm = document.getElementById('createPostForm');
+    const editForm = document.getElementById('editPostForm');
     const statusDiv = document.getElementById('postCreationStatus');
+    const editStatusDiv = document.getElementById('editPostStatus');
     const wrapper = document.getElementById('createPostBtnWrapper');
+    
+    let currentEditIssueNumber = null;
 
-    // Показываем кнопку только если пользователь авторизован (есть токен)
     function updateCreatePostButtonVisibility() {
         if (window.GitHubAuth && window.GitHubAuth.isAuthenticated && window.GitHubAuth.token) {
             wrapper.style.display = 'block';
@@ -17,88 +22,118 @@
         }
     }
 
-    // Открыть модалку (не трогает ленту постов)
-    function openModal() {
+    function openCreateModal() {
         if (!modal) return;
         modal.style.display = 'flex';
-        statusDiv.innerHTML = '';
-        form.reset();
-        // Не перезагружаем посты, не очищаем контейнер
+        if (statusDiv) statusDiv.innerHTML = '';
+        if (createForm) createForm.reset();
     }
 
-    function closeModal() {
-        if (!modal) return;
-        modal.style.display = 'none';
-        statusDiv.innerHTML = '';
+    function closeCreateModal() {
+        if (modal) modal.style.display = 'none';
     }
 
-    // Создание Issue через GitHub API
+    function openEditModal(issueNumber, title, body, labels) {
+        if (!editModal) return;
+        currentEditIssueNumber = issueNumber;
+        document.getElementById('editPostTitle').value = title;
+        document.getElementById('editPostBody').value = body;
+        document.getElementById('editPostLabels').value = labels;
+        if (editStatusDiv) editStatusDiv.innerHTML = '';
+        editModal.style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        if (editModal) editModal.style.display = 'none';
+        currentEditIssueNumber = null;
+    }
+
     async function createIssue(title, body, labelsArray) {
         const token = window.GitHubAuth.token;
         if (!token) throw new Error('Не авторизован');
-
-        const url = `https://api.github.com/repos/Studist-glitch/Site/issues`;
-        const payload = {
-            title: title,
-            body: body,
-            labels: labelsArray
-        };
-
-        const response = await fetch(url, {
+        const response = await fetch(`https://api.github.com/repos/Studist-glitch/Site/issues`, {
             method: 'POST',
             headers: {
                 'Authorization': `token ${token}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ title, body, labels: labelsArray })
         });
         if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.message || 'Ошибка создания Issue');
+            const err = await response.json();
+            throw new Error(err.message || 'Ошибка создания Issue');
         }
         return await response.json();
     }
 
-    // Обработчик отправки формы
-    form.addEventListener('submit', async (e) => {
+    async function updateIssue(issueNumber, title, body, labelsArray) {
+        const token = window.GitHubAuth.token;
+        if (!token) throw new Error('Не авторизован');
+        const response = await fetch(`https://api.github.com/repos/Studist-glitch/Site/issues/${issueNumber}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, body, labels: labelsArray })
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Ошибка обновления Issue');
+        }
+        return await response.json();
+    }
+
+    createForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const title = document.getElementById('postTitle').value.trim();
         const body = document.getElementById('postBody').value.trim();
         const labelsInput = document.getElementById('postLabels').value.trim();
-        let labelsArray = [];
-        if (labelsInput) {
-            labelsArray = labelsInput.split(',').map(l => l.trim()).filter(l => l);
-        }
+        let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
         if (!title || !body) {
             statusDiv.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
             return;
         }
-
         statusDiv.innerHTML = '<span>⏳ Публикация...</span>';
         try {
-            const result = await createIssue(title, body, labelsArray);
-            statusDiv.innerHTML = `<span style="color:#88ff88;">✅ Пост опубликован! <a href="${result.html_url}" target="_blank" style="color:#c44eff;">Открыть на GitHub</a></span>`;
-            // Обновляем ленту постов без потери фильтров и страницы
-            if (window.refreshPosts) {
-                await window.refreshPosts();
-            } else if (window.fetchPosts) {
-                await window.fetchPosts();
-            }
-            // Закрываем модалку через 1.5 секунды
-            setTimeout(() => {
-                closeModal();
-            }, 1500);
+            await createIssue(title, body, labelsArray);
+            statusDiv.innerHTML = '<span style="color:#88ff88;">✅ Пост опубликован! Обновление...</span>';
+            if (window.refreshPosts) await window.refreshPosts();
+            setTimeout(closeCreateModal, 1500);
         } catch (err) {
-            console.error(err);
             statusDiv.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
         }
     });
 
-    // Инициализация: следим за авторизацией
+    editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentEditIssueNumber) return;
+        const title = document.getElementById('editPostTitle').value.trim();
+        const body = document.getElementById('editPostBody').value.trim();
+        const labelsInput = document.getElementById('editPostLabels').value.trim();
+        let labelsArray = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : [];
+        if (!title || !body) {
+            editStatusDiv.innerHTML = '<span style="color:#ff8888;">❌ Заполните заголовок и текст</span>';
+            return;
+        }
+        editStatusDiv.innerHTML = '<span>⏳ Сохранение...</span>';
+        try {
+            await updateIssue(currentEditIssueNumber, title, body, labelsArray);
+            editStatusDiv.innerHTML = '<span style="color:#88ff88;">✅ Пост обновлён! Обновление...</span>';
+            if (window.refreshPosts) await window.refreshPosts();
+            setTimeout(closeEditModal, 1500);
+        } catch (err) {
+            editStatusDiv.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`;
+        }
+    });
+
+    // Глобальный вызов для открытия модалки редактирования
+    window.openEditPostModal = openEditModal;
+
     if (window.GitHubAuth) {
         updateCreatePostButtonVisibility();
-        // Перехватываем регистрацию и выход для обновления видимости кнопки
         const originalRegister = window.GitHubAuth.register;
         if (originalRegister) {
             window.GitHubAuth.register = async function(...args) {
@@ -115,13 +150,14 @@
                 return result;
             };
         }
-        // Также периодически проверяем (на всякий случай)
         setInterval(updateCreatePostButtonVisibility, 5000);
     }
 
-    if (openBtn) openBtn.addEventListener('click', openModal);
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (openBtn) openBtn.addEventListener('click', openCreateModal);
+    if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeCreateModal);
+    if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
     window.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
+        if (e.target === modal) closeCreateModal();
+        if (e.target === editModal) closeEditModal();
     });
 })();

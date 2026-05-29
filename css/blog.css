@@ -271,3 +271,50 @@
         font-size: 1.6rem;
     }
 }
+
+/* Таблицы в постах */
+.markdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: rgba(30, 30, 40, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.markdown-table th,
+.markdown-table td {
+    border: 1px solid rgba(196, 78, 255, 0.3);
+    padding: 0.5rem;
+    text-align: left;
+}
+.markdown-table th {
+    background: rgba(196, 78, 255, 0.2);
+    color: #c44eff;
+    font-weight: 600;
+}
+.markdown-table td {
+    color: #d0d0e0;
+}
+
+/* Кнопка редактирования поста */
+.edit-post-btn {
+    background: rgba(255, 200, 0, 0.15);
+    border: 1px solid #ffaa44;
+    color: #ffaa44;
+    padding: 0.3rem 0.8rem;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    transition: all 0.2s;
+}
+.edit-post-btn:hover {
+    background: rgba(255, 200, 0, 0.3);
+    transform: translateY(-1px);
+}
+.post-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
