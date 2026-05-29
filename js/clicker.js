@@ -42,7 +42,7 @@ window.clicker = {
     },
     daily: {
         date: '',
-        tasks: [],
+        tasks: [],     // всегда массив
         completedToday: false
     },
     cards: [],
@@ -178,7 +178,10 @@ window.clicker = {
             this.blackHoleActive = data.blackHoleActive || false;
             this.stats = data.stats || { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 };
             if (data.prestige) this.prestige = data.prestige;
-            if (data.daily) this.daily = data.daily;
+            if (data.daily) {
+                this.daily = data.daily;
+                if (!this.daily.tasks) this.daily.tasks = [];
+            }
             if (data.cards) this.cards = data.cards;
             if (data.upgrades) {
                 for (let key in data.upgrades) {
@@ -197,10 +200,10 @@ window.clicker = {
             });
             if (this.tickIntervalId) clearInterval(this.tickIntervalId);
             this.tickIntervalId = setInterval(() => this.autoTick(), this.tickRate);
+            this.loadDaily(); // пересоздаст задания, если надо
         } catch(e) {}
     },
 
-    // --- Методы экспорта/импорта для GitHub синхронизации ---
     exportState: function() {
         const upgradesLevels = {};
         for (let key in this.upgrades) {
@@ -262,7 +265,6 @@ window.clicker = {
                 if (this.upgrades[key]) this.upgrades[key].level = state.upgrades[key];
             }
         }
-        // Переприменяем эффекты улучшений
         for (let key in this.upgrades) {
             const up = this.upgrades[key];
             for (let i = 1; i <= up.level; i++) {
@@ -340,10 +342,14 @@ window.clicker = {
 
     loadDaily: function() {
         const today = new Date().toISOString().slice(0,10);
-        if (this.daily.date !== today) {
-            this.daily.date = today;
+        if (!this.daily || this.daily.date !== today) {
+            this.daily = {
+                date: today,
+                tasks: this.generateDailyTasks(),
+                completedToday: false
+            };
+        } else if (!this.daily.tasks) {
             this.daily.tasks = this.generateDailyTasks();
-            this.daily.completedToday = false;
         }
     },
     generateDailyTasks: function() {
@@ -354,13 +360,15 @@ window.clicker = {
         ];
     },
     checkDailyTasks: function(earned) {
-        if (this.daily.completedToday) return;
-        this.daily.tasks[0].progress = Math.min(this.stats.totalClicks, this.daily.tasks[0].target);
-        this.daily.tasks[1].progress = Math.min(this.stats.bossesDefeated, this.daily.tasks[1].target);
-        this.daily.tasks[2].progress = Math.min(this.daily.tasks[2].progress + earned, this.daily.tasks[2].target);
-        if (this.daily.tasks.every(t => t.progress >= t.target)) {
+        if (!this.daily || this.daily.completedToday) return;
+        const tasks = this.daily.tasks;
+        if (!tasks || tasks.length === 0) return;
+        tasks[0].progress = Math.min(this.stats.totalClicks, tasks[0].target);
+        tasks[1].progress = Math.min(this.stats.bossesDefeated, tasks[1].target);
+        tasks[2].progress = Math.min((tasks[2].progress || 0) + earned, tasks[2].target);
+        if (tasks.every(t => t.progress >= t.target)) {
             this.daily.completedToday = true;
-            const totalReward = this.daily.tasks.reduce((s,t) => s + t.reward, 0);
+            const totalReward = tasks.reduce((s,t) => s + t.reward, 0);
             this.score += totalReward;
             this.addEvent(`🎯 Все ежедневные задания выполнены! +${totalReward}💎`);
         }

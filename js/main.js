@@ -1,4 +1,5 @@
 (function() {
+    // ---------- Фоновый канвас с частицами ----------
     const bgCanvas = document.getElementById('bgCanvas');
     const bgCtx = bgCanvas.getContext('2d');
     let particles = [];
@@ -56,6 +57,7 @@
     }
     animateBg();
 
+    // ---------- Модальное окно мини-игр ----------
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
