@@ -1,5 +1,13 @@
-// doom.js
+// js/doom.js
 window.doom = (function() {
+    // ---------- Настройки ----------
+    const DEFAULT_UPGRADES = {
+        damage: 1,      // множитель урона (1 = 35)
+        health: 1,      // множитель здоровья (1 = 100)
+        speed: 1,       // множитель скорости игрока
+        reloadSpeed: 1  // множитель скорости перезарядки (1 = 0.4 сек)
+    };
+
     class DoomGame {
         constructor(canvas) {
             this.canvas = canvas;
@@ -10,18 +18,19 @@ window.doom = (function() {
             this.animationId = null;
             this.keys = { w: false, s: false, a: false, d: false };
             this.lastAttackTime = 0;
-            this.attackCooldown = 0.4; // секунды
-
-            // Карта 8x8 (1 - стена)
+            
+            // Карта 10x10 (1 - стена)
             this.map = [
-                [1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,0,1],
-                [1,0,1,0,1,0,0,1],
-                [1,0,0,0,0,0,0,1],
-                [1,0,0,1,0,0,0,1],
-                [1,0,0,0,0,1,0,1],
-                [1,0,0,0,0,0,0,1],
-                [1,1,1,1,1,1,1,1]
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,0,1,0,1,0,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,0,0,1,0,0,1,0,0,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,0,1,0,0,1,0,0,0,1],
+                [1,0,0,0,0,0,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1]
             ];
             this.mapWidth = this.map[0].length;
             this.mapHeight = this.map.length;
@@ -33,38 +42,79 @@ window.doom = (function() {
                 dirX: 1,
                 dirY: 0,
                 planeX: 0,
-                planeY: 0.66, // FOV 66 градусов
+                planeY: 0.66,
                 health: 100,
                 maxHealth: 100
             };
             this.score = 0;
             this.enemies = [];
-            this.spawnEnemies();
-
+            this.upgrades = { ...DEFAULT_UPGRADES };
+            
             // Привязка обработчиков
             this.handleKeyDown = this.handleKeyDown.bind(this);
             this.handleKeyUp = this.handleKeyUp.bind(this);
             this.handleShoot = this.handleShoot.bind(this);
             this.restart = this.restart.bind(this);
+            
+            // Загружаем улучшения
+            this.loadUpgrades();
         }
 
+        // ---------- Работа с улучшениями и сохранением ----------
+        loadUpgrades() {
+            try {
+                const saved = localStorage.getItem('doomUpgrades');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    this.upgrades = { ...DEFAULT_UPGRADES, ...data.upgrades };
+                    this.score = data.score || 0;
+                }
+            } catch(e) {}
+            // Применяем улучшения к параметрам
+            this.player.maxHealth = Math.floor(100 * this.upgrades.health);
+            this.player.health = this.player.maxHealth;
+            this.attackCooldown = 0.4 / this.upgrades.reloadSpeed;
+        }
+        
+        saveUpgrades() {
+            try {
+                localStorage.setItem('doomUpgrades', JSON.stringify({
+                    upgrades: this.upgrades,
+                    score: this.score
+                }));
+            } catch(e) {}
+        }
+
+        // Синхронизация с GitHub (вызывается из main)
+        exportState() {
+            return {
+                upgrades: { ...this.upgrades },
+                score: this.score
+            };
+        }
+        
+        importState(state) {
+            if (!state) return;
+            this.upgrades = { ...DEFAULT_UPGRADES, ...(state.upgrades || {}) };
+            this.score = state.score || 0;
+            this.player.maxHealth = Math.floor(100 * this.upgrades.health);
+            this.player.health = this.player.maxHealth;
+            this.attackCooldown = 0.4 / this.upgrades.reloadSpeed;
+            this.saveUpgrades();
+        }
+
+        // ---------- Игровая логика ----------
         spawnEnemies() {
             this.enemies = [];
-            const positions = [
-                { x: 3.5, y: 4.5, health: 30 },
-                { x: 5.5, y: 2.5, health: 30 },
-                { x: 3.5, y: 6.5, health: 30 },
-                { x: 6.5, y: 5.5, health: 30 },
-                { x: 1.5, y: 5.5, health: 30 }
-            ];
-            for (let pos of positions) {
-                if (!this.isWall(pos.x, pos.y)) {
-                    this.enemies.push({ ...pos, health: pos.health, maxHealth: pos.health });
-                }
-            }
-            if (this.enemies.length === 0) {
-                // Запасные враги
-                this.enemies.push({ x: 4.5, y: 3.5, health: 30, maxHealth: 30 });
+            const enemyCount = 6 + Math.floor(this.score / 500);
+            for (let i = 0; i < enemyCount; i++) {
+                let x, y;
+                do {
+                    x = 1 + Math.random() * (this.mapWidth - 2);
+                    y = 1 + Math.random() * (this.mapHeight - 2);
+                } while (this.isWall(x, y) || Math.hypot(x - this.player.x, y - this.player.y) < 2);
+                const health = 30 + Math.floor(Math.random() * 30) * (this.score / 1000);
+                this.enemies.push({ x, y, health: Math.min(200, health), maxHealth: Math.min(200, health) });
             }
         }
 
@@ -84,6 +134,7 @@ window.doom = (function() {
             window.addEventListener('keydown', this.handleKeyDown);
             window.addEventListener('keyup', this.handleKeyUp);
             this.canvas.addEventListener('click', this.handleShoot);
+            this.lastTimestamp = null;
             this.updateLoop();
         }
 
@@ -93,7 +144,6 @@ window.doom = (function() {
             window.removeEventListener('keydown', this.handleKeyDown);
             window.removeEventListener('keyup', this.handleKeyUp);
             this.canvas.removeEventListener('click', this.handleShoot);
-            this.keys = { w: false, s: false, a: false, d: false };
         }
 
         handleKeyDown(e) {
@@ -121,17 +171,16 @@ window.doom = (function() {
             if (now - this.lastAttackTime < this.attackCooldown) return;
             this.lastAttackTime = now;
 
-            // Луч из центра камеры
+            // Поиск ближайшего врага в прицеле
             let closestDist = Infinity;
             let closestEnemy = null;
             for (let enemy of this.enemies) {
                 const dx = enemy.x - this.player.x;
                 const dy = enemy.y - this.player.y;
                 const dist = Math.hypot(dx, dy);
-                if (dist > 5) continue;
-                // Угол между направлением взгляда и направлением на врага
+                if (dist > 6) continue;
                 const dirDot = (dx * this.player.dirX + dy * this.player.dirY) / dist;
-                if (dirDot > Math.cos(Math.PI / 3)) { // угол обзора 60 градусов
+                if (dirDot > Math.cos(Math.PI / 3)) {
                     if (dist < closestDist) {
                         closestDist = dist;
                         closestEnemy = enemy;
@@ -139,19 +188,17 @@ window.doom = (function() {
                 }
             }
             if (closestEnemy) {
-                closestEnemy.health -= 35; // урон
+                const damage = 35 * this.upgrades.damage;
+                closestEnemy.health -= damage;
                 if (closestEnemy.health <= 0) {
-                    // Убийство
                     const idx = this.enemies.indexOf(closestEnemy);
                     if (idx !== -1) this.enemies.splice(idx, 1);
                     this.score += 100;
+                    this.saveUpgrades();
                     this.spawnRandomEnemy();
-                    this.createHitEffect(closestEnemy.x, closestEnemy.y);
-                } else {
-                    this.createHitEffect(closestEnemy.x, closestEnemy.y);
                 }
-                // Эффект вспышки
                 this.flashScreen();
+                this.spawnMuzzleFlash(e.clientX, e.clientY);
             }
         }
 
@@ -160,14 +207,11 @@ window.doom = (function() {
                 const x = 1 + Math.random() * (this.mapWidth - 2);
                 const y = 1 + Math.random() * (this.mapHeight - 2);
                 if (!this.isWall(x, y) && Math.hypot(x - this.player.x, y - this.player.y) > 2) {
-                    this.enemies.push({ x, y, health: 30, maxHealth: 30 });
+                    const health = 30 + Math.floor(Math.random() * 20);
+                    this.enemies.push({ x, y, health, maxHealth: health });
                     break;
                 }
             }
-        }
-
-        createHitEffect(x, y) {
-            // Простой визуальный эффект (можно добавить спрайт, но для простоты - ничего)
         }
 
         flashScreen() {
@@ -177,21 +221,35 @@ window.doom = (function() {
             flashDiv.style.left = 0;
             flashDiv.style.width = '100%';
             flashDiv.style.height = '100%';
-            flashDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            flashDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
             flashDiv.style.pointerEvents = 'none';
             flashDiv.style.zIndex = 10000;
             document.body.appendChild(flashDiv);
-            setTimeout(() => flashDiv.remove(), 100);
+            setTimeout(() => flashDiv.remove(), 80);
+        }
+
+        spawnMuzzleFlash(x, y) {
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.left = (x - 15) + 'px';
+            flash.style.top = (y - 15) + 'px';
+            flash.style.width = '30px';
+            flash.style.height = '30px';
+            flash.style.borderRadius = '50%';
+            flash.style.background = 'radial-gradient(circle, #ffaa44, #ff4400)';
+            flash.style.pointerEvents = 'none';
+            flash.style.zIndex = 10001;
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 100);
         }
 
         updateMovement(deltaTime) {
-            const moveSpeed = 5.0 * deltaTime;
+            const moveSpeed = 5.0 * deltaTime * this.upgrades.speed;
             const rotSpeed = 3.0 * deltaTime;
             let moveX = 0, moveY = 0;
             if (this.keys.w) { moveX += this.player.dirX; moveY += this.player.dirY; }
             if (this.keys.s) { moveX -= this.player.dirX; moveY -= this.player.dirY; }
             if (this.keys.a) {
-                // поворот влево
                 const oldDirX = this.player.dirX;
                 this.player.dirX = this.player.dirX * Math.cos(rotSpeed) - this.player.dirY * Math.sin(rotSpeed);
                 this.player.dirY = oldDirX * Math.sin(rotSpeed) + this.player.dirY * Math.cos(rotSpeed);
@@ -217,11 +275,11 @@ window.doom = (function() {
                 if (!this.isWall(this.player.x, newY)) this.player.y = newY;
             }
 
-            // Атака врагов (каждую секунду, если рядом)
+            // Атака врагов
             const now = performance.now() / 1000;
             for (let enemy of this.enemies) {
                 const dist = Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y);
-                if (dist < 1.2 && now - (this.lastEnemyAttackTime || 0) > 1.0) {
+                if (dist < 1.2 && (this.lastEnemyAttackTime === undefined || now - this.lastEnemyAttackTime > 1.0)) {
                     this.lastEnemyAttackTime = now;
                     this.player.health -= 15;
                     if (this.player.health <= 0) {
@@ -231,7 +289,6 @@ window.doom = (function() {
                     this.showDamageEffect();
                 }
             }
-            if (this.player.health <= 0) this.gameOver();
         }
 
         showDamageEffect() {
@@ -241,7 +298,7 @@ window.doom = (function() {
             flashDiv.style.left = 0;
             flashDiv.style.width = '100%';
             flashDiv.style.height = '100%';
-            flashDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+            flashDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.4)';
             flashDiv.style.pointerEvents = 'none';
             flashDiv.style.zIndex = 10000;
             document.body.appendChild(flashDiv);
@@ -274,7 +331,6 @@ window.doom = (function() {
 
         renderWalls() {
             for (let x = 0; x < this.width; x++) {
-                // Вычисление луча
                 const cameraX = 2 * x / this.width - 1;
                 const rayDirX = this.player.dirX + this.player.planeX * cameraX;
                 const rayDirY = this.player.dirY + this.player.planeY * cameraX;
@@ -282,8 +338,8 @@ window.doom = (function() {
                 let mapX = Math.floor(this.player.x);
                 let mapY = Math.floor(this.player.y);
                 let sideDistX, sideDistY;
-                let deltaDistX = Math.abs(1 / rayDirX);
-                let deltaDistY = Math.abs(1 / rayDirY);
+                const deltaDistX = Math.abs(1 / rayDirX);
+                const deltaDistY = Math.abs(1 / rayDirY);
                 let stepX, stepY;
                 let hit = 0;
                 let side = 0;
@@ -329,25 +385,21 @@ window.doom = (function() {
                 const drawStart = Math.max(0, -lineHeight / 2 + this.height / 2);
                 const drawEnd = Math.min(this.height - 1, lineHeight / 2 + this.height / 2);
 
-                let color;
-                if (side === 0) color = 100 + (this.map[mapY][mapX] * 20);
-                else color = 70 + (this.map[mapY][mapX] * 15);
-                const shade = Math.min(255, color);
                 let r, g, b;
                 if (this.map[mapY][mapX] === 1) {
-                    r = 100 + (side === 0 ? 40 : 20);
+                    r = 120 + (side === 0 ? 40 : 20);
                     g = 80 + (side === 0 ? 30 : 10);
                     b = 60;
                 } else {
                     r = 80; g = 80; b = 80;
                 }
-                r = Math.min(255, r * (1 - Math.min(0.8, perpWallDist / 8)));
-                g = Math.min(255, g * (1 - Math.min(0.8, perpWallDist / 8)));
-                b = Math.min(255, b * (1 - Math.min(0.8, perpWallDist / 8)));
+                const shade = 1 - Math.min(0.7, perpWallDist / 10);
+                r = Math.min(255, r * shade);
+                g = Math.min(255, g * shade);
+                b = Math.min(255, b * shade);
                 this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
                 this.ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
 
-                // Пол и потолок
                 this.ctx.fillStyle = `rgb(30, 20, 30)`;
                 this.ctx.fillRect(x, 0, 1, drawStart);
                 this.ctx.fillStyle = `rgb(60, 50, 40)`;
@@ -356,7 +408,6 @@ window.doom = (function() {
         }
 
         renderSprites() {
-            // Сортировка спрайтов по расстоянию
             const sprites = this.enemies.map((e, idx) => {
                 const dx = e.x - this.player.x;
                 const dy = e.y - this.player.y;
@@ -383,20 +434,15 @@ window.doom = (function() {
 
                 if (transformY > 0 && spriteScreenX > -spriteWidth && spriteScreenX < this.width) {
                     for (let x = drawStartX; x < drawEndX; x++) {
-                        const texX = Math.floor((x - drawStartX) / (drawEndX - drawStartX) * 32);
                         for (let y = drawStartY; y < drawEndY; y++) {
-                            const texY = Math.floor((y - drawStartY) / (spriteHeight) * 32);
-                            if (texX >= 0 && texX < 32 && texY >= 0 && texY < 32) {
-                                const healthPercent = enemy.health / enemy.maxHealth;
-                                const r = 200 + Math.floor(55 * (1 - healthPercent));
-                                const g = 50 + Math.floor(100 * healthPercent);
-                                const b = 50;
-                                this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                                this.ctx.fillRect(x, y, 1, 1);
-                            }
+                            const healthPercent = enemy.health / enemy.maxHealth;
+                            const r = 200 + Math.floor(55 * (1 - healthPercent));
+                            const g = 50 + Math.floor(100 * healthPercent);
+                            const b = 50;
+                            this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                            this.ctx.fillRect(x, y, 1, 1);
                         }
                     }
-                    // Полоска здоровья
                     const healthBarWidth = (enemy.health / enemy.maxHealth) * spriteWidth;
                     this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
                     this.ctx.fillRect(drawStartX, drawStartY - 8, spriteWidth, 4);
@@ -410,7 +456,7 @@ window.doom = (function() {
             this.ctx.font = 'bold 20px monospace';
             this.ctx.fillStyle = '#ffffff';
             this.ctx.shadowBlur = 0;
-            this.ctx.fillText(`❤️ ${this.player.health}`, 10, 30);
+            this.ctx.fillText(`❤️ ${Math.floor(this.player.health)} / ${this.player.maxHealth}`, 10, 30);
             this.ctx.fillText(`🎯 ${this.score}`, 10, 60);
             if (!this.gameActive) {
                 this.ctx.font = 'bold 28px monospace';
@@ -431,20 +477,70 @@ window.doom = (function() {
                 dirY: 0,
                 planeX: 0,
                 planeY: 0.66,
-                health: 100,
-                maxHealth: 100
+                health: this.player.maxHealth,
+                maxHealth: this.player.maxHealth
             };
-            this.score = 0;
             this.spawnEnemies();
             this.gameActive = true;
             this.lastAttackTime = 0;
             this.lastEnemyAttackTime = 0;
             this.start();
         }
+
+        showShop() {
+            const self = this;
+            const renderShop = () => {
+                const modalInner = document.getElementById('modalInner');
+                if (!modalInner) return;
+                modalInner.innerHTML = `
+                    <h3>🔫 Улучшения DOOM</h3>
+                    <p>Очки: <strong>${self.score}</strong></p>
+                    <div class="snake-shop" id="doomShopUpgrades"></div>
+                    <button class="game-btn" id="playDoomAgain">Играть снова</button>
+                    <button class="back-btn" id="backToDoomMenu">В меню</button>
+                `;
+                const container = document.getElementById('doomShopUpgrades');
+                const upgrades = [
+                    { key: 'damage', name: 'Урон +25%', cost: 200, inc: 200, max: 5, val: self.upgrades.damage, desc: 'Увеличивает урон оружия' },
+                    { key: 'health', name: 'Здоровье +25%', cost: 150, inc: 150, max: 5, val: self.upgrades.health, desc: 'Увеличивает максимальное здоровье' },
+                    { key: 'speed', name: 'Скорость +20%', cost: 180, inc: 180, max: 5, val: self.upgrades.speed, desc: 'Быстрее передвижение' },
+                    { key: 'reloadSpeed', name: 'Перезарядка -20%', cost: 250, inc: 200, max: 5, val: self.upgrades.reloadSpeed, desc: 'Меньше задержка между выстрелами' }
+                ];
+                upgrades.forEach(up => {
+                    const currentVal = up.val;
+                    const maxed = up.max && currentVal >= up.max;
+                    const nextCost = Math.floor(up.cost + (currentVal - 1) * up.inc);
+                    const item = document.createElement('div');
+                    item.className = 'shop-upgrade';
+                    item.innerHTML = `
+                        <div class="desc"><strong>${up.name}</strong><br>${up.desc}</div>
+                        <span class="cost">${maxed ? 'МАКС' : nextCost + '💎'}</span>
+                        <button class="buy-btn" ${(self.score >= nextCost && !maxed) ? '' : 'disabled'}>Купить</button>
+                    `;
+                    if (!maxed && self.score >= nextCost) {
+                        item.querySelector('.buy-btn').onclick = () => {
+                            self.score -= nextCost;
+                            self.upgrades[up.key] = currentVal + 1;
+                            self.player.maxHealth = Math.floor(100 * self.upgrades.health);
+                            self.player.health = self.player.maxHealth;
+                            self.attackCooldown = 0.4 / self.upgrades.reloadSpeed;
+                            self.saveUpgrades();
+                            renderShop();
+                        };
+                    }
+                    container.appendChild(item);
+                });
+                document.getElementById('playDoomAgain').onclick = () => {
+                    self.restart();
+                    document.dispatchEvent(new CustomEvent('startDoomSingle'));
+                };
+                document.getElementById('backToDoomMenu').onclick = () => document.dispatchEvent(new CustomEvent('openMiniGamesMenu'));
+            };
+            renderShop();
+        }
     }
 
     let currentGame = null;
-    let restartCallback = null;
 
     function initDoom(canvas) {
         if (currentGame) {
@@ -453,7 +549,7 @@ window.doom = (function() {
         }
         currentGame = new DoomGame(canvas);
         currentGame.onGameOver = () => {
-            if (restartCallback) restartCallback();
+            if (currentGame) currentGame.showShop();
         };
         currentGame.init();
         return currentGame;
@@ -466,14 +562,19 @@ window.doom = (function() {
         }
     }
 
-    function setRestartCallback(cb) {
-        restartCallback = cb;
+    function exportState() {
+        return currentGame ? currentGame.exportState() : null;
+    }
+
+    function importState(state) {
+        if (currentGame) currentGame.importState(state);
     }
 
     return {
         init: initDoom,
         stop: stopDoom,
-        setRestartCallback: setRestartCallback,
+        exportState: exportState,
+        importState: importState,
         getGame: () => currentGame
     };
 })();

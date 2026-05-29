@@ -70,12 +70,14 @@
             <button class="game-btn" id="playTetris">🧱 Тетрис</button>
             <button class="game-btn" id="playSnake">🐍 Змейка</button>
             <button class="game-btn" id="playPong">🏓 Пинг-понг</button>
+            <button class="game-btn" id="playDoom">🔫 DOOM (рейкастинг)</button>
             <button class="back-btn" id="closeModalBtn">Закрыть</button>
         `;
         document.getElementById('playClicker').onclick = showClicker;
         document.getElementById('playTetris').onclick = showTetrisMode;
         document.getElementById('playSnake').onclick = showSnakeMode;
         document.getElementById('playPong').onclick = showPongMode;
+        document.getElementById('playDoom').onclick = showDoomMode;
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
@@ -112,7 +114,7 @@
                 <div id="clickerUpgrades" class="upgrades-list"></div>
             </div>
             <div id="tab-stats" class="tab-content" style="display:none;">
-                <table class="stats-table" id="statsTable"></table>
+                <table class="stats-table" id="statsTable"><tr>
             </div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
@@ -539,9 +541,36 @@
         document.getElementById('backPongMode').onclick = showSelection;
     }
 
+    // ---------- DOOM ----------
+    function showDoomMode() {
+        modalInner.innerHTML = `
+            <h3>🔫 DOOM (рейкастинг)</h3>
+            <canvas id="doomCanvas" width="800" height="400" style="width:100%; height:auto; max-width:800px; background:#000; border-radius:8px;"></canvas>
+            <div class="game-controls" style="font-size:0.7rem; margin-top: 8px;">
+                Управление: W/A/S/D — движение, мышь — прицел, клик — выстрел.
+                <br>После смерти откроется магазин улучшений.
+            </div>
+            <button class="back-btn" id="backDoom">← Назад</button>
+        `;
+        const canvas = document.getElementById('doomCanvas');
+        if (!canvas) return;
+        canvas.width = 800;
+        canvas.height = 400;
+        activeGame = 'doom';
+        const game = window.doom.init(canvas);
+        game.onGameOver = () => {
+            if (game) game.showShop();
+        };
+        document.getElementById('backDoom').onclick = function() {
+            window.doom.stop();
+            showSelection();
+        };
+    }
+
     // ---------- Общие обработчики ----------
     document.addEventListener('startTetrisSingle', () => showTetrisSingle());
     document.addEventListener('startSnakeSingle', () => showSnakeSingle());
+    document.addEventListener('startDoomSingle', () => showDoomMode());
     document.addEventListener('openMiniGamesMenu', () => showSelection());
 
     function closeModal() {
@@ -549,6 +578,7 @@
         if (activeGame === 'tetris') window.tetris.stop();
         if (activeGame === 'snake') window.snake.stop();
         if (activeGame === 'pong') window.pong.stop();
+        if (activeGame === 'doom') window.doom.stop();
         activeGame = null;
     }
 
@@ -700,7 +730,7 @@
 
     updateAuthUI();
 
-    // Глобальный toast (для уведомлений)
+    // Глобальный toast
     window.showToast = function(msg, duration = 3000) {
         const toast = document.createElement('div');
         toast.className = 'toast-msg';
