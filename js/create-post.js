@@ -14,137 +14,70 @@
     const wrapper = document.getElementById('createPostBtnWrapper');
 
     let currentEditIssueNumber = null;
-    let currentEditMode = false;
 
-    // ---------- Редактор таблиц ----------
-    class TableEditor {
-        constructor(containerId, textareaId) {
-            this.container = document.getElementById(containerId);
-            this.textarea = document.getElementById(textareaId);
-            if (!this.container || !this.textarea) return;
-            this.tableData = [['Ячейка 1', 'Ячейка 2'], ['Ячейка 3', 'Ячейка 4']];
-            this.init();
-        }
+    // ---------- Функция для вставки таблицы в текущую позицию курсора ----------
+    function insertTableInTextarea(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
 
-        init() {
-            this.renderTableUI();
-            this.attachEvents();
-        }
-
-        renderTableUI() {
-            this.container.innerHTML = `
-                <div class="table-editor-toolbar">
-                    <button type="button" class="table-btn-add-row">➕ Добавить строку</button>
-                    <button type="button" class="table-btn-add-col">➕ Добавить столбец</button>
-                    <button type="button" class="table-btn-remove-row">➖ Удалить строку</button>
-                    <button type="button" class="table-btn-remove-col">➖ Удалить столбец</button>
-                    <button type="button" class="table-btn-insert-markdown">📋 Вставить Markdown в текст</button>
+        // Создаём диалог для ввода размеров таблицы
+        const dialog = document.createElement('div');
+        dialog.className = 'modal-overlay';
+        dialog.style.display = 'flex';
+        dialog.style.position = 'fixed';
+        dialog.style.top = '0';
+        dialog.style.left = '0';
+        dialog.style.zIndex = '10001';
+        dialog.innerHTML = `
+            <div class="modal-content" style="max-width: 350px;">
+                <h4>Вставить таблицу</h4>
+                <label>Строки: <input type="number" id="tableRows" min="1" max="20" value="3"></label>
+                <label>Столбцы: <input type="number" id="tableCols" min="1" max="10" value="3"></label>
+                <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                    <button id="insertTableConfirm" class="game-btn">Вставить</button>
+                    <button id="insertTableCancel" class="back-btn">Отмена</button>
                 </div>
-                <div class="table-editor-grid"></div>
-            `;
-            this.gridContainer = this.container.querySelector('.table-editor-grid');
-            this.renderGrid();
-        }
+            </div>
+        `;
+        document.body.appendChild(dialog);
 
-        renderGrid() {
-            if (!this.gridContainer) return;
-            this.gridContainer.innerHTML = '';
-            const table = document.createElement('table');
-            table.className = 'visual-table-editor';
-            // Заголовки строк (нумерация)
-            for (let i = 0; i <= this.tableData.length; i++) {
-                const row = document.createElement('tr');
-                for (let j = 0; j <= this.tableData[0].length; j++) {
-                    if (i === 0 && j === 0) {
-                        const th = document.createElement('th');
-                        th.textContent = '';
-                        row.appendChild(th);
-                    } else if (i === 0) {
-                        const th = document.createElement('th');
-                        th.textContent = `Столбец ${j}`;
-                        th.style.backgroundColor = '#2a2a3a';
-                        row.appendChild(th);
-                    } else if (j === 0) {
-                        const th = document.createElement('th');
-                        th.textContent = `Строка ${i}`;
-                        th.style.backgroundColor = '#2a2a3a';
-                        row.appendChild(th);
-                    } else {
-                        const td = document.createElement('td');
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = this.tableData[i-1][j-1] || '';
-                        input.addEventListener('change', (function(rowIdx, colIdx) {
-                            return (e) => { this.tableData[rowIdx][colIdx] = e.target.value; this.updateMarkdownPreview(); };
-                        })(i-1, j-1));
-                        td.appendChild(input);
-                        row.appendChild(td);
-                    }
-                }
-                table.appendChild(row);
-            }
-            this.gridContainer.appendChild(table);
-            this.updateMarkdownPreview();
-        }
+        const confirmBtn = dialog.querySelector('#insertTableConfirm');
+        const cancelBtn = dialog.querySelector('#insertTableCancel');
+        const rowsInput = dialog.querySelector('#tableRows');
+        const colsInput = dialog.querySelector('#tableCols');
 
-        updateMarkdownPreview() {
-            let md = '';
+        const closeDialog = () => dialog.remove();
+
+        confirmBtn.onclick = () => {
+            const rows = parseInt(rowsInput.value) || 3;
+            const cols = parseInt(colsInput.value) || 3;
+            let tableMd = '';
             // Заголовок
-            md += '| ' + this.tableData[0].map(cell => cell.replace(/\|/g, '\\|')).join(' | ') + ' |\n';
-            md += '|' + this.tableData[0].map(() => '---').join('|') + '|\n';
-            for (let i = 1; i < this.tableData.length; i++) {
-                md += '| ' + this.tableData[i].map(cell => cell.replace(/\|/g, '\\|')).join(' | ') + ' |\n';
+            for (let c = 0; c < cols; c++) tableMd += `| Столбец ${c+1} `;
+            tableMd += '|\n|' + Array(cols).fill('---').join('|') + '|\n';
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) tableMd += `| Ячейка ${r+1}:${c+1} `;
+                tableMd += '|\n';
             }
-            this.currentMarkdown = md;
-            // Показываем preview в текстовом поле (можно опционально)
-            if (this.textarea && !currentEditMode) {
-                // Не перезаписываем весь текст, только вставляем или показываем
-            }
-        }
-
-        insertMarkdownIntoTextarea() {
-            if (!this.textarea) return;
-            const start = this.textarea.selectionStart;
-            const end = this.textarea.selectionEnd;
-            const currentText = this.textarea.value;
-            const tableMarkdown = '\n\n' + this.currentMarkdown + '\n\n';
-            this.textarea.value = currentText.substring(0, start) + tableMarkdown + currentText.substring(end);
-            this.textarea.focus();
-            this.textarea.selectionStart = start + tableMarkdown.length;
-            this.textarea.selectionEnd = start + tableMarkdown.length;
-        }
-
-        attachEvents() {
-            const addRowBtn = this.container.querySelector('.table-btn-add-row');
-            const addColBtn = this.container.querySelector('.table-btn-add-col');
-            const removeRowBtn = this.container.querySelector('.table-btn-remove-row');
-            const removeColBtn = this.container.querySelector('.table-btn-remove-col');
-            const insertBtn = this.container.querySelector('.table-btn-insert-markdown');
-
-            if (addRowBtn) addRowBtn.onclick = () => { this.tableData.push(new Array(this.tableData[0].length).fill('Новая ячейка')); this.renderGrid(); };
-            if (addColBtn) addColBtn.onclick = () => { this.tableData.forEach(row => row.push('Новая ячейка')); this.renderGrid(); };
-            if (removeRowBtn) removeRowBtn.onclick = () => { if (this.tableData.length > 1) { this.tableData.pop(); this.renderGrid(); } };
-            if (removeColBtn) removeColBtn.onclick = () => { if (this.tableData[0].length > 1) { this.tableData.forEach(row => row.pop()); this.renderGrid(); } };
-            if (insertBtn) insertBtn.onclick = () => this.insertMarkdownIntoTextarea();
-        }
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const currentText = textarea.value;
+            textarea.value = currentText.substring(0, start) + '\n\n' + tableMd + '\n\n' + currentText.substring(end);
+            textarea.focus();
+            textarea.selectionStart = start + tableMd.length + 4;
+            textarea.selectionEnd = start + tableMd.length + 4;
+            closeDialog();
+        };
+        cancelBtn.onclick = closeDialog;
     }
 
-    let tableEditorCreate = null, tableEditorEdit = null;
-
-    // ---------- Инициализация табличных редакторов ----------
-    function initTableEditors() {
-        const createTableContainer = document.getElementById('createTableEditor');
-        const editTableContainer = document.getElementById('editTableEditor');
-        if (createTableContainer) tableEditorCreate = new TableEditor('createTableEditor', 'postBody');
-        if (editTableContainer) tableEditorEdit = new TableEditor('editTableEditor', 'editPostBody');
-    }
-
-    // ---------- Панель инструментов для Markdown (обычная) ----------
+    // ---------- Панель инструментов для Markdown ----------
     function setupToolbar(textareaId, toolbarId) {
         const textarea = document.getElementById(textareaId);
         if (!textarea) return;
         const toolbar = document.getElementById(toolbarId);
         if (!toolbar) return;
+
         const insertText = (before, after, defaultText = 'текст') => {
             const start = textarea.selectionStart, end = textarea.selectionEnd;
             const selected = textarea.value.substring(start, end);
@@ -154,6 +87,7 @@
             textarea.selectionStart = start + before.length;
             textarea.selectionEnd = start + before.length + (selected || defaultText).length;
         };
+
         const commands = {
             bold: () => insertText('**', '**', 'жирный текст'),
             italic: () => insertText('*', '*', 'курсив'),
@@ -162,36 +96,30 @@
             ul: () => insertText('- ', '', 'пункт списка'),
             ol: () => insertText('1. ', '', 'пункт'),
             link: () => { const url = prompt('Введите URL:', 'https://'); if (url) insertText('[', `](${url})`, 'текст ссылки'); },
-            table: () => {
-                if (tableEditorCreate && textarea.id === 'postBody') tableEditorCreate.insertMarkdownIntoTextarea();
-                else if (tableEditorEdit && textarea.id === 'editPostBody') tableEditorEdit.insertMarkdownIntoTextarea();
-                else insertText('\n\n| Заголовок 1 | Заголовок 2 |\n|-------------|-------------|\n| Ячейка 1    | Ячейка 2    |\n| Ячейка 3    | Ячейка 4    |\n\n', '', '');
-            }
+            table: () => insertTableInTextarea(textareaId)
         };
+
         toolbar.querySelectorAll('[data-cmd]').forEach(btn => {
             btn.addEventListener('click', () => { const cmd = btn.dataset.cmd; if (commands[cmd]) commands[cmd](); });
         });
     }
 
-    // ---------- Отображение/скрытие кнопки создания ----------
+    // ---------- Показать/скрыть кнопку создания ----------
     function updateCreatePostButtonVisibility() {
         if (!wrapper) return;
         if (window.GitHubAuth && window.GitHubAuth.isAuthenticated && window.GitHubAuth.token) wrapper.style.display = 'block';
         else wrapper.style.display = 'none';
     }
 
-    // ---------- Модалки ----------
     function openCreateModal() {
         if (createModal) {
             createModal.style.display = 'flex';
             if (createStatus) createStatus.innerHTML = '';
             if (createForm) createForm.reset();
-            if (tableEditorCreate) tableEditorCreate.tableData = [['Ячейка 1', 'Ячейка 2'], ['Ячейка 3', 'Ячейка 4']];
-            if (tableEditorCreate) tableEditorCreate.renderGrid();
-            currentEditMode = false;
         }
     }
     function closeCreateModal() { if (createModal) createModal.style.display = 'none'; }
+
     function openEditModal(issueNumber, title, body, labels) {
         if (!editModal) return;
         currentEditIssueNumber = issueNumber;
@@ -200,15 +128,6 @@
         document.getElementById('editPostLabels').value = labels;
         if (editStatus) editStatus.innerHTML = '';
         editModal.style.display = 'flex';
-        currentEditMode = true;
-        // Попробуем распарсить таблицы из body (просто для инициализации редактора, но можно оставить как есть)
-        if (tableEditorEdit) {
-            // Можно попробовать извлечь первую таблицу из markdown (упрощённо)
-            const tableMatch = body.match(/(\|[^\n]+\|\n\|[-:| ]+\|\n(?:\|[^\n]+\|\n?)+)/);
-            if (tableMatch) {
-                // Парсинг в tableData – сложно, оставляем как демо, но пользователь может создать новую таблицу
-            }
-        }
     }
     function closeEditModal() { if (editModal) editModal.style.display = 'none'; currentEditIssueNumber = null; }
 
@@ -224,6 +143,7 @@
         if (!response.ok) { const err = await response.json(); throw new Error(err.message || 'Ошибка создания Issue'); }
         return await response.json();
     }
+
     async function updateIssue(issueNumber, title, body, labelsArray) {
         const token = window.GitHubAuth.token;
         if (!token) throw new Error('Не авторизован');
@@ -254,6 +174,7 @@
             } catch (err) { if (createStatus) createStatus.innerHTML = `<span style="color:#ff8888;">❌ Ошибка: ${err.message}</span>`; }
         });
     }
+
     if (editForm) {
         editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -281,11 +202,10 @@
     if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
     window.addEventListener('click', (e) => { if (e.target === createModal) closeCreateModal(); if (e.target === editModal) closeEditModal(); });
 
-    // ---------- Инициализация после загрузки DOM ----------
+    // Инициализация тулбаров
     document.addEventListener('DOMContentLoaded', () => {
         setupToolbar('postBody', 'createToolbar');
         setupToolbar('editPostBody', 'editToolbar');
-        initTableEditors();
     });
 
     if (window.GitHubAuth) {

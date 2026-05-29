@@ -696,7 +696,7 @@
         if (auth.isAuthenticated) {
             auth.syncSave().catch(console.warn);
         }
-    }, 30000);
+    }, 300000);
 
     updateAuthUI();
 

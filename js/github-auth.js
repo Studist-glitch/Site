@@ -1,6 +1,5 @@
 // github-auth.js
 window.GitHubAuth = {
-    // Константы
     GIST_ID_KEY: 'starve_gist_id',
     TOKEN_KEY: 'starve_github_token',
     USERNAME_KEY: 'starve_github_user',
@@ -11,7 +10,6 @@ window.GitHubAuth = {
     gistId: null,
     isAuthenticated: false,
 
-    // Инициализация при загрузке страницы
     init: function() {
         this.token = localStorage.getItem(this.TOKEN_KEY);
         this.username = localStorage.getItem(this.USERNAME_KEY);
@@ -24,85 +22,75 @@ window.GitHubAuth = {
         return false;
     },
 
-    // Основной метод регистрации / входа
     register: async function(token) {
-        if (!token || token.trim() === '') {
-            throw new Error('Токен не может быть пустым');
-        }
+        if (!token || token.trim() === '') throw new Error('Токен не может быть пустым');
         this.token = token.trim();
-
-        // 1. Проверяем токен и получаем пользователя
         const userInfo = await this.fetchUserInfo();
         if (!userInfo || !userInfo.login) {
             this.token = null;
             throw new Error('Неверный токен или недостаточно прав. Требуются права: user, gist');
         }
         this.username = userInfo.login;
-
-        // 2. Проверяем наличие права на gist (пробуем создать или найти)
         try {
             await this.findOrCreateGist();
         } catch (err) {
             this.token = null;
-            throw new Error('Токен не имеет права на работу с gist. Добавьте разрешение "gist" в настройках токена.');
+            throw new Error('Токен не имеет права на работу с gist. Добавьте разрешение "gist".');
         }
-
         this.isAuthenticated = true;
         localStorage.setItem(this.TOKEN_KEY, this.token);
         localStorage.setItem(this.USERNAME_KEY, this.username);
         return { username: this.username, gistId: this.gistId };
     },
 
-    // Запрос к GitHub API
-    async apiRequest(endpoint, method = 'GET', body = null) {
+    async apiRequest(endpoint, method = 'GET', body = null, retries = 2) {
         const url = `https://api.github.com/${endpoint}`;
         const headers = {
             'Authorization': `token ${this.token}`,
             'Accept': 'application/vnd.github.v3+json'
         };
-        if (body) {
-            headers['Content-Type'] = 'application/json';
+        if (body) headers['Content-Type'] = 'application/json';
+        try {
+            const response = await fetch(url, { method: method, headers: headers, body: body ? JSON.stringify(body) : null });
+            if (response.status === 403 && response.headers.get('X-RateLimit-Remaining') === '0') {
+                const resetTime = parseInt(response.headers.get('X-RateLimit-Reset')) * 1000;
+                const wait = resetTime - Date.now() + 1000;
+                if (wait > 0 && retries > 0) {
+                    console.warn(`Rate limit exceeded, waiting ${Math.ceil(wait/1000)}s...`);
+                    await new Promise(r => setTimeout(r, Math.min(wait, 60000)));
+                    return this.apiRequest(endpoint, method, body, retries - 1);
+                }
+            }
+            if (!response.ok) {
+                let errorText = await response.text();
+                throw new Error(`GitHub API error ${response.status}: ${errorText}`);
+            }
+            if (response.status === 204) return null;
+            return await response.json();
+        } catch(e) {
+            if (retries > 0) {
+                await new Promise(r => setTimeout(r, 2000));
+                return this.apiRequest(endpoint, method, body, retries - 1);
+            }
+            throw e;
         }
-        const response = await fetch(url, {
-            method: method,
-            headers: headers,
-            body: body ? JSON.stringify(body) : null
-        });
-        if (!response.ok) {
-            let errorText = await response.text();
-            throw new Error(`GitHub API error ${response.status}: ${errorText}`);
-        }
-        if (response.status === 204) return null;
-        return await response.json();
     },
 
     async fetchUserInfo() {
-        try {
-            const data = await this.apiRequest('user');
-            return data;
-        } catch(e) {
-            console.error('Ошибка получения пользователя:', e);
-            return null;
-        }
+        try { return await this.apiRequest('user'); } catch(e) { console.error(e); return null; }
     },
 
-    // Найти существующий gist по описанию или создать новый
     async findOrCreateGist() {
-        // Пробуем загрузить все gist'ы текущего пользователя
         try {
             const gists = await this.apiRequest('gists');
             for (const gist of gists) {
                 if (gist.description === 'Starve Neon Game Save' && gist.files[this.FILENAME]) {
                     this.gistId = gist.id;
                     localStorage.setItem(this.GIST_ID_KEY, this.gistId);
-                    console.log('[GitHubAuth] Найден существующий gist:', this.gistId);
                     return;
                 }
             }
-        } catch(e) {
-            console.warn('Не удалось получить список gistов', e);
-        }
-        // Создаём новый
+        } catch(e) { console.warn('Не удалось получить список gistов', e); }
         await this.createNewGist();
     },
 
@@ -112,11 +100,7 @@ window.GitHubAuth = {
         const gistData = {
             description: 'Starve Neon Game Save',
             public: false,
-            files: {
-                [this.FILENAME]: {
-                    content: content
-                }
-            }
+            files: { [this.FILENAME]: { content: content } }
         };
         const result = await this.apiRequest('gists', 'POST', gistData);
         this.gistId = result.id;
@@ -124,87 +108,43 @@ window.GitHubAuth = {
         console.log('[GitHubAuth] Создан новый gist:', this.gistId);
     },
 
-    // Загрузить сохранение из gist
     async loadSave() {
-        if (!this.isAuthenticated || !this.gistId) {
-            throw new Error('Не авторизован или нет gist');
-        }
+        if (!this.isAuthenticated || !this.gistId) throw new Error('Не авторизован или нет gist');
         const gist = await this.apiRequest(`gists/${this.gistId}`);
         const file = gist.files[this.FILENAME];
         if (!file) throw new Error('Файл сохранения не найден');
-        const content = file.content;
-        return JSON.parse(content);
+        return JSON.parse(file.content);
     },
 
-    // Сохранить данные в gist
     async saveSave(data) {
-        if (!this.isAuthenticated || !this.gistId) {
-            throw new Error('Не авторизован или нет gist');
-        }
+        if (!this.isAuthenticated || !this.gistId) throw new Error('Не авторизован или нет gist');
         const content = JSON.stringify(data, null, 2);
-        const updateData = {
-            files: {
-                [this.FILENAME]: {
-                    content: content
-                }
-            }
-        };
+        const updateData = { files: { [this.FILENAME]: { content: content } } };
         await this.apiRequest(`gists/${this.gistId}`, 'PATCH', updateData);
         console.log('[GitHubAuth] Сохранение записано');
     },
 
-    // Стандартная структура данных
     getDefaultSaveData() {
         return {
             version: 1,
             clicker: {
-                score: 0,
-                perClick: 1,
-                perSec: 0,
-                critChance: 0.1,
-                critMult: 2,
-                doubleClickChance: 0,
-                maxCombo: 0,
-                comboMultiplier: 0,
-                poisonDps: 0,
-                meteorActive: false,
-                meteorInterval: 15,
-                cloneActive: false,
-                bankPercent: 0,
-                tickRate: 1000,
-                magnetFieldActive: false,
-                magnetPercent: 0,
-                magnetInterval: 15,
-                bossBounty: 1,
-                quantumActive: false,
-                blackHoleActive: false,
+                score: 0, perClick: 1, perSec: 0, critChance: 0.1, critMult: 2,
+                doubleClickChance: 0, maxCombo: 0, comboMultiplier: 0, poisonDps: 0,
+                meteorActive: false, meteorInterval: 15, cloneActive: false, bankPercent: 0,
+                tickRate: 1000, magnetFieldActive: false, magnetPercent: 0, magnetInterval: 15,
+                bossBounty: 1, quantumActive: false, blackHoleActive: false,
                 stats: { totalClicks: 0, totalEarned: 0, bossesDefeated: 0 },
                 prestige: { level: 0, multiplier: 1, nextAt: 1000000, baseReq: 1000000 },
                 upgrades: {}
             },
-            tetris: {
-                currency: 0,
-                upgrades: {
-                    speed: 0, lineBonus: 0, startRows: 0, specialChance: 0,
-                    abilityPower: 0, pieceSet: 0, holdPiece: false, ghostPiece: false
-                }
-            },
-            snake: {
-                currency: 0,
-                upgrades: {
-                    length: 0, speed: 1.0, scoreMult: 1.0, magnet: false,
-                    shieldStart: false, dashCooldown: 0, extraPowerups: 0, skinLevel: 0
-                }
-            },
+            tetris: { currency: 0, upgrades: { speed: 0, lineBonus: 0, startRows: 0, specialChance: 0, abilityPower: 0, pieceSet: 0, holdPiece: false, ghostPiece: false } },
+            snake: { currency: 0, upgrades: { length: 0, speed: 1.0, scoreMult: 1.0, magnet: false, shieldStart: false, dashCooldown: 0, extraPowerups: 0, skinLevel: 0 } },
             pong: {}
         };
     },
 
-    // Собрать текущее состояние из глобальных объектов игр
     collectGameData() {
         const save = this.getDefaultSaveData();
-
-        // Кликер
         if (window.clicker) {
             save.clicker.score = window.clicker.score || 0;
             save.clicker.perClick = window.clicker.perClick || 1;
@@ -230,31 +170,22 @@ window.GitHubAuth = {
             if (window.clicker.prestige) save.clicker.prestige = { ...window.clicker.prestige };
             if (window.clicker.upgrades) {
                 for (let key in window.clicker.upgrades) {
-                    if (window.clicker.upgrades[key]) {
-                        save.clicker.upgrades[key] = window.clicker.upgrades[key].level;
-                    }
+                    if (window.clicker.upgrades[key]) save.clicker.upgrades[key] = window.clicker.upgrades[key].level;
                 }
             }
         }
-
-        // Тетрис
         if (window.tetris) {
             save.tetris.currency = window.tetris.currency || 0;
             if (window.tetris.upgrades) save.tetris.upgrades = { ...window.tetris.upgrades };
         }
-
-        // Змейка
         if (window.snake) {
             save.snake.currency = window.snake.currency || 0;
             if (window.snake.upgrades) save.snake.upgrades = { ...window.snake.upgrades };
         }
-
         return save;
     },
 
-    // Применить загруженные данные к глобальным объектам игр
     applyGameData(data) {
-        // Кликер
         if (window.clicker && data.clicker) {
             window.clicker.score = data.clicker.score || 0;
             window.clicker.perClick = data.clicker.perClick || 1;
@@ -280,54 +211,39 @@ window.GitHubAuth = {
             if (data.clicker.prestige) window.clicker.prestige = { ...data.clicker.prestige };
             if (data.clicker.upgrades) {
                 for (let key in data.clicker.upgrades) {
-                    if (window.clicker.upgrades[key]) {
-                        window.clicker.upgrades[key].level = data.clicker.upgrades[key];
-                    }
+                    if (window.clicker.upgrades[key]) window.clicker.upgrades[key].level = data.clicker.upgrades[key];
                 }
-                // Переприменяем эффекты улучшений
                 for (let key in window.clicker.upgrades) {
                     const up = window.clicker.upgrades[key];
-                    if (up && up.effect) {
-                        for (let i = 1; i <= up.level; i++) {
-                            up.effect(i);
-                        }
-                    }
+                    if (up && up.effect) for (let i = 1; i <= up.level; i++) up.effect(i);
                 }
             }
-            // Обновляем UI кликера, если есть метод
             if (window.clicker.updateUI) window.clicker.updateUI();
             if (window.clicker.updateBossUI) window.clicker.updateBossUI();
             if (window.clicker.save) window.clicker.save();
         }
-
-        // Тетрис
         if (window.tetris && data.tetris) {
             window.tetris.currency = data.tetris.currency || 0;
             if (data.tetris.upgrades) {
                 for (let k in data.tetris.upgrades) {
-                    if (window.tetris.upgrades && window.tetris.upgrades.hasOwnProperty(k)) {
+                    if (window.tetris.upgrades && window.tetris.upgrades.hasOwnProperty(k))
                         window.tetris.upgrades[k] = data.tetris.upgrades[k];
-                    }
                 }
             }
             if (window.tetris.saveUpgrades) window.tetris.saveUpgrades();
         }
-
-        // Змейка
         if (window.snake && data.snake) {
             window.snake.currency = data.snake.currency || 0;
             if (data.snake.upgrades) {
                 for (let k in data.snake.upgrades) {
-                    if (window.snake.upgrades && window.snake.upgrades.hasOwnProperty(k)) {
+                    if (window.snake.upgrades && window.snake.upgrades.hasOwnProperty(k))
                         window.snake.upgrades[k] = data.snake.upgrades[k];
-                    }
                 }
             }
             if (window.snake.saveUpgrades) window.snake.saveUpgrades();
         }
     },
 
-    // Синхронизация: загрузить с сервера и применить
     async syncLoad() {
         try {
             const data = await this.loadSave();
@@ -341,7 +257,6 @@ window.GitHubAuth = {
         }
     },
 
-    // Синхронизация: сохранить текущее состояние на сервер
     async syncSave() {
         try {
             const data = this.collectGameData();
@@ -355,7 +270,6 @@ window.GitHubAuth = {
         }
     },
 
-    // Выход (удаление токена)
     logout() {
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USERNAME_KEY);
@@ -367,11 +281,9 @@ window.GitHubAuth = {
         this.showToast('Вы вышли из GitHub аккаунта', 2000);
     },
 
-    // Вспомогательная функция для уведомлений
     showToast: function(msg, duration = 3000) {
-        if (window.showToast) {
-            window.showToast(msg, duration);
-        } else {
+        if (window.showToast) window.showToast(msg, duration);
+        else {
             const toast = document.createElement('div');
             toast.className = 'toast-msg';
             toast.textContent = msg;
