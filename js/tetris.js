@@ -32,7 +32,7 @@ window.tetris = {
     canHold: [],
     scores: [],
     players: 1,
-    clearingLines: [],     // флаг, что идёт очистка (блокирует управление)
+    clearingLines: [],      // флаг анимации очистки
     freezeTimers: [],
     abilities: [],
     abilityCooldowns: [],
@@ -43,6 +43,8 @@ window.tetris = {
     singlePlayerMode: true,
     onGameOver: null,
     _cdTick: 0,
+    shieldUsed: [],         // флаг использованного щита для каждого игрока
+    particles: [],          // массив частиц для анимации
 
     // ----- Загрузка улучшений -----
     loadUpgrades: function() {
@@ -70,7 +72,12 @@ window.tetris = {
             abilityPower: 0,
             pieceSet: 0,
             holdPiece: false,
-            ghostPiece: false
+            ghostPiece: false,
+            // НОВЫЕ УЛУЧШЕНИЯ
+            shield: 0,           // 0 или 1
+            autoHold: 0,        // 0 или 1
+            comboMaster: 0,     // 0..3  (доп. множитель)
+            particleEffect: 0    // 0 или 1
         };
     },
 
@@ -97,7 +104,6 @@ window.tetris = {
         this.singlePlayerMode = (players === 1);
         this.loadUpgrades();
 
-        // Инициализация массивов
         this.boards = [];
         this.pieces = [];
         this.holdPieces = [];
@@ -109,6 +115,8 @@ window.tetris = {
         this.abilityCooldowns = [];
         this.comboCnt = [];
         this.comboMultiplier = [];
+        this.shieldUsed = [];
+        this.particles = [];
 
         // Способности (только в одиночной игре)
         if (this.singlePlayerMode && this.upgrades && this.upgrades.abilityPower >= 1) {
@@ -133,6 +141,7 @@ window.tetris = {
             this.abilities.forEach(a => { this.abilityCooldowns[i][a.key] = 0; });
             this.comboCnt.push(0);
             this.comboMultiplier.push(1);
+            this.shieldUsed.push(false);
         }
 
         const blockSize = players === 1 ? 18 : 15;
@@ -140,11 +149,51 @@ window.tetris = {
         const baseInterval = 500;
         let interval = baseInterval;
         if (this.singlePlayerMode && this.upgrades) {
-            interval = Math.min(800, baseInterval + this.upgrades.speed * 50);
+            // Дополнительное замедление от slowFall (новое улучшение)
+            let slowBonus = 0;
+            if (this.upgrades.slowFall) slowBonus = this.upgrades.slowFall * 30;
+            interval = Math.min(800, baseInterval + this.upgrades.speed * 50 + slowBonus);
         }
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => this.tick(blockSize), interval);
         this.active = true;
+
+        // Запуск анимации частиц (если включено)
+        if (this.singlePlayerMode && this.upgrades && this.upgrades.particleEffect) {
+            this.startParticleAnimation();
+        }
+    },
+
+    // Анимация частиц (рисуются поверх игрового поля)
+    startParticleAnimation: function() {
+        const animate = () => {
+            if (!this.active) return;
+            if (this.particles.length > 0) {
+                for (let i = 0; i < this.players; i++) {
+                    const canvasId = this.players === 1 ? 'tetrisCanvas' : `tetrisCanvasP${i+1}`;
+                    const canvas = document.getElementById(canvasId);
+                    if (!canvas) continue;
+                    const ctx = canvas.getContext('2d');
+                    // Сохраняем текущее содержимое? Проще перерисовать всю доску, а поверх частицы.
+                    // Для производительности – перерисовываем доску и затем частицы.
+                    this.drawBoard(this.boards[i], this.pieces[i], this.holdPieces[i], canvasId, this.players===1?18:15, i);
+                    for (let p of this.particles) {
+                        ctx.globalAlpha = p.life;
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(p.x, p.y, 3, 3);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+                this.particles = this.particles.filter(p => {
+                    p.life -= 0.03;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    return p.life > 0;
+                });
+            }
+            requestAnimationFrame(animate);
+        };
+        animate();
     },
 
     initBoard: function() {
@@ -163,7 +212,11 @@ window.tetris = {
     randomPiece: function() {
         const allPieces = this.getAllPieces();
         let specialChance = 0;
-        if (this.singlePlayerMode && this.upgrades) specialChance = this.upgrades.specialChance * 0.05;
+        if (this.singlePlayerMode && this.upgrades) {
+            specialChance = this.upgrades.specialChance * 0.05;
+            // Доп. шанс от extraSpecial (новое улучшение)
+            if (this.upgrades.extraSpecial) specialChance += this.upgrades.extraSpecial * 0.03;
+        }
         if (Math.random() < specialChance && this.SPECIAL_PIECES.length > 0) {
             const sp = this.SPECIAL_PIECES[Math.floor(Math.random() * this.SPECIAL_PIECES.length)];
             return {
@@ -214,7 +267,7 @@ window.tetris = {
             }
         }
 
-        // Ghost‑фигура (если улучшение куплено)
+        // Ghost‑фигура
         if (this.singlePlayerMode && this.upgrades && this.upgrades.ghostPiece && piece && !this.clearingLines[playerIdx]) {
             const ghostY = this.getDropY(board, piece);
             if (ghostY !== piece.y) {
@@ -241,7 +294,7 @@ window.tetris = {
             });
         }
 
-        // Отображение удержанной фигуры
+        // Удержанная фигура
         if (holdPiece) {
             const holdX = 2, holdY = 2, smallSize = blockSize * 0.8;
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -256,7 +309,7 @@ window.tetris = {
             });
         }
 
-        // Отображение кулдаунов способностей (только для одиночной игры)
+        // Статус способностей
         if (playerIdx === 0 && this.players === 1) {
             const el = document.getElementById('abilityStatus');
             if (el) {
@@ -306,7 +359,7 @@ window.tetris = {
         return y;
     },
 
-    // Блокировка фигуры на поле + очистка линий + спавн новой
+    // Блокировка фигуры на поле
     lockPiece: function(board, piece, playerIdx) {
         // Специальные фигуры
         if (piece.type === 'bomb') {
@@ -317,13 +370,14 @@ window.tetris = {
                     if (r >= 0 && r < this.ROWS && c >= 0 && c < this.COLS) board[r][c] = 0;
                 }
             }
+            this.addParticleEffect(cx*15, cy*15, '#ff00ff');
         } else if (piece.type === 'laser') {
             const row = piece.y;
             if (row >= 0 && row < this.ROWS) {
                 for (let c = 0; c < this.COLS; c++) board[row][c] = 0;
             }
+            this.addParticleEffect(0, row*15, '#00ffff');
         } else {
-            // Обычная фигура: копируем цвет в board
             piece.shape.forEach((row, dy) => {
                 row.forEach((val, dx) => {
                     if (val) {
@@ -334,18 +388,128 @@ window.tetris = {
             });
         }
 
-        // Очистка линий (синхронная, без зависаний)
-        this.clearLines(board, playerIdx);
+        // Авто-холд (если улучшение куплено и холд пуст)
+        if (this.singlePlayerMode && this.upgrades && this.upgrades.autoHold && this.canHold[playerIdx] && this.holdPieces[playerIdx] === null) {
+            this.holdPieces[playerIdx] = {
+                shape: piece.shape.map(r => [...r]),
+                color: piece.color,
+                type: piece.type,
+                x: Math.floor((this.COLS - piece.shape[0].length)/2),
+                y: 0
+            };
+            this.canHold[playerIdx] = false;
+        }
 
-        // Создаём новую фигуру
+        // Очистка линий с анимацией
+        this.clearLinesWithAnimation(board, playerIdx);
         const newPiece = this.randomPiece();
-
-        // Сразу проверяем, не проиграл ли игрок
         if (this.collide(board, newPiece.shape, newPiece.x, newPiece.y)) {
-            this.gameOver(playerIdx);
-            return null;
+            // Щит: если есть и не использован, то спасаем один раз
+            if (this.singlePlayerMode && this.upgrades && this.upgrades.shield && !this.shieldUsed[playerIdx]) {
+                this.shieldUsed[playerIdx] = true;
+                // Очищаем нижнюю строку, чтобы освободить место
+                for (let c = 0; c < this.COLS; c++) board[this.ROWS-1][c] = 0;
+                // Перемещаем все строки вниз, освобождая верх
+                board.pop();
+                board.unshift(Array(this.COLS).fill(0));
+                // Проверяем ещё раз
+                if (!this.collide(board, newPiece.shape, newPiece.x, newPiece.y)) {
+                    this.showToast("🛡️ Щит спас вас от поражения!");
+                    return newPiece;
+                } else {
+                    this.gameOver(playerIdx);
+                    return null;
+                }
+            } else {
+                this.gameOver(playerIdx);
+                return null;
+            }
         }
         return newPiece;
+    },
+
+    // Анимированная очистка линий (вспышка + удаление)
+    clearLinesWithAnimation: function(board, playerIdx) {
+        const lines = this.getFullLines(board);
+        if (lines.length === 0) {
+            this.comboCnt[playerIdx] = 0;
+            this.comboMultiplier[playerIdx] = 1;
+            return;
+        }
+
+        if (this.clearingLines[playerIdx]) return;
+        this.clearingLines[playerIdx] = true;
+
+        // Комбо
+        this.comboCnt[playerIdx]++;
+        let comboBonus = 0.2 * this.comboCnt[playerIdx];
+        if (this.singlePlayerMode && this.upgrades && this.upgrades.comboMaster) {
+            comboBonus += this.upgrades.comboMaster * 0.1;
+        }
+        this.comboMultiplier[playerIdx] = 1 + comboBonus;
+
+        // Визуальная вспышка на строках
+        const blockSize = this.players === 1 ? 18 : 15;
+        const canvasId = this.players === 1 ? 'tetrisCanvas' : `tetrisCanvasP${playerIdx+1}`;
+        const canvas = document.getElementById(canvasId);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            lines.forEach(row => {
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillRect(0, row * blockSize, this.COLS * blockSize, blockSize);
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, row * blockSize, this.COLS * blockSize, blockSize);
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        // Задержка перед удалением строк (чтобы увидеть вспышку)
+        setTimeout(() => {
+            // Удаляем строки
+            const sorted = [...lines].sort((a,b) => b - a);
+            for (let r of sorted) {
+                board.splice(r, 1);
+                board.unshift(Array(this.COLS).fill(0));
+            }
+
+            // Начисление очков
+            let base = lines.length * 100 * this.comboMultiplier[playerIdx];
+            if (this.singlePlayerMode && this.upgrades) {
+                base = Math.floor(base * (1 + this.upgrades.lineBonus * 0.2));
+            }
+            this.scores[playerIdx] += base;
+            const elId = this.players === 1 ? 'tetrisScore' : `tetrisScoreP${playerIdx+1}`;
+            const el = document.getElementById(elId);
+            if (el) el.textContent = (this.players === 1 ? 'Счёт: ' : `Игрок ${playerIdx+1}: `) + this.scores[playerIdx];
+
+            // Добавляем частицы
+            if (this.singlePlayerMode && this.upgrades && this.upgrades.particleEffect) {
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * this.COLS * blockSize;
+                    const y = (lines[0] + Math.random() * lines.length) * blockSize;
+                    this.addParticleEffect(x, y, '#ffffff');
+                }
+            }
+
+            this.clearingLines[playerIdx] = false;
+            // Перерисовываем доску
+            this.drawBoard(board, this.pieces[playerIdx], this.holdPieces[playerIdx], canvasId, blockSize, playerIdx);
+        }, 80);
+    },
+
+    // Вспомогательная функция добавления частиц
+    addParticleEffect: function(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            this.particles.push({
+                x: x + (Math.random() - 0.5) * 15,
+                y: y + (Math.random() - 0.5) * 15,
+                vx: (Math.random() - 0.5) * 3,
+                vy: (Math.random() - 0.5) * 3 - 1,
+                life: 0.7 + Math.random() * 0.5,
+                color: color
+            });
+        }
     },
 
     getFullLines: function(board) {
@@ -356,46 +520,6 @@ window.tetris = {
         return lines;
     },
 
-    // Синхронное удаление линий (мгновенно, без анимации и таймеров)
-    clearLines: function(board, playerIdx) {
-        let lines = this.getFullLines(board);
-        if (lines.length === 0) {
-            this.comboCnt[playerIdx] = 0;
-            this.comboMultiplier[playerIdx] = 1;
-            return;
-        }
-
-        // Блокируем управление на время очистки (очень короткое)
-        if (this.clearingLines[playerIdx]) return;
-        this.clearingLines[playerIdx] = true;
-
-        // Увеличиваем комбо
-        this.comboCnt[playerIdx]++;
-        this.comboMultiplier[playerIdx] = 1 + this.comboCnt[playerIdx] * 0.2;
-
-        // Удаляем строки сверху вниз
-        for (let r of lines.sort((a,b) => b - a)) {
-            board.splice(r, 1);
-            board.unshift(Array(this.COLS).fill(0));
-        }
-
-        // Начисляем очки
-        let base = lines.length * 100 * this.comboMultiplier[playerIdx];
-        if (this.singlePlayerMode && this.upgrades) {
-            const mult = 1 + this.upgrades.lineBonus * 0.2;
-            base = Math.floor(base * mult);
-        }
-        this.scores[playerIdx] += base;
-
-        // Обновляем счёт на UI
-        const elId = this.players === 1 ? 'tetrisScore' : `tetrisScoreP${playerIdx+1}`;
-        const el = document.getElementById(elId);
-        if (el) el.textContent = (this.players === 1 ? 'Счёт: ' : `Игрок ${playerIdx+1}: `) + this.scores[playerIdx];
-
-        // Снимаем блокировку управления
-        this.clearingLines[playerIdx] = false;
-    },
-
     hold: function(playerIdx, blockSize) {
         if (!this.active || this.clearingLines[playerIdx]) return;
         if (this.singlePlayerMode && (!this.upgrades || !this.upgrades.holdPiece)) return;
@@ -404,7 +528,6 @@ window.tetris = {
         const current = this.pieces[playerIdx];
         const held = this.holdPieces[playerIdx];
 
-        // Сохраняем текущую фигуру в холд
         this.holdPieces[playerIdx] = {
             shape: current.shape.map(r => [...r]),
             color: current.color,
@@ -414,7 +537,6 @@ window.tetris = {
         };
 
         if (held) {
-            // Если в холде что‑то было – меняем
             this.pieces[playerIdx] = {
                 shape: held.shape.map(r => [...r]),
                 color: held.color,
@@ -423,11 +545,9 @@ window.tetris = {
                 y: 0
             };
         } else {
-            // Иначе берём новую фигуру
             this.pieces[playerIdx] = this.randomPiece();
         }
 
-        // Проверка на gameOver после замены
         if (this.collide(this.boards[playerIdx], this.pieces[playerIdx].shape, this.pieces[playerIdx].x, this.pieces[playerIdx].y)) {
             this.gameOver(playerIdx);
             return;
@@ -449,9 +569,8 @@ window.tetris = {
             piece.y += dy;
             this.drawBoard(board, piece, this.holdPieces[playerIdx], canvasId, blockSize, playerIdx);
         } else if (dy === 1) {
-            // Столкновение при движении вниз – фиксация
             const newPiece = this.lockPiece(board, piece, playerIdx);
-            if (newPiece === null) return; // gameOver уже вызван внутри lockPiece
+            if (newPiece === null) return;
             this.canHold[playerIdx] = true;
             this.pieces[playerIdx] = newPiece;
             this.drawBoard(board, newPiece, this.holdPieces[playerIdx], canvasId, blockSize, playerIdx);
@@ -489,7 +608,6 @@ window.tetris = {
                 this.move(i, 0, 1, blockSize);
             }
         }
-        // Обновление кулдаунов способностей (только одиночная игра)
         if (this.players === 1 && this.singlePlayerMode) {
             this._cdTick = (this._cdTick||0)+1;
             const tickTime = Math.min(800, 500 + (this.upgrades ? this.upgrades.speed * 50 : 0));
@@ -514,10 +632,12 @@ window.tetris = {
             case 'lightning':
                 this.drop(playerIdx, blockSize);
                 this.scores[playerIdx] += 20;
+                this.addParticleEffect(100, 100, '#ffff00');
                 break;
             case 'freeze':
                 if (this.freezeTimers[playerIdx]) clearTimeout(this.freezeTimers[playerIdx]);
                 this.freezeTimers[playerIdx] = setTimeout(() => { this.freezeTimers[playerIdx] = null; }, 5000);
+                this.addParticleEffect(150, 150, '#00ccff');
                 break;
             case 'clear':
                 const board = this.boards[playerIdx];
@@ -526,6 +646,7 @@ window.tetris = {
                         board.splice(r, 1);
                         board.unshift(Array(this.COLS).fill(0));
                         this.scores[playerIdx] += 50;
+                        this.addParticleEffect(0, r*15, '#ffaa44');
                         break;
                     }
                 }
@@ -575,14 +696,19 @@ window.tetris = {
             const container = document.getElementById('tetrisShopUpgrades');
             if (!self.upgrades) self.upgrades = self.defaultUpgrades();
             const upgrades = [
-                { key: 'speed', name: 'Скорость', desc: 'Замедляет падение фигур (легче)', cost: 100, inc: 60, max: 5, val: self.upgrades.speed },
+                { key: 'speed', name: 'Скорость', desc: 'Замедляет падение фигур', cost: 100, inc: 60, max: 5, val: self.upgrades.speed },
                 { key: 'lineBonus', name: 'Бонус за линии', desc: '+20% очков за линию', cost: 150, inc: 75, max: 5, val: self.upgrades.lineBonus },
                 { key: 'startRows', name: 'Начальные ряды', desc: '+2 заполненных строки внизу', cost: 50, inc: 25, max: 3, val: self.upgrades.startRows },
                 { key: 'specialChance', name: 'Спец. фигуры', desc: '+5% шанс спец. фигуры', cost: 200, inc: 100, max: 4, val: self.upgrades.specialChance },
                 { key: 'abilityPower', name: 'Сила способностей', desc: 'Ур.1-Молния, ур.2-Заморозка, ур.3-Очистка', cost: 250, inc: 150, max: 3, val: self.upgrades.abilityPower },
                 { key: 'pieceSet', name: 'Новые фигуры', desc: 'Открывает дополнительные формы', cost: 300, inc: 200, max: 2, val: self.upgrades.pieceSet },
                 { key: 'holdPiece', name: 'Удержание фигуры', desc: 'Возможность сохранить фигуру (клавиша H)', cost: 400, inc: 0, max: 1, val: self.upgrades.holdPiece?1:0 },
-                { key: 'ghostPiece', name: 'Призрачная фигура', desc: 'Показывает, куда упадёт фигура', cost: 350, inc: 0, max: 1, val: self.upgrades.ghostPiece?1:0 }
+                { key: 'ghostPiece', name: 'Призрачная фигура', desc: 'Показывает, куда упадёт фигура', cost: 350, inc: 0, max: 1, val: self.upgrades.ghostPiece?1:0 },
+                // НОВЫЕ УЛУЧШЕНИЯ
+                { key: 'shield', name: 'Щит', desc: 'Один раз спасает от проигрыша', cost: 500, inc: 0, max: 1, val: self.upgrades.shield },
+                { key: 'autoHold', name: 'Авто-удержание', desc: 'Автоматически сохраняет фигуру при падении (если холд пуст)', cost: 600, inc: 0, max: 1, val: self.upgrades.autoHold?1:0 },
+                { key: 'comboMaster', name: 'Комбо-мастер', desc: 'Увеличивает множитель комбо на 0.1 за уровень', cost: 450, inc: 150, max: 3, val: self.upgrades.comboMaster },
+                { key: 'particleEffect', name: 'Эффект частиц', desc: 'Красочные взрывы при очистке линий', cost: 300, inc: 0, max: 1, val: self.upgrades.particleEffect?1:0 }
             ];
             upgrades.forEach(up => {
                 const maxed = up.max && up.val >= up.max;
@@ -608,6 +734,14 @@ window.tetris = {
             document.getElementById('backToTetrisMenu').onclick = () => document.dispatchEvent(new CustomEvent('openMiniGamesMenu'));
         };
         render();
+    },
+
+    showToast: function(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-msg';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
     },
 
     exportState: function() {
