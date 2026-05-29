@@ -15,28 +15,93 @@
 
     let currentEditIssueNumber = null;
 
-    // ---------- Визуальный редактор таблиц (заменяет старый диалог) ----------
+    // ---------- Визуальный редактор таблиц с сортировкой и редактируемыми заголовками ----------
     function openTableEditor(textareaId) {
         const textarea = document.getElementById(textareaId);
         if (!textarea) return;
 
-        // Начальные размеры: 3 строки, 3 столбца
         let rows = 3, cols = 3;
+        // Заголовки столбцов (массив строк)
+        let colHeaders = Array(cols).fill().map((_, i) => `Столбец ${i+1}`);
+        // Данные таблицы: rows x cols
         let tableData = Array(rows).fill().map(() => Array(cols).fill(''));
 
-        // Функция перестроения таблицы по данным
+        // Функция перестроения таблицы
         function rebuildTable(container) {
             container.innerHTML = '';
             const table = document.createElement('table');
             table.className = 'visual-table-editor';
 
-            // Заголовки (только для удобства, не влияют на Markdown)
+            // Заголовок с редактируемыми ячейками
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             for (let c = 0; c < cols; c++) {
                 const th = document.createElement('th');
-                th.textContent = `Столбец ${c+1}`;
                 th.style.position = 'relative';
+                th.style.minWidth = '80px';
+                th.style.padding = '0.5rem';
+                th.style.backgroundColor = 'rgba(196,78,255,0.2)';
+
+                // Редактируемый текст заголовка
+                const headerInput = document.createElement('input');
+                headerInput.type = 'text';
+                headerInput.value = colHeaders[c];
+                headerInput.style.width = '100%';
+                headerInput.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                headerInput.style.border = '1px solid #c44eff';
+                headerInput.style.color = '#fff';
+                headerInput.style.borderRadius = '4px';
+                headerInput.style.padding = '0.2rem';
+                headerInput.style.textAlign = 'center';
+                headerInput.addEventListener('change', (e) => {
+                    colHeaders[c] = e.target.value;
+                });
+                th.appendChild(headerInput);
+
+                // Кнопка сортировки по этому столбцу (возрастание/убывание)
+                const sortGroup = document.createElement('div');
+                sortGroup.style.position = 'absolute';
+                sortGroup.style.right = '4px';
+                sortGroup.style.bottom = '2px';
+                sortGroup.style.display = 'flex';
+                sortGroup.style.gap = '2px';
+
+                const sortAscBtn = document.createElement('button');
+                sortAscBtn.textContent = '▲';
+                sortAscBtn.title = 'Сортировать по возрастанию';
+                sortAscBtn.style.background = 'rgba(0,0,0,0.5)';
+                sortAscBtn.style.border = 'none';
+                sortAscBtn.style.color = '#c44eff';
+                sortAscBtn.style.cursor = 'pointer';
+                sortAscBtn.style.fontSize = '10px';
+                sortAscBtn.style.borderRadius = '4px';
+                sortAscBtn.style.padding = '0 4px';
+                sortAscBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    sortRowsByColumn(c, 'asc');
+                    rebuildTable(container);
+                });
+
+                const sortDescBtn = document.createElement('button');
+                sortDescBtn.textContent = '▼';
+                sortDescBtn.title = 'Сортировать по убыванию';
+                sortDescBtn.style.background = 'rgba(0,0,0,0.5)';
+                sortDescBtn.style.border = 'none';
+                sortDescBtn.style.color = '#c44eff';
+                sortDescBtn.style.cursor = 'pointer';
+                sortDescBtn.style.fontSize = '10px';
+                sortDescBtn.style.borderRadius = '4px';
+                sortDescBtn.style.padding = '0 4px';
+                sortDescBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    sortRowsByColumn(c, 'desc');
+                    rebuildTable(container);
+                });
+
+                sortGroup.appendChild(sortAscBtn);
+                sortGroup.appendChild(sortDescBtn);
+                th.appendChild(sortGroup);
+
                 // Кнопка удаления столбца
                 const delColBtn = document.createElement('button');
                 delColBtn.textContent = '✖';
@@ -57,6 +122,7 @@
                     for (let r = 0; r < rows; r++) {
                         tableData[r].splice(c, 1);
                     }
+                    colHeaders.splice(c, 1);
                     cols--;
                     rebuildTable(container);
                 });
@@ -101,11 +167,66 @@
                 tbody.appendChild(tr);
             }
             table.appendChild(tbody);
-
             container.appendChild(table);
         }
 
-        // Создание модального окна редактора
+        // Сортировка строк по столбцу
+        function sortRowsByColumn(colIndex, order) {
+            const sortedData = [...tableData];
+            const allNumeric = sortedData.every(row => {
+                const val = row[colIndex];
+                return val !== '' && !isNaN(parseFloat(val)) && isFinite(val);
+            });
+            sortedData.sort((a, b) => {
+                let aVal = a[colIndex];
+                let bVal = b[colIndex];
+                if (allNumeric) {
+                    aVal = parseFloat(aVal) || 0;
+                    bVal = parseFloat(bVal) || 0;
+                } else {
+                    aVal = String(aVal).toLowerCase();
+                    bVal = String(bVal).toLowerCase();
+                }
+                if (order === 'asc') {
+                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                } else {
+                    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                }
+            });
+            tableData = sortedData;
+        }
+
+        // Сортировка столбцов по горизонтали (по указанной строке)
+        function sortColumnsByRow(rowIndex, order) {
+            if (rowIndex >= rows) return;
+            const colPairs = [];
+            for (let c = 0; c < cols; c++) {
+                let val = tableData[rowIndex][c];
+                let numeric = (val !== '' && !isNaN(parseFloat(val)) && isFinite(val));
+                let sortVal = numeric ? parseFloat(val) : String(val).toLowerCase();
+                colPairs.push({ originalIndex: c, sortValue: sortVal, numeric: numeric });
+            }
+            colPairs.sort((a, b) => {
+                if (order === 'asc') {
+                    return a.sortValue > b.sortValue ? 1 : a.sortValue < b.sortValue ? -1 : 0;
+                } else {
+                    return a.sortValue < b.sortValue ? 1 : a.sortValue > b.sortValue ? -1 : 0;
+                }
+            });
+            const newData = Array(rows).fill().map(() => Array(cols).fill(''));
+            const newHeaders = Array(cols);
+            for (let newIdx = 0; newIdx < colPairs.length; newIdx++) {
+                const oldIdx = colPairs[newIdx].originalIndex;
+                newHeaders[newIdx] = colHeaders[oldIdx];
+                for (let r = 0; r < rows; r++) {
+                    newData[r][newIdx] = tableData[r][oldIdx];
+                }
+            }
+            tableData = newData;
+            colHeaders = newHeaders;
+        }
+
+        // Создание модального окна
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.style.display = 'flex';
@@ -135,6 +256,7 @@
                 <button type="button" id="addRowBtn" class="game-btn" style="width:auto;">➕ Добавить строку</button>
                 <button type="button" id="addColBtn" class="game-btn" style="width:auto;">➕ Добавить столбец</button>
                 <button type="button" id="clearTableBtn" class="game-btn" style="width:auto;">🗑 Очистить</button>
+                <button type="button" id="sortColsByRow0Btn" class="game-btn" style="width:auto;">↕️ Сортировать столбцы по 1-й строке</button>
                 <button type="button" id="insertTableBtn" class="game-btn" style="width:auto;">✅ Вставить таблицу</button>
                 <button type="button" id="cancelTableBtn" class="back-btn" style="margin:0;">Отмена</button>
             </div>
@@ -150,7 +272,7 @@
         }
         refreshUI();
 
-        // Обработчики кнопок
+        // Обработчики
         modalContent.querySelector('#addRowBtn').addEventListener('click', () => {
             rows++;
             tableData.push(Array(cols).fill(''));
@@ -161,6 +283,7 @@
             for (let r = 0; r < rows; r++) {
                 tableData[r].push('');
             }
+            colHeaders.push(`Столбец ${cols}`);
             refreshUI();
         });
         modalContent.querySelector('#clearTableBtn').addEventListener('click', () => {
@@ -171,24 +294,31 @@
             }
             refreshUI();
         });
+        modalContent.querySelector('#sortColsByRow0Btn').addEventListener('click', () => {
+            if (rows > 0) {
+                const order = confirm('Сортировать столбцы по возрастанию? (OK - возрастание, Отмена - убывание)') ? 'asc' : 'desc';
+                sortColumnsByRow(0, order);
+                refreshUI();
+            } else {
+                alert('Нет строк для сортировки');
+            }
+        });
         modalContent.querySelector('#insertTableBtn').addEventListener('click', () => {
-            // Генерация Markdown
             let md = '';
-            // Заголовок (первая строка)
             for (let c = 0; c < cols; c++) {
-                md += `| Столбец ${c+1} `;
+                let headerText = colHeaders[c] || `Столбец ${c+1}`;
+                headerText = headerText.replace(/\|/g, '\\|');
+                md += `| ${headerText} `;
             }
             md += '|\n|' + Array(cols).fill('---').join('|') + '|\n';
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     let cellText = tableData[r][c] || '';
-                    // Экранируем только опасные символы для Markdown (но оставляем возможность форматирования)
                     cellText = cellText.replace(/\|/g, '\\|');
                     md += `| ${cellText} `;
                 }
                 md += '|\n';
             }
-            // Вставка в textarea
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
             const currentText = textarea.value;
@@ -196,19 +326,17 @@
             textarea.focus();
             textarea.selectionStart = start + md.length + 4;
             textarea.selectionEnd = start + md.length + 4;
-            // Закрыть модалку
             modal.remove();
         });
         modalContent.querySelector('#cancelTableBtn').addEventListener('click', () => {
             modal.remove();
         });
-        // Закрытие по клику на фон
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.remove();
         });
     }
 
-    // ---------- Панель инструментов для Markdown ----------
+    // ---------- Панель инструментов Markdown ----------
     function setupToolbar(textareaId, toolbarId) {
         const textarea = document.getElementById(textareaId);
         if (!textarea) return;
@@ -233,7 +361,7 @@
             ul: () => insertText('- ', '', 'пункт списка'),
             ol: () => insertText('1. ', '', 'пункт'),
             link: () => { const url = prompt('Введите URL:', 'https://'); if (url) insertText('[', `](${url})`, 'текст ссылки'); },
-            table: () => openTableEditor(textareaId)   // ВЫЗОВ НОВОГО РЕДАКТОРА
+            table: () => openTableEditor(textareaId)
         };
 
         toolbar.querySelectorAll('[data-cmd]').forEach(btn => {
@@ -268,7 +396,7 @@
     }
     function closeEditModal() { if (editModal) editModal.style.display = 'none'; currentEditIssueNumber = null; }
 
-    // ---------- API вызовы ----------
+    // ---------- API ----------
     async function createIssue(title, body, labelsArray) {
         const token = window.GitHubAuth.token;
         if (!token) throw new Error('Не авторизован');
@@ -333,13 +461,12 @@
 
     window.openEditPostModal = openEditModal;
 
-    // ---------- Навешивание событий ----------
+    // ---------- События ----------
     if (openCreateBtn) openCreateBtn.addEventListener('click', openCreateModal);
     if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeCreateModal);
     if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
     window.addEventListener('click', (e) => { if (e.target === createModal) closeCreateModal(); if (e.target === editModal) closeEditModal(); });
 
-    // Инициализация тулбаров
     document.addEventListener('DOMContentLoaded', () => {
         setupToolbar('postBody', 'createToolbar');
         setupToolbar('editPostBody', 'editToolbar');
