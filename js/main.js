@@ -1,4 +1,4 @@
-// js/main.js - Полностью рефакторинг с EventBus, очисткой анимаций, поддержкой всех игр (DOOM удалён)
+// js/main.js - Полностью рефакторинг с поддержкой всех игр, добавлены обработчики кастомных событий для магазинов
 (function() {
     'use strict';
 
@@ -63,7 +63,7 @@
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
-    let activeGameInstance = null; // ссылка на объект игры (если нужен stop)
+    let activeGameInstance = null;
 
     function closeModal() {
         modalOverlay.classList.remove('active');
@@ -628,7 +628,12 @@
         };
     }
 
-    // ---------- Глобальные события для перезапуска игр ----------
+    // ---------- Глобальные события для перезапуска игр из магазина ----------
+    document.addEventListener('startSnakeSingle', () => showSnakeSingle());
+    document.addEventListener('startTetrisSingle', () => showTetrisSingle());
+    document.addEventListener('openMiniGamesMenu', () => showSelection());
+
+    // ---------- Глобальные события для загрузки данных ----------
     EventBus.on('gameDataLoaded', () => {
         if (activeGame === 'clicker') window.clicker.updateUI();
         if (activeGame === 'tetris') { window.tetris.stop(); window.tetris.init(1); }
