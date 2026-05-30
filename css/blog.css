@@ -1,4 +1,8 @@
 /* blog.css - Стили для блога/новостей */
+* {
+    font-family: 'Russo One', system-ui, -apple-system, sans-serif;
+}
+
 .blog-section {
     margin-top: 2rem;
     padding: 0 0.5rem;

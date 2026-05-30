@@ -1,4 +1,4 @@
-// js/snake.js - Исправлен: бот умирает при столкновении с игроком
+// js/snake.js - Исправлен: убрана неуязвимость, оставлен только щит
 window.snake = (function() {
     'use strict';
 
@@ -107,11 +107,11 @@ window.snake = (function() {
             freeze: { name: 'Замедл.', color: '#88ffff', dur: 5 },
             double: { name: 'x2 Очки', color: '#ff44cc', dur: 10 },
             shrink: { name: 'Уменьшение', color: '#ff8800', dur: 20 },
-            invincible: { name: 'Неуязвимость', color: '#ff00ff', dur: 6 },
             bonus: { name: 'Бонус очков', color: '#ffffff', dur: 1 }
         };
+        // Если тип не поддерживается (например, старые сохранения), игнорируем
+        if (!config[type]) return;
         const conf = config[type];
-        if (!conf) return;
         const existing = activePowerups[playerIdx].find(p => p.type === type);
         if (existing) { existing.duration = conf.dur; return; }
         activePowerups[playerIdx].push({ type, name: conf.name, color: conf.color, duration: conf.dur });
@@ -166,7 +166,7 @@ window.snake = (function() {
         else if (rand < 0.94) type = 'freeze';
         else if (rand < 0.97) type = 'double';
         else type = (hasExtra >= 1 ? 'shrink' : 'double');
-        if (hasExtra >= 2 && Math.random() < 0.3) type = 'invincible';
+        if (hasExtra >= 2 && Math.random() < 0.3) type = 'shield';   // вместо invincible – щит
         if (hasExtra >= 3 && Math.random() < 0.2) type = 'bonus';
 
         do {
@@ -229,7 +229,7 @@ window.snake = (function() {
             else if (bot.segments.some(s => s.x === head.x && s.y === head.y)) died = true;
             else if (meteorBlocks.some(b => b.x === head.x && b.y === head.y)) died = true;
             else if (tempWalls && (head.x === 0 || head.x === W - 1 || head.y === 0 || head.y === H - 1)) died = true;
-            else if (snakes[0].some(s => s.x === head.x && s.y === head.y)) died = true; // ★ столкновение с игроком
+            else if (snakes[0].some(s => s.x === head.x && s.y === head.y)) died = true;
             if (!died) {
                 bot.segments.unshift(head);
                 let ate = false;
@@ -284,10 +284,9 @@ window.snake = (function() {
             let newX = snakes[i][0].x + dirs[i].x;
             let newY = snakes[i][0].y + dirs[i].y;
             const hasShield = activePowerups[i]?.some(p => p.type === 'shield');
-            const invincible = activePowerups[i]?.some(p => p.type === 'invincible');
-            let teleported = false;
 
-            if (hasShield && !invincible) {
+            let teleported = false;
+            if (hasShield) {
                 if (newX < 0) { newX = W - 1; teleported = true; }
                 else if (newX >= W) { newX = 0; teleported = true; }
                 if (newY < 0) { newY = H - 1; teleported = true; }
@@ -295,17 +294,19 @@ window.snake = (function() {
             }
 
             let dead = false;
-            if (!teleported && (newX < 0 || newX >= W || newY < 0 || newY >= H)) dead = !hasShield && !invincible;
-            else if (snakes.some((s, idx) => idx !== i && s.some(seg => seg.x === newX && seg.y === newY))) dead = !hasShield && !invincible;
-            else if (snakes[i].some(seg => seg.x === newX && seg.y === newY) && !(newX === snakes[i][0].x && newY === snakes[i][0].y)) dead = !hasShield && !invincible;
-            else if (meteorBlocks.some(b => b.x === newX && b.y === newY)) dead = !hasShield && !invincible;
-            else if (bot && bot.alive && bot.segments.some(seg => seg.x === newX && seg.y === newY)) dead = !hasShield && !invincible;
-            else if (bossSnake && bossSnake.alive && bossSnake.segments.some(seg => seg.x === newX && seg.y === newY)) dead = !hasShield && !invincible;
+            if (!teleported && (newX < 0 || newX >= W || newY < 0 || newY >= H)) dead = !hasShield;
+            else if (snakes.some((s, idx) => idx !== i && s.some(seg => seg.x === newX && seg.y === newY))) dead = !hasShield;
+            else if (snakes[i].some(seg => seg.x === newX && seg.y === newY) && !(newX === snakes[i][0].x && newY === snakes[i][0].y)) dead = !hasShield;
+            else if (meteorBlocks.some(b => b.x === newX && b.y === newY)) dead = !hasShield;
+            else if (bot && bot.alive && bot.segments.some(seg => seg.x === newX && seg.y === newY)) dead = !hasShield;
+            else if (bossSnake && bossSnake.alive && bossSnake.segments.some(seg => seg.x === newX && seg.y === newY)) dead = !hasShield;
 
             if (dead) {
                 if (hasShield) {
                     const idx = activePowerups[i].findIndex(p => p.type === 'shield');
                     if (idx !== -1) activePowerups[i].splice(idx, 1);
+                    // Смерть предотвращена, выходим из этого хода для игрока (но не убиваем)
+                    continue;
                 } else {
                     kill(i);
                     return;
@@ -520,7 +521,7 @@ window.snake = (function() {
         const pulse = 1 + 0.2 * Math.sin(foodPhase * 5);
         const colorMap = {
             normal: '#ff4444', gold: '#ffcc00', speed: '#44ccff', shield: '#44ff44',
-            freeze: '#88ffff', double: '#ff44cc', shrink: '#ff8800', invincible: '#ff00ff', bonus: '#ffffff'
+            freeze: '#88ffff', double: '#ff44cc', shrink: '#ff8800', bonus: '#ffffff'
         };
         foods.forEach(f => {
             const cx = f.x * SIZE + SIZE / 2, cy = f.y * SIZE + SIZE / 2;
