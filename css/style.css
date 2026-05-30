@@ -93,7 +93,6 @@ h1 {
     color: #ffffff;
     position: relative;
     -webkit-text-stroke: 1px rgba(0,0,0,0.2);
-    text-stroke: 1px rgba(0,0,0,0.2);
 }
 
 /* Шумовое затемнение */
