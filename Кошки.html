@@ -657,7 +657,7 @@
                 <td class="cat-row-cell">
                     <div class="cat-content" data-cat-row>
                         <div class="image-wrapper"><img src="images/manul.png" class="cat-img" data-cat-img alt="Манул"></div>
-                        <div class="cat-text"><strong>🐾 1. Манул</strong><br>Дикий пушистый отшельник, серьёзный и независимый. Не мяукает — рычит.</div>
+                        <div class="cat-text"><strong>🐾 1. Манул</strong><br>Дикий пушистый отшельник, серьёзный и независимый. Не мяукает - рычит.</div>
                     </div>
                 </td>
             </tr>
@@ -687,7 +687,7 @@
             <div class="shop-stats">✨ Открыто: <span id="unlockedCount">0</span> из <span id="totalSecretCount">10</span> ✨</div>
             <div class="random-unlock-wrapper">
                 <button class="random-unlock-btn" id="randomUnlockBtn" title="Открыть случайного секретного кота!">
-                    🎲 Открыть случайного кота — 15 ❤️
+                    🎲 Открыть случайного кота - 15 ❤️
                 </button>
             </div>
         </div>
@@ -698,7 +698,7 @@
         (function() {
             // ============ ДАННЫЕ КОТОВ ============
             const initialCats = [
-                { id: "manul", name: "Манул", desc: "Дикий пушистый отшельник, серьёзный и независимый. Не мяукает — рычит.",
+                { id: "manul", name: "Манул", desc: "Дикий пушистый отшельник, серьёзный и независимый. Не мяукает - рычит.",
                     img: "images/manul.png" },
                 { id: "british", name: "Британская короткошёрстная",
                     desc: "Плюшевый аристократ, спокойный и уютный.", img: "images/british-shorthair.jpg" },
@@ -843,10 +843,10 @@
                     randomUnlockBtn.textContent = '🎉 Все коты открыты! 🎉';
                 } else if (heartBalance < RANDOM_UNLOCK_COST) {
                     randomUnlockBtn.disabled = true;
-                    randomUnlockBtn.textContent = `🎲 Открыть случайного кота — ${RANDOM_UNLOCK_COST} ❤️`;
+                    randomUnlockBtn.textContent = `🎲 Открыть случайного кота - ${RANDOM_UNLOCK_COST} ❤️`;
                 } else {
                     randomUnlockBtn.disabled = false;
-                    randomUnlockBtn.textContent = `🎲 Открыть случайного кота — ${RANDOM_UNLOCK_COST} ❤️`;
+                    randomUnlockBtn.textContent = `🎲 Открыть случайного кота - ${RANDOM_UNLOCK_COST} ❤️`;
                 }
                 unlockedCountSpan.textContent = unlockedSecretIds.size;
             }
@@ -1042,7 +1042,7 @@
                     return;
                 }
                 if (heartBalance < RANDOM_UNLOCK_COST) {
-                    showToast('Не хватает сердечек ❤️ — чеши котиков!', 2000);
+                    showToast('Не хватает сердечек ❤️ - чеши котиков!', 2000);
                     return;
                 }
 

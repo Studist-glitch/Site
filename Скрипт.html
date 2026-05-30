@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>сумма | ячейки</title>
     <style>
-        /* полностью обнуляем отступы — максимальная чистота */
+        /* полностью обнуляем отступы - максимальная чистота */
         * {
             margin: 0;
             padding: 0;
@@ -22,7 +22,7 @@
             padding: 1.5rem;
         }
 
-        /* сетка — четыре ячейки ровно по центру, адаптивно */
+        /* сетка - четыре ячейки ровно по центру, адаптивно */
         .grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(130px, 160px));
@@ -31,7 +31,7 @@
             align-items: center;
         }
 
-        /* каждая ячейка — лёгкая тень, скругление, воздух внутри */
+        /* каждая ячейка - лёгкая тень, скругление, воздух внутри */
         .cell {
             background: #ffffff;
             border-radius: 1.75rem;
@@ -43,10 +43,10 @@
             text-align: center;
             padding: 1.5rem 0.5rem;
             aspect-ratio: 1 / 1;    /* идеальный квадрат, ровные ячейки */
-            transition: none;        /* никакой анимации — лишнее отсутствует */
+            transition: none;        /* никакой анимации - лишнее отсутствует */
         }
 
-        /* крупное, чёткое число — главный визуальный акцент */
+        /* крупное, чёткое число - главный визуальный акцент */
         .number {
             font-size: 2.6rem;
             font-weight: 540;
@@ -56,7 +56,7 @@
             letter-spacing: -0.01em;
         }
 
-        /* минималистичный маленький текст — едва заметная подпись */
+        /* минималистичный маленький текст - едва заметная подпись */
         .label {
             font-size: 0.7rem;
             font-weight: 430;
@@ -114,22 +114,22 @@
 <div class="grid">
     <!-- ячейка 1 -->
     <div class="cell">
-        <div class="number" id="val1">—</div>
+        <div class="number" id="val1">-</div>
         <div class="label">число 1</div>
     </div>
     <!-- ячейка 2 -->
     <div class="cell">
-        <div class="number" id="val2">—</div>
+        <div class="number" id="val2">-</div>
         <div class="label">число 2</div>
     </div>
     <!-- ячейка 3 -->
     <div class="cell">
-        <div class="number" id="val3">—</div>
+        <div class="number" id="val3">-</div>
         <div class="label">число 3</div>
     </div>
     <!-- ячейка 4 → отображает сумму первых трёх -->
     <div class="cell">
-        <div class="number" id="sumTotal">—</div>
+        <div class="number" id="sumTotal">-</div>
         <div class="label">сумма</div>
     </div>
 </div>

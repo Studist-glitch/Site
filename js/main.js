@@ -554,7 +554,7 @@
         }
     });
 
-    // ---------- GitHub авторизация ----------
+    // ========== GitHub авторизация (обновлённая, без лишней кнопки) ==========
     const auth = window.GitHubAuth;
     const authStatusDiv = document.getElementById('authStatus');
     const tokenModal = document.getElementById('tokenModal');
@@ -562,7 +562,6 @@
     const submitTokenBtn = document.getElementById('submitTokenBtn');
     const cancelTokenBtn = document.getElementById('cancelTokenBtn');
     const logoutGithubBtn = document.getElementById('logoutGithubBtn');
-    const githubLoginBtn = document.getElementById('githubLoginBtn');
 
     function updateAuthUI() {
         if (auth && auth.isAuthenticated && auth.username) {
@@ -578,7 +577,19 @@
         }
     }
 
-    if (githubLoginBtn) githubLoginBtn.onclick = () => tokenModal.style.display = 'flex';
+    // Удаляем старую плавающую кнопку, если она есть
+    const oldGithubBtn = document.getElementById('githubLoginBtn');
+    if (oldGithubBtn) oldGithubBtn.remove();
+
+    // Клик по статусу тоже открывает модалку (для удобства)
+    if (authStatusDiv) {
+        authStatusDiv.addEventListener('click', (e) => {
+            // Не открываем, если кликнули по вложенным кнопкам (они обрабатываются отдельно)
+            if (e.target.tagName === 'BUTTON') return;
+            if (!auth.isAuthenticated) tokenModal.style.display = 'flex';
+        });
+    }
+
     if (cancelTokenBtn) cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
     if (logoutGithubBtn) logoutGithubBtn.onclick = () => {
         auth.logout();
@@ -603,7 +614,7 @@
                 alert('Ошибка: ' + err.message);
             } finally {
                 submitTokenBtn.disabled = false;
-                submitTokenBtn.textContent = '✅ Зарегистрироваться / Войти';
+                submitTokenBtn.textContent = '✅ Войти / Зарегистрироваться';
             }
         };
     }
