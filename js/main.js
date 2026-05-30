@@ -1,4 +1,7 @@
+// js/main.js - Без DOOM, вынесены общие функции, минимализм
 (function() {
+    'use strict';
+
     // ---------- Фоновый канвас с частицами ----------
     const bgCanvas = document.getElementById('bgCanvas');
     const bgCtx = bgCanvas.getContext('2d');
@@ -24,8 +27,7 @@
         });
     }
 
-    let mouseX = 0, mouseY = 0;
-    let targetMouseX = 0, targetMouseY = 0;
+    let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
     document.addEventListener('mousemove', function(e) {
         targetMouseX = e.clientX / bgCanvas.width - 0.5;
         targetMouseY = e.clientY / bgCanvas.height - 0.5;
@@ -62,6 +64,15 @@
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
 
+    function closeModal() {
+        modalOverlay.classList.remove('active');
+        if (activeGame === 'tetris') window.tetris.stop();
+        else if (activeGame === 'snake') window.snake.stop();
+        else if (activeGame === 'pong') window.pong.stop();
+        else if (activeGame === 'clicker') { /* кликер не требует остановки */ }
+        activeGame = null;
+    }
+
     function showSelection() {
         activeGame = null;
         modalInner.innerHTML = `
@@ -79,12 +90,10 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
-    // ---------- Кликер ----------
+    // ---------- Кликер (без изменений, использует глобальные утилиты) ----------
     function showClicker() {
-        window.clicker.init();
-        window.clicker.load();
         activeGame = 'clicker';
-
+        window.clicker.init();
         modalInner.innerHTML = `
             <h3>⚡ Кликер</h3>
             <div class="tab-buttons">
@@ -112,7 +121,7 @@
                 <div id="clickerUpgrades" class="upgrades-list"></div>
             </div>
             <div id="tab-stats" class="tab-content" style="display:none;">
-                <table class="stats-table" id="statsTable"><table>
+                <table class="stats-table" id="statsTable"><tbody></tbody></table>
             </div>
             <button class="back-btn" id="backClicker">← Назад</button>
         `;
@@ -121,126 +130,100 @@
             scoreEl: document.getElementById('clickerScore'),
             perSecEl: document.getElementById('clickerPerSec'),
             comboEl: document.getElementById('comboDisplay'),
-            renderUpgrades: renderUpgradesList
+            renderUpgrades: renderClickerUpgrades
         });
 
-        document.getElementById('clickerBtn').onclick = function(e) {
-            window.clicker.handleClick(e);
-        };
+        document.getElementById('clickerBtn').onclick = (e) => window.clicker.handleClick(e);
+        document.getElementById('backClicker').onclick = () => { showSelection(); };
 
-        window.clicker.buyUpgrade = function(key) {
-            const up = this.upgrades[key];
-            const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
-            if (this.score < cost || (up.maxLevel && up.level >= up.maxLevel)) return;
-            this.score -= cost;
-            up.effect(up.level + 1);
-            if (key === 'goldRush') {
-                this.goldRushActive = true;
-                this.goldRushMult = 2;
-                this.goldRushTimer = 5 + (up.level + 1);
-            }
-            if (key === 'comboMaster') {
-                this.maxCombo = (this.maxCombo || 0) + 10;
-                this.comboMultiplier = (this.comboMultiplier || 0) + 0.01;
-            }
-            up.level++;
-            this.updateUI();
-            this.save();
-            renderUpgradesList();
-        };
+        function renderClickerUpgrades() {
+            const container = document.getElementById('clickerUpgrades');
+            if (!container) return;
+            container.innerHTML = '';
+            const score = window.clicker.score;
+            const tierNames = ['Базовые', 'Продвинутые', 'Экспертные', 'Мастерские', 'Легендарные'];
+            const tierUnlocks = [0, 200, 1000, 5000, 20000];
 
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+            for (let t = 0; t < tierNames.length; t++) {
+                const unlocked = score >= tierUnlocks[t];
+                const header = document.createElement('div');
+                header.style.cssText = 'color:#c44eff; font-weight:600; margin:0.5rem 0 0.2rem; font-size:0.75rem;';
+                header.textContent = tierNames[t] + (unlocked ? '' : ` (🔒 ${tierUnlocks[t]}💎)`);
+                container.appendChild(header);
+
+                for (let key in window.clicker.upgrades) {
+                    const upDef = window.clicker.upgradesDef?.[key];
+                    if (!upDef || upDef.tier !== t) continue;
+                    const level = window.clicker.upgrades[key];
+                    const cost = Math.floor(upDef.baseCost * Math.pow(upDef.costMult, level));
+                    const canBuy = score >= cost && unlocked;
+                    const maxed = upDef.maxLevel && level >= upDef.maxLevel;
+                    let desc = upDef.desc;
+                    if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
+                    if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
+                    if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + level} сек`;
+                    if (key === 'meteor') desc = `Периодический бонус, интервал ${Math.max(5, 15 - level)}с`;
+                    if (key === 'acceleration') desc = `Тик быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
+
+                    const item = document.createElement('div');
+                    item.className = 'upgrade-item' + (unlocked ? '' : ' locked');
+                    item.innerHTML = `
+                        <div class="info">
+                            <span class="icon">${upDef.icon}</span>
+                            <div class="details">
+                                <span class="name">${upDef.name} (ур.${level})</span>
+                                <span class="effect">${desc}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span class="cost">${maxed ? 'МАКС' : cost + '💎'}</span>
+                            <button class="buy-btn" ${(canBuy && !maxed) ? '' : 'disabled'}>${maxed ? '✔️' : 'Купить'}</button>
+                        </div>
+                    `;
+                    if (canBuy && !maxed) {
+                        item.querySelector('.buy-btn').onclick = () => window.clicker.buyUpgrade(key);
+                    }
+                    container.appendChild(item);
+                }
+            }
+        }
+
+        function renderStatsTable() {
+            const stats = window.clicker.getStats();
+            const tableBody = document.querySelector('#statsTable tbody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr><td>Всего 💎</td><td>${stats.score}</td></tr>
+                    <tr><td>Урон клика</td><td>${stats.perClick}</td></tr>
+                    <tr><td>Пасс./сек</td><td>${stats.perSec}</td></tr>
+                    <tr><td>Крит.шанс</td><td>${stats.critChance}</td></tr>
+                    <tr><td>Крит.множитель</td><td>${stats.critMult}</td></tr>
+                    <tr><td>Всего кликов</td><td>${stats.totalClicks}</td></tr>
+                    <tr><td>Всего заработано</td><td>${stats.totalEarned}</td></tr>
+                    <tr><td>Убито боссов</td><td>${stats.bossesDefeated}</td></tr>
+                    <tr><td>Интервал тика</td><td>${(stats.tickRate/1000).toFixed(1)}с</td></tr>
+                `;
+            }
+        }
+
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(btn => {
             btn.addEventListener('click', function() {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                tabs.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 const tab = this.dataset.tab;
                 document.getElementById('tab-click').style.display = tab === 'click' ? 'block' : 'none';
                 document.getElementById('tab-upgrades').style.display = tab === 'upgrades' ? 'block' : 'none';
                 document.getElementById('tab-stats').style.display = tab === 'stats' ? 'block' : 'none';
-                if (tab === 'upgrades') renderUpgradesList();
+                if (tab === 'upgrades') renderClickerUpgrades();
                 if (tab === 'stats') renderStatsTable();
             });
         });
 
-        document.getElementById('backClicker').onclick = function() {
-            showSelection();
-        };
-
         window.clicker.updateUI();
         window.clicker.updateBossUI();
         window.clicker.generateChallenge();
-        renderUpgradesList();
-    }
-
-    function renderUpgradesList() {
-        const container = document.getElementById('clickerUpgrades');
-        if (!container) return;
-        container.innerHTML = '';
-        const score = window.clicker.score;
-        const tierNames = ['Базовые', 'Продвинутые', 'Экспертные', 'Мастерские', 'Легендарные'];
-        const tierUnlocks = [0, 200, 1000, 5000, 20000];
-
-        for (let t = 0; t < tierNames.length; t++) {
-            const unlocked = score >= tierUnlocks[t];
-            const header = document.createElement('div');
-            header.style.cssText = 'color:#c44eff; font-weight:600; margin: 0.5rem 0 0.2rem; font-size:0.75rem;';
-            header.textContent = tierNames[t] + (unlocked ? '' : ` (🔒 ${tierUnlocks[t]}💎)`);
-            container.appendChild(header);
-
-            for (let key in window.clicker.upgrades) {
-                const up = window.clicker.upgrades[key];
-                if (up.tier !== t) continue;
-                const cost = Math.floor(up.baseCost * Math.pow(up.costMult, up.level));
-                const canBuy = score >= cost && unlocked;
-                const maxed = up.maxLevel && up.level >= up.maxLevel;
-                let desc = up.desc;
-                if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
-                if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
-                if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + up.level} сек`;
-                if (key === 'meteor') desc = `Периодический бонус, интервал ${Math.max(5, 15 - up.level)}с`;
-                if (key === 'acceleration') desc = `Тик быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
-                if (key === 'magnetField') desc = `Каждые ${window.clicker.magnetInterval}с +${window.clicker.magnetPercent}% от счёта`;
-
-                const item = document.createElement('div');
-                item.className = 'upgrade-item' + (unlocked ? '' : ' locked');
-                item.innerHTML = `
-                    <div class="info">
-                        <span class="icon">${up.icon}</span>
-                        <div class="details">
-                            <span class="name">${up.name} (ур.${up.level})</span>
-                            <span class="effect">${desc}</span>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <span class="cost">${maxed ? 'МАКС' : cost + '💎'}</span>
-                        <button class="buy-btn" ${(canBuy && !maxed) ? '' : 'disabled'}>${maxed ? '✔️' : 'Купить'}</button>
-                    </div>
-                `;
-                if (canBuy && !maxed) {
-                    item.querySelector('.buy-btn').addEventListener('click', () => {
-                        window.clicker.buyUpgrade(key);
-                    });
-                }
-                container.appendChild(item);
-            }
-        }
-    }
-
-    function renderStatsTable() {
-        const table = document.getElementById('statsTable');
-        if (!table) return;
-        const stats = window.clicker.getStats();
-        table.innerHTML = `
-            <tr><td>Всего 💎</td><td>${stats.score}</td></tr>
-            <tr><td>Урон клика</td><td>${stats.perClick}</td></tr>
-            <tr><td>Пасс./сек</td><td>${stats.perSec}</td></tr>
-            <tr><td>Крит.шанс</td><td>${stats.critChance}</td></tr>
-            <tr><td>Крит.множитель</td><td>${stats.critMult}</td></tr>
-            <tr><td>Всего кликов</td><td>${stats.totalClicks}</td></tr>
-            <tr><td>Всего заработано</td><td>${stats.totalEarned}</td></tr>
-            <tr><td>Убито боссов</td><td>${stats.bossesDefeated}</td></tr>
-            <tr><td>Интервал тика</td><td>${(stats.tickRate/1000).toFixed(1)}с</td></tr>
-        `;
+        renderClickerUpgrades();
     }
 
     // ---------- Тетрис ----------
@@ -254,7 +237,7 @@
             <button class="game-btn" id="startTetrisBtn">Старт</button>
             <button class="back-btn" id="backTetrisMode">← Назад</button>
         `;
-        document.getElementById('startTetrisBtn').onclick = function() {
+        document.getElementById('startTetrisBtn').onclick = () => {
             const mode = document.querySelector('input[name="tetrisMode"]:checked').value;
             if (mode === 'single') showTetrisSingle();
             else showTetrisMulti();
@@ -283,20 +266,15 @@
             </div>
             <button class="back-btn" id="backTetris">← Назад</button>
         `;
-        window.tetris.onGameOver = function() {
-            window.tetris.showShop();
-        };
+        window.tetris.onGameOver = () => window.tetris.showShop();
         window.tetris.init(1);
-        const bSize = 18;
-        attachTetrisControls(0, bSize);
-        document.getElementById('backTetris').onclick = function() {
-            window.tetris.stop();
-            showSelection();
-        };
-        document.getElementById('tetrisHold').onclick = () => window.tetris.hold(0, bSize);
-        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', bSize);
-        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', bSize);
-        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', bSize);
+        const blockSize = 18;
+        attachTetrisControls(0, blockSize);
+        document.getElementById('backTetris').onclick = () => { window.tetris.stop(); showSelection(); };
+        document.getElementById('tetrisHold').onclick = () => window.tetris.hold(0, blockSize);
+        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', blockSize);
+        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', blockSize);
+        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', blockSize);
     }
 
     function showTetrisMulti() {
@@ -319,13 +297,10 @@
         `;
         window.tetris.init(2);
         window.tetris.onGameOver = null;
-        const bSize = 15;
-        attachTetrisControls(0, bSize);
-        attachTetrisControls(1, bSize);
-        document.getElementById('backTetrisMulti').onclick = function() {
-            window.tetris.stop();
-            showSelection();
-        };
+        const blockSize = 15;
+        attachTetrisControls(0, blockSize);
+        attachTetrisControls(1, blockSize);
+        document.getElementById('backTetrisMulti').onclick = () => { window.tetris.stop(); showSelection(); };
     }
 
     function attachTetrisControls(playerIdx, blockSize) {
@@ -336,26 +311,20 @@
             rotate: { btnId: playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`, action: () => window.tetris.rotate(playerIdx, blockSize) },
             drop: { btnId: playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`, action: () => window.tetris.drop(playerIdx, blockSize) }
         };
-
-        const repeatDelay = 100;
-        const repeatInterval = 50;
         const heldTimers = {};
-
         for (let key in actions) {
             const act = actions[key];
             const btn = document.getElementById(act.btnId);
             if (!btn) continue;
-
             const startRepeat = () => {
                 if (heldTimers[key]) return;
                 act.action();
                 heldTimers[key] = {
                     initial: setTimeout(() => {
-                        heldTimers[key].repeat = setInterval(() => act.action(), repeatInterval);
-                    }, repeatDelay)
+                        heldTimers[key].repeat = setInterval(() => act.action(), 50);
+                    }, 100)
                 };
             };
-
             const stopRepeat = () => {
                 if (heldTimers[key]) {
                     clearTimeout(heldTimers[key].initial);
@@ -363,7 +332,6 @@
                     delete heldTimers[key];
                 }
             };
-
             btn.addEventListener('pointerdown', startRepeat);
             btn.addEventListener('pointerup', stopRepeat);
             btn.addEventListener('pointerleave', stopRepeat);
@@ -384,7 +352,7 @@
             <button class="game-btn" id="startSnakeBtn">Старт</button>
             <button class="back-btn" id="backSnakeMode">← Назад</button>
         `;
-        document.getElementById('startSnakeBtn').onclick = function() {
+        document.getElementById('startSnakeBtn').onclick = () => {
             const mode = document.querySelector('input[name="snakeMode"]:checked').value;
             if (mode === 'single') showSnakeSingle();
             else showSnakeMulti();
@@ -412,16 +380,11 @@
             </div>
             <button class="back-btn" id="backSnake">← Назад</button>
         `;
+        window.snake.onGameOver = () => window.snake.showShop();
         window.snake.init(1);
-        window.snake.onGameOver = function() {
-            window.snake.showShop();
-        };
         attachSnakeControls(0);
         setupSnakeSwipe();
-        document.getElementById('backSnake').onclick = function() {
-            window.snake.stop();
-            showSelection();
-        };
+        document.getElementById('backSnake').onclick = () => { window.snake.stop(); showSelection(); };
     }
 
     function showSnakeMulti() {
@@ -436,10 +399,7 @@
         `;
         window.snake.init(2);
         window.snake.onGameOver = null;
-        document.getElementById('backSnakeMulti').onclick = function() {
-            window.snake.stop();
-            showSelection();
-        };
+        document.getElementById('backSnakeMulti').onclick = () => { window.snake.stop(); showSelection(); };
     }
 
     function attachSnakeControls(playerIdx) {
@@ -450,11 +410,10 @@
                 btn.addEventListener('pointerdown', (e) => {
                     e.preventDefault();
                     if (!window.snake.active) return;
-                    const s = window.snake;
                     const newDir = dirMap[dir];
-                    const opposite = (newDir.x === -s.dirs[playerIdx].x && newDir.y === -s.dirs[playerIdx].y);
-                    if (!opposite) s.nextDirs[playerIdx] = newDir;
-                    s.handleDashInput(playerIdx, dir);
+                    const opposite = (newDir.x === -window.snake.dirs[playerIdx].x && newDir.y === -window.snake.dirs[playerIdx].y);
+                    if (!opposite) window.snake.nextDirs[playerIdx] = newDir;
+                    window.snake.handleDashInput(playerIdx, dir);
                 });
             }
         }
@@ -464,39 +423,27 @@
         const canvas = document.getElementById('snakeCanvas');
         if (!canvas) return;
         let touchStart = null;
-
         const handleStart = (e) => {
             if (!window.snake.active) return;
             const touch = e.touches ? e.touches[0] : e;
             touchStart = { x: touch.clientX, y: touch.clientY };
         };
-
         const handleEnd = (e) => {
             if (!touchStart || !window.snake.active) return;
             const touch = e.changedTouches ? e.changedTouches[0] : e;
             const dx = touch.clientX - touchStart.x;
             const dy = touch.clientY - touchStart.y;
-            const absDx = Math.abs(dx);
-            const absDy = Math.abs(dy);
-
+            const absDx = Math.abs(dx), absDy = Math.abs(dy);
             if (Math.max(absDx, absDy) < 20) { touchStart = null; return; }
-
             let dir;
-            if (absDx > absDy) {
-                dir = dx > 0 ? 'right' : 'left';
-            } else {
-                dir = dy > 0 ? 'down' : 'up';
-            }
-
-            const s = window.snake;
+            if (absDx > absDy) dir = dx > 0 ? 'right' : 'left';
+            else dir = dy > 0 ? 'down' : 'up';
             const newDir = { up: {x:0,y:-1}, down: {x:0,y:1}, left: {x:-1,y:0}, right: {x:1,y:0} }[dir];
-            const opposite = (newDir.x === -s.dirs[0].x && newDir.y === -s.dirs[0].y);
-            if (!opposite) s.nextDirs[0] = newDir;
-            s.handleDashInput(0, dir);
-
+            const opposite = (newDir.x === -window.snake.dirs[0].x && newDir.y === -window.snake.dirs[0].y);
+            if (!opposite) window.snake.nextDirs[0] = newDir;
+            window.snake.handleDashInput(0, dir);
             touchStart = null;
         };
-
         canvas.addEventListener('touchstart', handleStart, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
         canvas.addEventListener('mousedown', handleStart);
@@ -515,7 +462,7 @@
             <button class="game-btn" id="startPongBtn">Старт</button>
             <button class="back-btn" id="backPongMode">← Назад</button>
         `;
-        document.getElementById('startPongBtn').onclick = function() {
+        document.getElementById('startPongBtn').onclick = () => {
             const mode = document.querySelector('input[name="pongMode"]:checked').value;
             activeGame = 'pong';
             modalInner.innerHTML = `
@@ -531,34 +478,10 @@
                 <button class="back-btn" id="backPong">← Назад</button>
             `;
             window.pong.init(mode);
-            document.getElementById('backPong').onclick = function() {
-                window.pong.stop();
-                showSelection();
-            };
+            document.getElementById('backPong').onclick = () => { window.pong.stop(); showSelection(); };
         };
         document.getElementById('backPongMode').onclick = showSelection;
     }
-
-    // ---------- Общие обработчики ----------
-    document.addEventListener('startTetrisSingle', () => showTetrisSingle());
-    document.addEventListener('startSnakeSingle', () => showSnakeSingle());
-    document.addEventListener('openMiniGamesMenu', () => showSelection());
-
-    function closeModal() {
-        modalOverlay.classList.remove('active');
-        if (activeGame === 'tetris') window.tetris.stop();
-        if (activeGame === 'snake') window.snake.stop();
-        if (activeGame === 'pong') window.pong.stop();
-        activeGame = null;
-    }
-
-    document.getElementById('openMiniGames').onclick = function() {
-        modalOverlay.classList.add('active');
-        showSelection();
-    };
-    modalOverlay.onclick = function(e) {
-        if (e.target === modalOverlay) closeModal();
-    };
 
     // ---------- Глобальная клавиатура ----------
     function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
@@ -596,18 +519,17 @@
                 else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') t.move(0, 1, 0, bSize);
                 else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') t.move(0, 0, 1, bSize);
                 else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') t.rotate(0, bSize);
-                else if (key === ' ') t.drop(0, bSize);
+                else if (isSpace(key)) t.drop(0, bSize);
                 else if (key === 'ArrowLeft') t.move(1, -1, 0, bSize);
                 else if (key === 'ArrowRight') t.move(1, 1, 0, bSize);
                 else if (key === 'ArrowDown') t.move(1, 0, 1, bSize);
                 else if (key === 'ArrowUp') t.rotate(1, bSize);
-                else if (key === 'Enter') t.drop(1, bSize);
+                else if (isEnter(key)) t.drop(1, bSize);
             }
         } else if (activeGame === 'snake' && window.snake.active) {
             const s = window.snake;
             function setDir(pIdx, newDir) {
-                const cur = s.dirs[pIdx];
-                if (newDir.x === -cur.x && newDir.y === -cur.y) return;
+                if (newDir.x === -s.dirs[pIdx].x && newDir.y === -s.dirs[pIdx].y) return;
                 s.nextDirs[pIdx] = newDir;
             }
             if (s.players === 1) {
@@ -616,10 +538,7 @@
                 else if (isRight(key)) dir = {x:1, y:0};
                 else if (isUp(key)) dir = {x:0, y:-1};
                 else if (isDown(key)) dir = {x:0, y:1};
-                if (dir) {
-                    setDir(0, dir);
-                    s.handleDashInput(0, dir);
-                }
+                if (dir) { setDir(0, dir); s.handleDashInput(0, dir); }
             } else {
                 if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') { setDir(0, {x:-1,y:0}); s.handleDashInput(0, 'left'); }
                 else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') { setDir(0, {x:1,y:0}); s.handleDashInput(0, 'right'); }
@@ -633,10 +552,8 @@
         }
     });
 
-    // ---------- GitHub Auth Integration ----------
+    // ---------- GitHub авторизация ----------
     const auth = window.GitHubAuth;
-    auth.init();
-
     const authStatusDiv = document.getElementById('authStatus');
     const tokenModal = document.getElementById('tokenModal');
     const githubTokenInput = document.getElementById('githubTokenInput');
@@ -647,23 +564,19 @@
 
     function updateAuthUI() {
         if (auth.isAuthenticated && auth.username) {
-            authStatusDiv.innerHTML = `✅ GitHub: ${auth.username} | <button id="syncSaveBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">💾 Синхр.</button>`;
+            authStatusDiv.innerHTML = `✅ GitHub: ${auth.username} | <button id="syncSaveBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">💾 Синхр.</button> <button id="manualSyncLoadBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">⬇️ Загрузить</button>`;
             const syncBtn = document.getElementById('syncSaveBtn');
-            if (syncBtn) {
-                syncBtn.onclick = () => {
-                    auth.syncSave();
-                };
-            }
+            const loadBtn = document.getElementById('manualSyncLoadBtn');
+            if (syncBtn) syncBtn.onclick = () => auth.syncSave();
+            if (loadBtn) loadBtn.onclick = () => auth.syncLoad();
         } else {
             authStatusDiv.innerHTML = `🔒 Не авторизован | <button id="manualLoginBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">Войти через GitHub</button>`;
             const loginBtn = document.getElementById('manualLoginBtn');
-            if (loginBtn) {
-                loginBtn.onclick = () => { tokenModal.style.display = 'flex'; };
-            }
+            if (loginBtn) loginBtn.onclick = () => tokenModal.style.display = 'flex';
         }
     }
 
-    githubLoginBtn.onclick = () => { tokenModal.style.display = 'flex'; };
+    githubLoginBtn.onclick = () => tokenModal.style.display = 'flex';
     cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
     logoutGithubBtn.onclick = () => {
         auth.logout();
@@ -691,21 +604,28 @@
         }
     };
 
-    // Автоматическая синхронизация каждые 30 секунд
     setInterval(() => {
-        if (auth.isAuthenticated) {
-            auth.syncSave().catch(console.warn);
-        }
+        if (auth.isAuthenticated) auth.syncSave().catch(console.warn);
     }, 300000);
 
     updateAuthUI();
 
-    // Глобальный toast
-    window.showToast = function(msg, duration = 3000) {
-        const toast = document.createElement('div');
-        toast.className = 'toast-msg';
-        toast.textContent = msg;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), duration);
+    // ---------- Обработчики кнопки мини-игр ----------
+    document.getElementById('openMiniGames').onclick = () => {
+        modalOverlay.classList.add('active');
+        showSelection();
     };
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) closeModal();
+    };
+
+    // ---------- Глобальные события для перезапуска игр ----------
+    EventBus.on('gameDataLoaded', () => {
+        if (activeGame === 'clicker') window.clicker.updateUI();
+        if (activeGame === 'tetris') { window.tetris.stop(); window.tetris.init(1); }
+        if (activeGame === 'snake') { window.snake.stop(); window.snake.init(1); }
+    });
+
+    // Инициализация кликера (автозагрузка сохранения)
+    window.clicker.init();
 })();
