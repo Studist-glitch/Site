@@ -1,4 +1,4 @@
-// js/pong.js - Полностью рефакторинг с событиями, без дублирования, стабильность
+// js/pong.js - Исправлен: контекст событий, управление, бот
 window.pong = (function() {
     'use strict';
 
@@ -56,42 +56,69 @@ window.pong = (function() {
 
     const allEvents = [
         { name: '🌀 Портал', duration: 8, apply: (game) => {
-            game.activeEvent = { name: 'Портал', duration: 8 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Портал';
+            game.activeEvent.duration = 8;
             game.paddles.forEach(p => p.tempBonus.portal = true);
         }, end: (game) => { game.paddles.forEach(p => delete p.tempBonus.portal); } },
         { name: '⚡ Ускорение мяча', duration: 6, apply: (game) => {
-            game.activeEvent = { name: 'Ускорение', duration: 6 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Ускорение';
+            game.activeEvent.duration = 6;
             game.ball.vx *= 1.5; game.ball.vy *= 1.5;
         }, end: (game) => { game.ball.vx /= 1.5; game.ball.vy /= 1.5; } },
         { name: '🐢 Замедление всех', duration: 5, apply: (game) => {
-            game.activeEvent = { name: 'Замедление', duration: 5 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Замедление';
+            game.activeEvent.duration = 5;
             game.paddles.forEach(p => p.tempBonus.slow = 5);
         }, end: (game) => { game.paddles.forEach(p => delete p.tempBonus.slow); } },
         { name: '🛡️ Щит всем', duration: 10, apply: (game) => {
-            game.activeEvent = { name: 'Щит', duration: 10 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Щит';
+            game.activeEvent.duration = 10;
             game.paddles.forEach(p => p.shield = (p.shield || 0) + 1);
         }, end: () => {} },
         { name: '✨ Хаос', duration: 7, apply: (game) => {
-            game.activeEvent = { name: 'Хаос', duration: 7 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Хаос';
+            game.activeEvent.duration = 7;
             game.paddles.forEach(p => p.tempBonus.chaos = true);
         }, end: (game) => { game.paddles.forEach(p => delete p.tempBonus.chaos); } },
         { name: '🌊 Гравитация', duration: 6, apply: (game) => {
-            game.activeEvent = { name: 'Гравитация', duration: 6, gravity: true };
-        }, end: () => {} },
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Гравитация';
+            game.activeEvent.duration = 6;
+            game.activeEvent.gravity = true;
+        }, end: (game) => { delete game.activeEvent.gravity; } },
         { name: '🌀 Кривые стены', duration: 8, apply: (game) => {
-            game.activeEvent = { name: 'Кривые стены', duration: 8, curvedWalls: true };
-        }, end: () => {} },
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Кривые стены';
+            game.activeEvent.duration = 8;
+            game.activeEvent.curvedWalls = true;
+        }, end: (game) => { delete game.activeEvent.curvedWalls; } },
         { name: '💥 Множитель очков x2', duration: 10, apply: (game) => {
-            game.activeEvent = { name: 'x2 очков', duration: 10, scoreMult: 2 };
-        }, end: () => {} },
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'x2 очков';
+            game.activeEvent.duration = 10;
+            game.activeEvent.scoreMult = 2;
+        }, end: (game) => { delete game.activeEvent.scoreMult; } },
         { name: '🕯️ Невидимость', duration: 6, apply: (game) => {
-            game.activeEvent = { name: 'Невидимость', duration: 6 };
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Невидимость';
+            game.activeEvent.duration = 6;
             game.paddles.forEach(p => p.tempBonus.invisible = true);
         }, end: (game) => { game.paddles.forEach(p => delete p.tempBonus.invisible); } },
         { name: '💫 Отскок', duration: 5, apply: (game) => {
-            game.activeEvent = { name: 'Отскок', duration: 5, doubleBounce: true };
-        }, end: () => {} }
+            if (!game.activeEvent) game.activeEvent = {};
+            game.activeEvent.name = 'Отскок';
+            game.activeEvent.duration = 5;
+            game.activeEvent.doubleBounce = true;
+        }, end: (game) => { delete game.activeEvent.doubleBounce; } }
     ];
+
+    // Сохраняем ссылку на текущий объект игры для использования в событиях
+    let gameContext = null;
 
     function addParticles(x, y) {
         for (let i = 0; i < 5; i++) {
@@ -129,15 +156,16 @@ window.pong = (function() {
 
     function triggerRandomEvent() {
         if (!active || waitingForUpgrade || !singlePlayerMode) return;
+        if (!gameContext) gameContext = this;
         const ev = allEvents[Math.floor(Math.random() * allEvents.length)];
-        ev.apply(this);
+        ev.apply(gameContext);
         addEvent(`Событие: ${ev.name}`);
     }
 
     function endEvent() {
-        if (activeEvent) {
+        if (activeEvent && gameContext) {
             const evDef = allEvents.find(e => e.name === activeEvent.name);
-            if (evDef && evDef.end) evDef.end(this);
+            if (evDef && evDef.end) evDef.end(gameContext);
             activeEvent = null;
         }
     }
@@ -492,6 +520,7 @@ window.pong = (function() {
         players = (mode === 'multi') ? 2 : 1;
         singlePlayerMode = (mode === 'single');
         active = true;
+        gameContext = this; // сохраняем контекст
 
         paddles[0] = { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         paddles[1] = { x: W - 30, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
@@ -521,7 +550,9 @@ window.pong = (function() {
 
         interval = setInterval(() => update(), 1000 / 60);
         if (singlePlayerMode) {
-            eventInterval = setInterval(() => triggerRandomEvent(), 20000 + Math.random() * 15000);
+            // Привязываем triggerRandomEvent к текущему контексту
+            const boundTrigger = triggerRandomEvent.bind(gameContext);
+            eventInterval = setInterval(boundTrigger, 20000 + Math.random() * 15000);
             upgradeInterval = setInterval(() => showUpgradeChoice(), 60000);
         }
         setupControls();

@@ -1,4 +1,4 @@
-// js/main.js - Без DOOM, вынесены общие функции, минимализм
+// js/main.js - Полностью рефакторинг с EventBus, очисткой анимаций, поддержкой всех игр (DOOM удалён)
 (function() {
     'use strict';
 
@@ -63,6 +63,7 @@
     const modalOverlay = document.getElementById('modalOverlay');
     const modalInner = document.getElementById('modalInner');
     let activeGame = null;
+    let activeGameInstance = null; // ссылка на объект игры (если нужен stop)
 
     function closeModal() {
         modalOverlay.classList.remove('active');
@@ -71,6 +72,7 @@
         else if (activeGame === 'pong') window.pong.stop();
         else if (activeGame === 'clicker') { /* кликер не требует остановки */ }
         activeGame = null;
+        activeGameInstance = null;
     }
 
     function showSelection() {
@@ -90,7 +92,7 @@
         document.getElementById('closeModalBtn').onclick = closeModal;
     }
 
-    // ---------- Кликер (без изменений, использует глобальные утилиты) ----------
+    // ---------- Кликер ----------
     function showClicker() {
         activeGame = 'clicker';
         window.clicker.init();
@@ -226,7 +228,7 @@
         renderClickerUpgrades();
     }
 
-    // ---------- Тетрис ----------
+    // ---------- Тетрис (режимы) ----------
     function showTetrisMode() {
         modalInner.innerHTML = `
             <h3>🧱 Тетрис</h3>
@@ -563,7 +565,7 @@
     const githubLoginBtn = document.getElementById('githubLoginBtn');
 
     function updateAuthUI() {
-        if (auth.isAuthenticated && auth.username) {
+        if (auth && auth.isAuthenticated && auth.username) {
             authStatusDiv.innerHTML = `✅ GitHub: ${auth.username} | <button id="syncSaveBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">💾 Синхр.</button> <button id="manualSyncLoadBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">⬇️ Загрузить</button>`;
             const syncBtn = document.getElementById('syncSaveBtn');
             const loadBtn = document.getElementById('manualSyncLoadBtn');
@@ -576,48 +578,55 @@
         }
     }
 
-    githubLoginBtn.onclick = () => tokenModal.style.display = 'flex';
-    cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
-    logoutGithubBtn.onclick = () => {
+    if (githubLoginBtn) githubLoginBtn.onclick = () => tokenModal.style.display = 'flex';
+    if (cancelTokenBtn) cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
+    if (logoutGithubBtn) logoutGithubBtn.onclick = () => {
         auth.logout();
         tokenModal.style.display = 'none';
         updateAuthUI();
         window.location.reload();
     };
-    submitTokenBtn.onclick = async () => {
-        const token = githubTokenInput.value.trim();
-        if (!token) { alert('Введите токен'); return; }
-        submitTokenBtn.disabled = true;
-        submitTokenBtn.textContent = 'Проверка...';
-        try {
-            await auth.register(token);
-            await auth.syncLoad();
-            tokenModal.style.display = 'none';
-            githubTokenInput.value = '';
-            updateAuthUI();
-            alert(`Добро пожаловать, ${auth.username}! Прогресс загружен.`);
-        } catch(err) {
-            alert('Ошибка: ' + err.message);
-        } finally {
-            submitTokenBtn.disabled = false;
-            submitTokenBtn.textContent = '✅ Зарегистрироваться / Войти';
-        }
-    };
+    if (submitTokenBtn) {
+        submitTokenBtn.onclick = async () => {
+            const token = githubTokenInput.value.trim();
+            if (!token) { alert('Введите токен'); return; }
+            submitTokenBtn.disabled = true;
+            submitTokenBtn.textContent = 'Проверка...';
+            try {
+                await auth.register(token);
+                await auth.syncLoad();
+                tokenModal.style.display = 'none';
+                githubTokenInput.value = '';
+                updateAuthUI();
+                alert(`Добро пожаловать, ${auth.username}! Прогресс загружен.`);
+            } catch(err) {
+                alert('Ошибка: ' + err.message);
+            } finally {
+                submitTokenBtn.disabled = false;
+                submitTokenBtn.textContent = '✅ Зарегистрироваться / Войти';
+            }
+        };
+    }
 
     setInterval(() => {
-        if (auth.isAuthenticated) auth.syncSave().catch(console.warn);
+        if (auth && auth.isAuthenticated) auth.syncSave().catch(console.warn);
     }, 300000);
 
     updateAuthUI();
 
     // ---------- Обработчики кнопки мини-игр ----------
-    document.getElementById('openMiniGames').onclick = () => {
-        modalOverlay.classList.add('active');
-        showSelection();
-    };
-    modalOverlay.onclick = (e) => {
-        if (e.target === modalOverlay) closeModal();
-    };
+    const openBtn = document.getElementById('openMiniGames');
+    if (openBtn) {
+        openBtn.onclick = () => {
+            modalOverlay.classList.add('active');
+            showSelection();
+        };
+    }
+    if (modalOverlay) {
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) closeModal();
+        };
+    }
 
     // ---------- Глобальные события для перезапуска игр ----------
     EventBus.on('gameDataLoaded', () => {
@@ -627,5 +636,5 @@
     });
 
     // Инициализация кликера (автозагрузка сохранения)
-    window.clicker.init();
+    if (window.clicker) window.clicker.init();
 })();

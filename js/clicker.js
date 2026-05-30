@@ -1,4 +1,4 @@
-// js/clicker.js - Refactored with UpgradeManager, export/import, less duplication
+// js/clicker.js - Исправлен: экспорт upgradesDef, восстановлена прокачка
 window.clicker = (function() {
     'use strict';
 
@@ -48,8 +48,33 @@ window.clicker = (function() {
     let boss = { active: false, health: 0, maxHealth: 0, reward: 0, name: 'Тень Неона', level: 1 };
     let challenge = { active: false, startScore: 0, target: 0, reward: 0 };
 
-    // UI elements (set by attachUI)
+    // UI elements
     let ui = { scoreEl: null, perSecEl: null, comboEl: null, renderUpgrades: null };
+
+    // ---------- Upgrade definitions (экспортируются) ----------
+    const upgradesDef = {
+        auto: { tier: 0, baseCost: 15, costMult: 1.6, name: 'Автоклик', icon: '⚡', maxLevel: Infinity, desc: '+1 к пассивному доходу', effect: (lvl) => { perSec += 1; } },
+        power: { tier: 0, baseCost: 10, costMult: 1.6, name: 'Сила клика', icon: '💪', maxLevel: Infinity, desc: '+1 к урону клика', effect: (lvl) => { perClick += 1; } },
+        critChance: { tier: 0, baseCost: 50, costMult: 1.7, name: 'Крит. шанс', icon: '🎯', maxLevel: Infinity, desc: '+2% шанс крита', effect: (lvl) => { critChance += 0.02; } },
+        critPower: { tier: 0, baseCost: 80, costMult: 1.8, name: 'Крит. урон', icon: '💥', maxLevel: Infinity, desc: '+0.5x крит.множитель', effect: (lvl) => { critMult += 0.5; } },
+        magnet: { tier: 1, baseCost: 30, costMult: 1.7, name: 'Магнит', icon: '🧲', maxLevel: Infinity, desc: '+3 к пассивному доходу', effect: (lvl) => { perSec += 3; } },
+        luck: { tier: 1, baseCost: 100, costMult: 1.9, name: 'Удача', icon: '🍀', maxLevel: Infinity, desc: '+5% шанс двойного клика', effect: (lvl) => { doubleClickChance += 0.05; } },
+        goldRush: { tier: 1, baseCost: 200, costMult: 2.0, name: 'Золотая лихорадка', icon: '✨', maxLevel: Infinity, desc: 'Активирует x2 доход на 5+ур. сек', effect: (lvl) => { goldRushActive = true; goldRushMult = 2; goldRushTimer = 5 + lvl; } },
+        comboMaster: { tier: 1, baseCost: 150, costMult: 2.2, name: 'Комбо-мастер', icon: '🔥', maxLevel: Infinity, desc: '+10 макс. комбо, +1% бонус за комбо', effect: (lvl) => { maxCombo += 10; comboMultiplier += 0.01; } },
+        poison: { tier: 2, baseCost: 150, costMult: 2.2, name: 'Яд', icon: '☠️', maxLevel: Infinity, desc: '+3 урона боссу каждую секунду', effect: (lvl) => { poisonDps += 3; } },
+        meteor: { tier: 2, baseCost: 250, costMult: 2.0, name: 'Метеоритный дождь', icon: '☄️', maxLevel: Infinity, desc: 'Периодический бонус', effect: (lvl) => { meteorActive = true; meteorInterval = Math.max(5, 15 - lvl); } },
+        clone: { tier: 2, baseCost: 500, costMult: 1, name: 'Клон', icon: '👥', maxLevel: 1, desc: 'Удваивает урон клика', effect: (lvl) => { cloneActive = true; } },
+        acceleration: { tier: 2, baseCost: 1000, costMult: 2.0, name: 'Ускорение', icon: '⏩', maxLevel: 5, desc: 'Уменьшает интервал тика', effect: (lvl) => { tickRate = Math.max(500, 1000 - lvl * 100); if (tickInterval) { clearInterval(tickInterval); tickInterval = setInterval(autoTick, tickRate); } } },
+        bank: { tier: 3, baseCost: 600, costMult: 2.5, name: 'Банк', icon: '🏦', maxLevel: Infinity, desc: '+0.5% от счёта в секунду', effect: (lvl) => { bankPercent += 0.5; } },
+        aura: { tier: 3, baseCost: 800, costMult: 1, name: 'Аура', icon: '🟣', maxLevel: 1, desc: 'Увеличивает пассивный доход на 50%', effect: (lvl) => { perSec = Math.floor(perSec * 1.5); } },
+        magnetField: { tier: 3, baseCost: 1500, costMult: 2.2, name: 'Магнитное поле', icon: '🌀', maxLevel: Infinity, desc: 'Периодический бонус от счёта', effect: (lvl) => { magnetFieldActive = true; magnetPercent += 5; magnetInterval = Math.max(8, 15 - lvl); } },
+        bossBounty: { tier: 3, baseCost: 2500, costMult: 2.5, name: 'Охота на боссов', icon: '💰', maxLevel: 5, desc: '+25% награды за босса', effect: (lvl) => { bossBounty += 0.25; } },
+        superCrit: { tier: 4, baseCost: 2000, costMult: 1, name: 'Супер-крит', icon: '🌟', maxLevel: 1, desc: '+10% шанс крита, x1.5 крит.множитель', effect: (lvl) => { critChance += 0.1; critMult *= 1.5; } },
+        quantum: { tier: 4, baseCost: 5000, costMult: 1, name: 'Квантовый клик', icon: '⚛️', maxLevel: 1, desc: 'Каждый 10й клик x5', effect: (lvl) => { quantumActive = true; } },
+        blackHole: { tier: 4, baseCost: 8000, costMult: 1, name: 'Чёрная дыра', icon: '🕳️', maxLevel: 1, desc: 'Наносит 2% здоровья босса каждые 2с', effect: (lvl) => { blackHoleActive = true; } },
+        chrono: { tier: 5, baseCost: 50000, costMult: 1, name: 'Хронос', icon: '⏳', maxLevel: 1, desc: 'Останавливает время (пауза босса и событий)', effect: (lvl) => {} },
+        luckDragon: { tier: 5, baseCost: 30000, costMult: 2.5, name: 'Дракон удачи', icon: '🐉', maxLevel: 5, desc: '+3% крит.шанс, +3% двойной клик', effect: (lvl) => { critChance += 0.03; doubleClickChance += 0.03; } }
+    };
 
     // ---------- Helper functions ----------
     function updateUI() {
@@ -78,21 +103,6 @@ window.clicker = (function() {
         } else {
             container.style.display = 'none';
         }
-    }
-
-    function isWall(x, y) { return false; } // dummy for clicker
-
-    function spawnBoss() {
-        const level = Math.floor(Math.log2(score + 1)) + 1;
-        boss.active = true;
-        boss.level = level;
-        boss.maxHealth = Math.floor(300 * level + score * 0.4);
-        boss.health = boss.maxHealth;
-        boss.reward = Math.floor(boss.maxHealth * 2);
-        const names = ['Тень Неона', 'Кибер-демон', 'Гигантский слизень', 'Неоновый дракон', 'Робот-убийца', 'Электрический элементаль'];
-        boss.name = names[level % names.length];
-        addEvent(`⚔️ Босс ${boss.name} (ур.${level}) появился!`);
-        updateBossUI();
     }
 
     function addEvent(text) {
@@ -305,6 +315,19 @@ window.clicker = (function() {
         checkChallenge();
     }
 
+    function spawnBoss() {
+        const level = Math.floor(Math.log2(score + 1)) + 1;
+        boss.active = true;
+        boss.level = level;
+        boss.maxHealth = Math.floor(300 * level + score * 0.4);
+        boss.health = boss.maxHealth;
+        boss.reward = Math.floor(boss.maxHealth * 2);
+        const names = ['Тень Неона', 'Кибер-демон', 'Гигантский слизень', 'Неоновый дракон', 'Робот-убийца', 'Электрический элементаль'];
+        boss.name = names[level % names.length];
+        addEvent(`⚔️ Босс ${boss.name} (ур.${level}) появился!`);
+        updateBossUI();
+    }
+
     // ---------- Click handling ----------
     function handleClick(e) {
         if (comboTimeout) clearTimeout(comboTimeout);
@@ -381,7 +404,7 @@ window.clicker = (function() {
         return true;
     }
 
-    // ---------- Upgrade buying (called from UI) ----------
+    // ---------- Upgrade buying ----------
     function buyUpgrade(key) {
         const up = upgradesDef[key];
         if (!up) return;
@@ -391,46 +414,12 @@ window.clicker = (function() {
         if (up.maxLevel && currentLevel >= up.maxLevel) return;
         score -= cost;
         upgradeManager.increment(key);
-        // Apply effect
+        // Apply effect for the new level
         up.effect(currentLevel + 1);
-        if (key === 'goldRush') {
-            goldRushActive = true;
-            goldRushMult = 2;
-            goldRushTimer = 5 + (currentLevel + 1);
-        }
-        if (key === 'comboMaster') {
-            maxCombo += 10;
-            comboMultiplier += 0.01;
-        }
         updateUI();
         save();
         if (ui.renderUpgrades) ui.renderUpgrades();
     }
-
-    // Upgrade definitions
-    const upgradesDef = {
-        auto: { tier: 0, baseCost: 15, costMult: 1.6, name: 'Автоклик', icon: '⚡', maxLevel: Infinity, effect: (lvl) => { perSec += 1; } },
-        power: { tier: 0, baseCost: 10, costMult: 1.6, name: 'Сила клика', icon: '💪', maxLevel: Infinity, effect: (lvl) => { perClick += 1; } },
-        critChance: { tier: 0, baseCost: 50, costMult: 1.7, name: 'Крит. шанс', icon: '🎯', maxLevel: Infinity, effect: (lvl) => { critChance += 0.02; } },
-        critPower: { tier: 0, baseCost: 80, costMult: 1.8, name: 'Крит. урон', icon: '💥', maxLevel: Infinity, effect: (lvl) => { critMult += 0.5; } },
-        magnet: { tier: 1, baseCost: 30, costMult: 1.7, name: 'Магнит', icon: '🧲', maxLevel: Infinity, effect: (lvl) => { perSec += 3; } },
-        luck: { tier: 1, baseCost: 100, costMult: 1.9, name: 'Удача', icon: '🍀', maxLevel: Infinity, effect: (lvl) => { doubleClickChance += 0.05; } },
-        goldRush: { tier: 1, baseCost: 200, costMult: 2.0, name: 'Золотая лихорадка', icon: '✨', maxLevel: Infinity, effect: (lvl) => {} },
-        comboMaster: { tier: 1, baseCost: 150, costMult: 2.2, name: 'Комбо-мастер', icon: '🔥', maxLevel: Infinity, effect: (lvl) => {} },
-        poison: { tier: 2, baseCost: 150, costMult: 2.2, name: 'Яд', icon: '☠️', maxLevel: Infinity, effect: (lvl) => { poisonDps += 3; } },
-        meteor: { tier: 2, baseCost: 250, costMult: 2.0, name: 'Метеоритный дождь', icon: '☄️', maxLevel: Infinity, effect: (lvl) => { meteorActive = true; meteorInterval = Math.max(5, 15 - lvl); } },
-        clone: { tier: 2, baseCost: 500, costMult: 1, name: 'Клон', icon: '👥', maxLevel: 1, effect: (lvl) => { cloneActive = true; } },
-        acceleration: { tier: 2, baseCost: 1000, costMult: 2.0, name: 'Ускорение', icon: '⏩', maxLevel: 5, effect: (lvl) => { tickRate = Math.max(500, 1000 - lvl * 100); if (tickInterval) { clearInterval(tickInterval); tickInterval = setInterval(autoTick, tickRate); } } },
-        bank: { tier: 3, baseCost: 600, costMult: 2.5, name: 'Банк', icon: '🏦', maxLevel: Infinity, effect: (lvl) => { bankPercent += 0.5; } },
-        aura: { tier: 3, baseCost: 800, costMult: 1, name: 'Аура', icon: '🟣', maxLevel: 1, effect: (lvl) => { perSec = Math.floor(perSec * 1.5); } },
-        magnetField: { tier: 3, baseCost: 1500, costMult: 2.2, name: 'Магнитное поле', icon: '🌀', maxLevel: Infinity, effect: (lvl) => { magnetFieldActive = true; magnetPercent += 5; magnetInterval = Math.max(8, 15 - lvl); } },
-        bossBounty: { tier: 3, baseCost: 2500, costMult: 2.5, name: 'Охота на боссов', icon: '💰', maxLevel: 5, effect: (lvl) => { bossBounty += 0.25; } },
-        superCrit: { tier: 4, baseCost: 2000, costMult: 1, name: 'Супер-крит', icon: '🌟', maxLevel: 1, effect: (lvl) => { critChance += 0.1; critMult *= 1.5; } },
-        quantum: { tier: 4, baseCost: 5000, costMult: 1, name: 'Квантовый клик', icon: '⚛️', maxLevel: 1, effect: (lvl) => { quantumActive = true; } },
-        blackHole: { tier: 4, baseCost: 8000, costMult: 1, name: 'Чёрная дыра', icon: '🕳️', maxLevel: 1, effect: (lvl) => { blackHoleActive = true; } },
-        chrono: { tier: 5, baseCost: 50000, costMult: 1, name: 'Хронос', icon: '⏳', maxLevel: 1, effect: (lvl) => {} },
-        luckDragon: { tier: 5, baseCost: 30000, costMult: 2.5, name: 'Дракон удачи', icon: '🐉', maxLevel: 5, effect: (lvl) => { critChance += 0.03; doubleClickChance += 0.03; } }
-    };
 
     // ---------- Export / Import ----------
     function exportState() {
@@ -505,11 +494,12 @@ window.clicker = (function() {
         };
     }
 
-    // Expose public API
+    // Public API
     return {
         init, attachUI, handleClick, buyUpgrade, getStats, updateUI, updateBossUI,
         exportState, importState, save, load, prestigeReset, generateChallenge,
         get upgrades() { return upgradeManager.upgrades; },
+        get upgradesDef() { return upgradesDef; },
         get score() { return score; },
         get perClick() { return perClick; },
         get perSec() { return perSec; },
