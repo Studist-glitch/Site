@@ -1,4 +1,4 @@
-// js/pong.js - Исправлен: контекст событий, управление, бот
+// js/pong.js - Исправлен: отображение бота, управление в соло на WASD+стрелки
 window.pong = (function() {
     'use strict';
 
@@ -114,10 +114,9 @@ window.pong = (function() {
             game.activeEvent.name = 'Отскок';
             game.activeEvent.duration = 5;
             game.activeEvent.doubleBounce = true;
-        }, end: (game) => { delete game.activeEvent.doubleBounce; } }
+        }, end: () => {} }
     ];
 
-    // Сохраняем ссылку на текущий объект игры для использования в событиях
     let gameContext = null;
 
     function addParticles(x, y) {
@@ -212,7 +211,7 @@ window.pong = (function() {
         ball.vx = dir * (ball.baseSpeed + Math.random() * 2);
         ball.vy = (Math.random() - 0.5) * 6;
         if (resetEffects) {
-            for (let i = 0; i < players; i++) paddles[i].tempBonus = {};
+            for (let i = 0; i < 2; i++) paddles[i].tempBonus = {};
         }
         trail = [];
     }
@@ -274,17 +273,20 @@ window.pong = (function() {
     function update() {
         if (!active || waitingForUpgrade) return;
 
+        // Управление левой ракеткой: в соло режиме и W/S, и стрелки двигают левую
         let speed0 = 6 * (paddles[0].tempBonus.speed || 1);
-        if (keys.w) paddles[0].y -= speed0;
-        if (keys.s) paddles[0].y += speed0;
+        if (keys.w || keys.ArrowUp) paddles[0].y -= speed0;
+        if (keys.s || keys.ArrowDown) paddles[0].y += speed0;
         paddles[0].y = Math.max(0, Math.min(H - paddles[0].height, paddles[0].y));
 
         if (players === 2) {
+            // Мультиплеер: стрелки управляют правой ракеткой
             let speed1 = 6 * (paddles[1].tempBonus.speed || 1);
             if (keys.ArrowUp) paddles[1].y -= speed1;
             if (keys.ArrowDown) paddles[1].y += speed1;
             paddles[1].y = Math.max(0, Math.min(H - paddles[1].height, paddles[1].y));
         } else if (singlePlayerMode && bot) {
+            // Соло: бот управляет правой ракеткой
             let targetY = ball.y - paddles[1].height / 2;
             let diff = targetY - paddles[1].y;
             let botSpeed = 4.5 * (bot.speedMultiplier || 1) * (paddles[1].tempBonus.slow ? 0.5 : 1);
@@ -330,7 +332,7 @@ window.pong = (function() {
             }
         }
 
-        for (let i = 0; i < players; i++) {
+        for (let i = 0; i < 2; i++) {
             if (paddles[i].tempBonus.slow) { paddles[i].tempBonus.slow -= 1 / 60; if (paddles[i].tempBonus.slow <= 0) delete paddles[i].tempBonus.slow; }
             if (paddles[i].tempBonus.invert) { paddles[i].tempBonus.invert -= 1 / 60; if (paddles[i].tempBonus.invert <= 0) delete paddles[i].tempBonus.invert; }
             if (paddles[i].tempBonus.freeze) { paddles[i].tempBonus.freeze -= 1 / 60; if (paddles[i].tempBonus.freeze <= 0) delete paddles[i].tempBonus.freeze; }
@@ -458,7 +460,8 @@ window.pong = (function() {
             ctx.fill();
         }
 
-        for (let i = 0; i < players; i++) {
+        // Рисуем обе ракетки всегда (в соло-режиме тоже)
+        for (let i = 0; i < 2; i++) {
             const p = paddles[i];
             let color = i === 0 ? '#44ff44' : '#ff4444';
             if (p.shield > 0) color = '#ffcc00';
@@ -520,7 +523,7 @@ window.pong = (function() {
         players = (mode === 'multi') ? 2 : 1;
         singlePlayerMode = (mode === 'single');
         active = true;
-        gameContext = this; // сохраняем контекст
+        gameContext = this;
 
         paddles[0] = { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         paddles[1] = { x: W - 30, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
@@ -550,7 +553,6 @@ window.pong = (function() {
 
         interval = setInterval(() => update(), 1000 / 60);
         if (singlePlayerMode) {
-            // Привязываем triggerRandomEvent к текущему контексту
             const boundTrigger = triggerRandomEvent.bind(gameContext);
             eventInterval = setInterval(boundTrigger, 20000 + Math.random() * 15000);
             upgradeInterval = setInterval(() => showUpgradeChoice(), 60000);
@@ -562,6 +564,7 @@ window.pong = (function() {
     function setupControls() {
         const handleKeyDown = (e) => {
             if (!active || waitingForUpgrade) return;
+            // В соло-режиме стрелки также управляют левой ракеткой
             if (e.key === 'ArrowUp') keys.ArrowUp = true;
             if (e.key === 'ArrowDown') keys.ArrowDown = true;
             if (e.key === 'w' || e.key === 'W' || e.key === 'ц' || e.key === 'Ц') keys.w = true;

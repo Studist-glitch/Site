@@ -1,4 +1,4 @@
-// js/snake.js - Полностью рефакторинг с UpgradeManager, экспорт/импорт, минимизация дублирования
+// js/snake.js - Исправлен: бот умирает при столкновении с игроком
 window.snake = (function() {
     'use strict';
 
@@ -38,10 +38,9 @@ window.snake = (function() {
     let singlePlayerMode = true;
     let onGameOver = null;
 
-    // Игроки (массивы)
-    let snakes = [];        // массив массивов сегментов {x, y}
-    let dirs = [];          // текущее направление
-    let nextDirs = [];      // следующее направление
+    let snakes = [];
+    let dirs = [];
+    let nextDirs = [];
     let scores = [];
     let combos = [];
     let comboTimers = [];
@@ -49,29 +48,26 @@ window.snake = (function() {
     let dashCooldowns = [];
     let dashTimers = [];
     let lastDirTap = [];
-    let activePowerups = [];   // массив объектов {type, name, color, duration}
+    let activePowerups = [];
     let powerupTimers = [];
 
-    let foods = [];          // массив {x, y, type}
+    let foods = [];
     let foodPhase = 0;
 
-    // Боты и боссы
-    let bot = null;          // { segments, dir, color, alive }
+    let bot = null;
     let botMoveTimer = null;
     let botSpawnTimer = null;
     let botMinDistance = 15;
 
-    let bossSnake = null;    // { segments, dir, color, alive, health }
+    let bossSnake = null;
     let bossTimer = null;
     const bossInterval = 120000;
 
-    // События
     let eventActive = null;
     let eventTimer = 0;
     let meteorBlocks = [];
     let tempWalls = false;
 
-    // Достижения
     let achievements = [];
     const allAchievements = [
         { id: 'firstBlood', name: 'Первая кровь', desc: 'Убейте бота-змею', reward: 100 },
@@ -204,10 +200,9 @@ window.snake = (function() {
         if (!active) return;
         updateEvents();
 
-        // Обновление направлений
         for (let i = 0; i < players; i++) dirs[i] = nextDirs[i];
 
-        // Магнит (если куплен)
+        // Магнит
         if (singlePlayerMode && getUpgrade('magnet')) {
             const head = snakes[0][0];
             for (let f of foods) {
@@ -234,6 +229,7 @@ window.snake = (function() {
             else if (bot.segments.some(s => s.x === head.x && s.y === head.y)) died = true;
             else if (meteorBlocks.some(b => b.x === head.x && b.y === head.y)) died = true;
             else if (tempWalls && (head.x === 0 || head.x === W - 1 || head.y === 0 || head.y === H - 1)) died = true;
+            else if (snakes[0].some(s => s.x === head.x && s.y === head.y)) died = true; // ★ столкновение с игроком
             if (!died) {
                 bot.segments.unshift(head);
                 let ate = false;
@@ -598,7 +594,6 @@ window.snake = (function() {
         initUpgradeManager();
         loadCurrency();
 
-        // Сброс всех массивов
         snakes = [];
         dirs = [];
         nextDirs = [];
@@ -669,7 +664,6 @@ window.snake = (function() {
         powerupTimers.forEach(arr => arr.forEach(t => clearInterval(t)));
     }
 
-    // Экспорт / импорт для GitHub
     function exportState() {
         if (!singlePlayerMode) return { currency: 0, upgrades: DEFAULT_UPGRADES };
         const upgrades = {};
@@ -686,7 +680,6 @@ window.snake = (function() {
         saveCurrency();
     }
 
-    // Магазин
     function showShop() {
         if (!singlePlayerMode) return;
         const self = this;
@@ -740,7 +733,6 @@ window.snake = (function() {
         render();
     }
 
-    // Публичный API
     return {
         init,
         stop,
@@ -752,7 +744,6 @@ window.snake = (function() {
         get dirs() { return dirs; },
         get nextDirs() { return nextDirs; },
         handleDashInput,
-        // Для внутреннего использования в main (клавиатура)
         set onGameOver(cb) { onGameOver = cb; }
     };
 })();
