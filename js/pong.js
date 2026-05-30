@@ -1,4 +1,4 @@
-// js/pong.js - Исправлен: отображение бота, управление в соло на WASD+стрелки
+// js/pong.js - Исправлен: передача корректного контекста в события
 window.pong = (function() {
     'use strict';
 
@@ -34,6 +34,13 @@ window.pong = (function() {
     let canvas = null;
     let ctx = null;
     let keys = { ArrowUp: false, ArrowDown: false, w: false, s: false };
+
+    // --- Объект состояния для передачи в события ---
+    let gameState = {
+        ball: ball,
+        paddles: paddles,
+        activeEvent: activeEvent
+    };
 
     const allUpgrades = [
         { id: 'speed', name: 'Скорость ракетки', desc: '+25% скорости', apply: (p) => { p.tempBonus.speed = (p.tempBonus.speed || 1) + 0.25; } },
@@ -117,8 +124,6 @@ window.pong = (function() {
         }, end: () => {} }
     ];
 
-    let gameContext = null;
-
     function addParticles(x, y) {
         for (let i = 0; i < 5; i++) {
             particles.push({
@@ -155,17 +160,17 @@ window.pong = (function() {
 
     function triggerRandomEvent() {
         if (!active || waitingForUpgrade || !singlePlayerMode) return;
-        if (!gameContext) gameContext = this;
         const ev = allEvents[Math.floor(Math.random() * allEvents.length)];
-        ev.apply(gameContext);
+        ev.apply(gameState);
         addEvent(`Событие: ${ev.name}`);
     }
 
     function endEvent() {
-        if (activeEvent && gameContext) {
+        if (activeEvent && gameState) {
             const evDef = allEvents.find(e => e.name === activeEvent.name);
-            if (evDef && evDef.end) evDef.end(gameContext);
+            if (evDef && evDef.end) evDef.end(gameState);
             activeEvent = null;
+            gameState.activeEvent = null;
         }
     }
 
@@ -273,20 +278,17 @@ window.pong = (function() {
     function update() {
         if (!active || waitingForUpgrade) return;
 
-        // Управление левой ракеткой: в соло режиме и W/S, и стрелки двигают левую
         let speed0 = 6 * (paddles[0].tempBonus.speed || 1);
         if (keys.w || keys.ArrowUp) paddles[0].y -= speed0;
         if (keys.s || keys.ArrowDown) paddles[0].y += speed0;
         paddles[0].y = Math.max(0, Math.min(H - paddles[0].height, paddles[0].y));
 
         if (players === 2) {
-            // Мультиплеер: стрелки управляют правой ракеткой
             let speed1 = 6 * (paddles[1].tempBonus.speed || 1);
             if (keys.ArrowUp) paddles[1].y -= speed1;
             if (keys.ArrowDown) paddles[1].y += speed1;
             paddles[1].y = Math.max(0, Math.min(H - paddles[1].height, paddles[1].y));
         } else if (singlePlayerMode && bot) {
-            // Соло: бот управляет правой ракеткой
             let targetY = ball.y - paddles[1].height / 2;
             let diff = targetY - paddles[1].y;
             let botSpeed = 4.5 * (bot.speedMultiplier || 1) * (paddles[1].tempBonus.slow ? 0.5 : 1);
@@ -460,7 +462,6 @@ window.pong = (function() {
             ctx.fill();
         }
 
-        // Рисуем обе ракетки всегда (в соло-режиме тоже)
         for (let i = 0; i < 2; i++) {
             const p = paddles[i];
             let color = i === 0 ? '#44ff44' : '#ff4444';
@@ -523,8 +524,8 @@ window.pong = (function() {
         players = (mode === 'multi') ? 2 : 1;
         singlePlayerMode = (mode === 'single');
         active = true;
-        gameContext = this;
 
+        // Сброс состояния
         paddles[0] = { x: 20, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         paddles[1] = { x: W - 30, y: 150, width: 10, height: 80, score: 0, upgrades: {}, tempBonus: {}, shield: 0 };
         ball = { x: W / 2, y: H / 2, vx: (Math.random() > 0.5 ? 4 : -4), vy: (Math.random() - 0.5) * 6, radius: 6, baseSpeed: 5 };
@@ -536,6 +537,11 @@ window.pong = (function() {
         enemies = [];
         boss = null;
         enemySpawnTimer = 0;
+
+        // Обновляем gameState (ссылки)
+        gameState.ball = ball;
+        gameState.paddles = paddles;
+        gameState.activeEvent = activeEvent;
 
         if (singlePlayerMode) bot = { level: 0, reactionDelay: 0.3, speedMultiplier: 1 };
         else bot = null;
@@ -553,8 +559,7 @@ window.pong = (function() {
 
         interval = setInterval(() => update(), 1000 / 60);
         if (singlePlayerMode) {
-            const boundTrigger = triggerRandomEvent.bind(gameContext);
-            eventInterval = setInterval(boundTrigger, 20000 + Math.random() * 15000);
+            eventInterval = setInterval(() => triggerRandomEvent(), 20000 + Math.random() * 15000);
             upgradeInterval = setInterval(() => showUpgradeChoice(), 60000);
         }
         setupControls();
@@ -564,7 +569,6 @@ window.pong = (function() {
     function setupControls() {
         const handleKeyDown = (e) => {
             if (!active || waitingForUpgrade) return;
-            // В соло-режиме стрелки также управляют левой ракеткой
             if (e.key === 'ArrowUp') keys.ArrowUp = true;
             if (e.key === 'ArrowDown') keys.ArrowDown = true;
             if (e.key === 'w' || e.key === 'W' || e.key === 'ц' || e.key === 'Ц') keys.w = true;
