@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Стили · v3
+   ЯСОШ · Стили · v5
    ========================================================= */
 
 :root {
@@ -83,7 +83,6 @@ button { font: inherit; cursor: pointer; }
 
 .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 32px; }
 
-/* ---------- FALLBACK для reveal (если JS не загрузился) ---------- */
 .no-js .reveal { opacity: 1 !important; transform: none !important; }
 
 /* =========================================================
@@ -286,6 +285,17 @@ body.dark .news-card__text { color: #d8d8d8; }
 .reaction.is-liked svg { fill: currentColor; }
 .reaction--toggle { margin-left: auto; }
 
+/* Просмотры: не кликабельны */
+.reaction--static {
+    cursor: default;
+    pointer-events: none;
+    user-select: none;
+}
+.reaction--static:hover {
+    background: transparent;
+    color: var(--text-muted);
+}
+
 .news-card__comments {
     margin-top: 14px; padding-top: 14px;
     border-top: 1px dashed var(--border);
@@ -298,7 +308,6 @@ body.dark .comment__avatar { color: #0d0d0d; }
 .comment__name { font-weight: 600; color: var(--text); font-size: .84rem; margin-bottom: 2px; }
 .comment__text { color: var(--text-muted); line-height: 1.5; }
 .comment--meme .comment__avatar { background: var(--accent); }
-.comment--meme .comment__name::after { content: ' · 9а'; color: var(--text-muted); font-weight: 400; font-size: .76rem; }
 
 /* =========================================================
    SCHEDULE
@@ -381,7 +390,6 @@ body.dark .teacher__stage { background: rgba(0, 0, 0, .75); color: var(--primary
     border-bottom: 1px solid var(--border);
 }
 
-/* Стили для кнопок-табов столовой */
 .canteen__tabs .tab,
 .canteen .tab {
     padding: 10px 22px;
@@ -455,6 +463,75 @@ body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
 .achievement--silver .achievement__icon { background: rgba(148, 163, 184, .18); color: #64748b; }
 .achievement__body h3 { font-size: .98rem; font-weight: 700; margin-bottom: 6px; font-family: var(--font-body); color: var(--text); }
 .achievement__body p { font-size: .88rem; color: var(--text-muted); line-height: 1.5; }
+
+/* =========================================================
+   GAME PROMO (мини-реклама игры ученика)
+   ========================================================= */
+.game-promo {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    align-items: center;
+    transition: all var(--tr);
+    position: relative;
+    overflow: hidden;
+}
+.game-promo::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+    opacity: 0;
+    transition: opacity var(--tr);
+}
+.game-promo:hover::before { opacity: 1; }
+.game-promo:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: transparent;
+}
+.game-promo__image {
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-alt);
+    aspect-ratio: 4 / 3;
+}
+.game-promo__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .6s ease;
+}
+.game-promo:hover .game-promo__image img { transform: scale(1.04); }
+.game-promo__eyebrow {
+    display: block;
+    color: var(--primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: .72rem;
+    letter-spacing: 1.4px;
+    margin-bottom: 10px;
+}
+.game-promo__title {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    line-height: 1.2;
+}
+.game-promo__text {
+    color: var(--text-muted);
+    font-size: .96rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    max-width: 520px;
+}
 
 /* =========================================================
    GALLERY
@@ -545,6 +622,7 @@ body.dark .to-top { color: #0d0d0d; }
     .canteen__info { grid-template-columns: 1fr; }
     .achievements { grid-template-columns: repeat(2, 1fr); }
     .section__head { margin-bottom: 48px; }
+    .game-promo { grid-template-columns: 1fr; gap: 24px; }
 }
 @media (max-width: 768px) {
     :root { --space: 68px; }
@@ -571,6 +649,7 @@ body.dark .to-top { color: #0d0d0d; }
     .canteen { padding: 22px 18px; }
     .dish { grid-template-columns: 34px 1fr auto; gap: 12px; padding: 13px 14px; }
     .canteen__tabs .tab, .canteen .tab { padding: 8px 16px; font-size: .86rem; }
+    .game-promo { padding: 24px 22px; }
     .footer__inner { flex-direction: column; text-align: center; }
     .footer__nav { justify-content: center; }
     .to-top { right: 16px; bottom: 16px; width: 42px; height: 42px; }
