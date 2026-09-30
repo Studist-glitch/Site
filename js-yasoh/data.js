@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Данные · v5
+   ЯСОШ · Данные · v6
    ========================================================= */
 
 const TEACHERS = [
@@ -23,11 +23,11 @@ const TEACHERS = [
     { id:5,  name:'Ткачёв Виктор Анатольевич',    subject:'Директор · учитель истории',            stage:'senior', exp:24, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=500&h=625&q=80', bio:'Возглавляет школу с 2013 года.' },
     { id:6,  name:'Лебедева Ольга Николаевна',    subject:'Русский язык и литература',             stage:'senior', exp:22, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководитель литературного клуба «Перо».' },
     { id:7,  name:'Волков Сергей Петрович',       subject:'Математика, алгебра, геометрия',        stage:'senior', exp:19, category:'Высшая',      education:'Новосибирский гос. университет',         photo:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&h=625&q=80', bio:'Готовит призёров краевых олимпиад.' },
-    { id:8,  name:'Соколова Татьяна Михайловна',  subject:'Английский язык',                       stage:'senior', exp:15, category:'Первая',      education:'Лингвистический институт, Барнаул',      photo:'https://images.unsplash.com/photo-1584999734482-0361aecad844?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт разговорный клуб English Corner.' },
+    { id:8,  name:'Соколов Тимур Маратович',      subject:'Английский язык',                       stage:'senior', exp:3,  category:'Соответствие', education:'Алтайская гос. педагогическая академия', photo:'https://images.unsplash.com/photo-1584999734482-0361aecad844?auto=format&fit=crop&w=500&h=625&q=80', bio:'Молодой специалист. Ведёт разговорный клуб English Corner.' },
     { id:9,  name:'Новиков Андрей Викторович',    subject:'Физика, астрономия',                    stage:'senior', exp:21, category:'Высшая',      education:'Томский гос. университет',               photo:'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководит кружком робототехники.' },
-    { id:13, name:'Смирнов Павел Игоревич',       subject:'Информатика, ИКТ',                      stage:'senior', exp:8,  category:'Первая',      education:'Алтайский гос. технический университет', photo:'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного медиацентра.' },
+    { id:13, name:'Смирнов Павел Игоревич',       subject:'Информатика, ИКТ',                      stage:'senior', exp:8,  category:'Первая',      education:'Алтайский гос. технический университет', photo:'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного медиацентра.' },
     { id:16, name:'Белов Алексей Николаевич',     subject:'ОБЖ, физическая культура',              stage:'senior', exp:13, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=500&h=625&q=80', bio:'Организатор военно-полевых сборов.' },
-    { id:17, name:'Комарова Светлана Андреевна',  subject:'Обществознание, право',                 stage:'senior', exp:17, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного самоуправления.' },
+    { id:17, name:'Комарова Светлана Андреевна',  subject:'Обществознание, право',                 stage:'senior', exp:17, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного самоуправления.' },
 ];
 
 /* =========================================================
