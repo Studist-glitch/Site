@@ -1,30 +1,38 @@
 /* =========================================================
-   ЯСОШ · Данные · v3
+   ЯСОШ · Данные · v5
    ========================================================= */
 
 const TEACHERS = [
-    { id:1,  name:'Морозова Анна Сергеевна',      subject:'Учитель начальных классов · 1а',        stage:'junior', exp:12, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Педагог-наставник. Руководит театром «Светлячок».' },
+    // ===== НАЧАЛЬНАЯ ШКОЛА (1–4) =====
+    { id:1,  name:'Морозова Анна Сергеевна',      subject:'Учитель начальных классов · 1а',        stage:'junior', exp:12, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=500&h=625&q=80', bio:'Педагог-наставник. Руководит театром «Светлячок».' },
     { id:2,  name:'Ковалёва Галина Петровна',     subject:'Учитель начальных классов · 2а',        stage:'junior', exp:27, category:'Высшая',      education:'Алтайская гос. педагогическая академия', photo:'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=500&h=625&q=80', bio:'Отличник народного просвещения. Стаж — 27 лет.' },
     { id:3,  name:'Соловьёва Елена Владимировна', subject:'Учитель начальных классов · 3а',        stage:'junior', exp:9,  category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор краеведческого кружка «Родные тропы».' },
     { id:4,  name:'Кузнецова Наталья Ивановна',   subject:'Учитель начальных классов · 4а',        stage:'junior', exp:18, category:'Высшая',      education:'Бийский педагогический колледж',         photo:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=500&h=625&q=80', bio:'Готовит учеников к олимпиадам младших классов.' },
+    { id:20, name:'Титов Роман Александрович',    subject:'Физическая культура',                   stage:'junior', exp:10, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт секцию лёгкой атлетики.' },
+
+    // ===== ОСНОВНАЯ ШКОЛА (5–7) =====
+    { id:10, name:'Попова Ирина Александровна',   subject:'Химия, биология',                       stage:'middle', exp:14, category:'Первая',      education:'Алтайский гос. аграрный университет',    photo:'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Организатор экологического отряда.' },
+    { id:11, name:'Орлов Дмитрий Сергеевич',      subject:'Физическая культура, ОБЖ',              stage:'middle', exp:11, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=500&h=625&q=80', bio:'Тренер школьной сборной по волейболу.' },
+    { id:12, name:'Зайцева Марина Владимировна',  subject:'География, краеведение',                stage:'middle', exp:16, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководит школьным музеем.' },
+    { id:14, name:'Фёдорова Лариса Петровна',     subject:'ИЗО, МХК',                              stage:'middle', exp:20, category:'Высшая',      education:'Барнаульское художественное училище',    photo:'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=500&h=625&q=80', bio:'Оформитель всех школьных праздников.' },
+    { id:15, name:'Мороз Екатерина Дмитриевна',   subject:'Технология',                            stage:'middle', exp:7,  category:'Соответствие', education:'Бийский педагогический колледж',         photo:'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт кружок «Юный кулинар».' },
+    { id:18, name:'Гусев Николай Фёдорович',      subject:'История, всеобщая история',             stage:'middle', exp:25, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Заслуженный учитель Алтайского края.' },
+    { id:19, name:'Павлова Юлия Сергеевна',       subject:'Немецкий язык',                         stage:'middle', exp:6,  category:'Соответствие', education:'Алтайская гос. педагогическая академия', photo:'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&h=625&q=80', bio:'Молодой специалист, выпускница ЯСОШ.' },
+
+    // ===== СТАРШАЯ ШКОЛА (8–11) =====
     { id:5,  name:'Ткачёв Виктор Анатольевич',    subject:'Директор · учитель истории',            stage:'senior', exp:24, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=500&h=625&q=80', bio:'Возглавляет школу с 2013 года.' },
     { id:6,  name:'Лебедева Ольга Николаевна',    subject:'Русский язык и литература',             stage:'senior', exp:22, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководитель литературного клуба «Перо».' },
     { id:7,  name:'Волков Сергей Петрович',       subject:'Математика, алгебра, геометрия',        stage:'senior', exp:19, category:'Высшая',      education:'Новосибирский гос. университет',         photo:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&h=625&q=80', bio:'Готовит призёров краевых олимпиад.' },
     { id:8,  name:'Соколова Татьяна Михайловна',  subject:'Английский язык',                       stage:'senior', exp:15, category:'Первая',      education:'Лингвистический институт, Барнаул',      photo:'https://images.unsplash.com/photo-1584999734482-0361aecad844?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт разговорный клуб English Corner.' },
-    { id:9,  name:'Новиков Андрей Викторович',    subject:'Физика, астрономия',                    stage:'senior', exp:21, category:'Высшая',      education:'Томский гос. университет',               photo:'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководит кружком робототехники.' },
-    { id:10, name:'Попова Ирина Александровна',   subject:'Химия, биология',                       stage:'middle', exp:14, category:'Первая',      education:'Алтайский гос. аграрный университет',    photo:'https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Организатор экологического отряда.' },
-    { id:11, name:'Орлов Дмитрий Сергеевич',      subject:'Физическая культура, ОБЖ',              stage:'middle', exp:11, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&h=625&q=80', bio:'Тренер школьной сборной по волейболу.' },
-    { id:12, name:'Зайцева Марина Владимировна',  subject:'География, краеведение',                stage:'middle', exp:16, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководит школьным музеем.' },
+    { id:9,  name:'Новиков Андрей Викторович',    subject:'Физика, астрономия',                    stage:'senior', exp:21, category:'Высшая',      education:'Томский гос. университет',               photo:'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=500&h=625&q=80', bio:'Руководит кружком робототехники.' },
     { id:13, name:'Смирнов Павел Игоревич',       subject:'Информатика, ИКТ',                      stage:'senior', exp:8,  category:'Первая',      education:'Алтайский гос. технический университет', photo:'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного медиацентра.' },
-    { id:14, name:'Фёдорова Лариса Петровна',     subject:'ИЗО, МХК',                              stage:'middle', exp:20, category:'Высшая',      education:'Барнаульское художественное училище',    photo:'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=500&h=625&q=80', bio:'Оформитель всех школьных праздников.' },
-    { id:15, name:'Мороз Екатерина Дмитриевна',   subject:'Технология',                            stage:'middle', exp:7,  category:'Соответствие', education:'Бийский педагогический колледж',         photo:'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт кружок «Юный кулинар».' },
-    { id:16, name:'Белов Алексей Николаевич',     subject:'ОБЖ, физическая культура',              stage:'senior', exp:13, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=500&h=625&q=80', bio:'Организатор военно-полевых сборов.' },
+    { id:16, name:'Белов Алексей Николаевич',     subject:'ОБЖ, физическая культура',              stage:'senior', exp:13, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=500&h=625&q=80', bio:'Организатор военно-полевых сборов.' },
     { id:17, name:'Комарова Светлана Андреевна',  subject:'Обществознание, право',                 stage:'senior', exp:17, category:'Высшая',      education:'Алтайский гос. университет',             photo:'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=500&h=625&q=80', bio:'Куратор школьного самоуправления.' },
-    { id:18, name:'Гусев Николай Фёдорович',      subject:'История, всеобщая история',             stage:'middle', exp:25, category:'Высшая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1592621385612-4d7129426394?auto=format&fit=crop&w=500&h=625&q=80', bio:'Заслуженный учитель Алтайского края.' },
-    { id:19, name:'Павлова Юлия Сергеевна',       subject:'Немецкий язык',                         stage:'middle', exp:6,  category:'Соответствие', education:'Алтайская гос. педагогическая академия', photo:'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=500&h=625&q=80', bio:'Молодой специалист, выпускница ЯСОШ.' },
-    { id:20, name:'Титов Роман Александрович',    subject:'Физическая культура',                   stage:'junior', exp:10, category:'Первая',      education:'Барнаульский гос. пед. университет',   photo:'https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=500&h=625&q=80', bio:'Ведёт секцию лёгкой атлетики.' },
 ];
 
+/* =========================================================
+   РАСПИСАНИЕ
+   ========================================================= */
 const LESSON_TIMES = ['08:30 – 09:10','09:20 – 10:00','10:15 – 10:55','11:15 – 11:55','12:10 – 12:50','13:00 – 13:40','13:50 – 14:30'];
 const DAYS = ['Пн','Вт','Ср','Чт','Пт','Сб'];
 
@@ -44,24 +52,71 @@ const SCHEDULE = {
     '11':  { 'Пн':[lesson('Алгебра и начала анализа','каб. 9'),lesson('Русский язык','каб. 12'),lesson('Физика','каб. 17'),lesson('Химия','каб. 19'),lesson('История','каб. 15'),lesson('Английский язык','каб. 10'),lesson('Физкультура','спортзал')], 'Вт':[lesson('Геометрия','каб. 9'),lesson('Литература','каб. 12'),lesson('Биология','каб. 18'),lesson('Обществознание','каб. 15'),lesson('Информатика','каб. 20')], 'Ср':[lesson('Алгебра и начала анализа','каб. 9'),lesson('Русский язык','каб. 12'),lesson('Физика','каб. 17'),lesson('География','каб. 14'),lesson('Английский язык','каб. 10'),lesson('ОБЖ','каб. 16')], 'Чт':[lesson('Алгебра и начала анализа','каб. 9'),lesson('Литература','каб. 12'),lesson('Химия','каб. 19'),lesson('История','каб. 15'),lesson('Информатика','каб. 20'),lesson('Физкультура','спортзал')], 'Пт':[lesson('Геометрия','каб. 9'),lesson('Русский язык','каб. 12'),lesson('Физика','каб. 17'),lesson('Биология','каб. 18'),lesson('Английский язык','каб. 10'),lesson('Индивидуальный проект','каб. 20')], 'Сб':[lesson('Подготовка к ЕГЭ · математика','каб. 9'),lesson('Подготовка к ЕГЭ · русский язык','каб. 12')] },
 };
 
+/* =========================================================
+   НОВОСТИ
+   ========================================================= */
 const NEWS = [
     { id:1, tag:'schedule', tagLabel:'Расписание', date:'14 ноября 2025', title:'Новое расписание на II четверть', text:'С 18 ноября вступает в силу обновлённое расписание для 5–11 классов. Изменения коснулись уроков физики, информатики и английского языка. Проверьте своё расписание во вкладке «Расписание» — оно уже обновлено.', views:342, likes:47, comments:[{name:'Родитель 7а',text:'Спасибо, что предупредили заранее!'}] },
-    { id:2, tag:'food', tagLabel:'Столовая', date:'13 ноября 2025', title:'Меню столовой на ноябрь', text:'Опубликовано обновлённое меню на вторую половину ноября. В четверг — борщ с капустой по ГОСТу, котлета по-киевски и компот из сухофруктов. Полное меню по дням — в разделе «Столовая».', views:512, likes:89, comments:[{name:'Обед',text:'Наконец-то нормальный борщ!'},{name:'В.А.',text:'Продам гараж, недорого. Торг уместен.',meme:true},{name:'Повар Люба',text:'Котлеты будут ровно в 12:40.'}] },
+    { id:2, tag:'food', tagLabel:'Столовая', date:'13 ноября 2025', title:'Меню столовой на ноябрь', text:'Опубликовано обновлённое меню на вторую половину ноября. В четверг — борщ с капустой по ГОСТу, котлета по-киевски и компот из сухофруктов. Полное меню по дням — в разделе «Столовая».', views:512, likes:89, comments:[{name:'Родитель 5б',text:'Спасибо, наконец-то меню вывесили заранее.'},{name:'Повар Люба',text:'Котлеты будут ровно в 12:40.'}] },
     { id:3, tag:'event', tagLabel:'Мероприятие', date:'11 ноября 2025', title:'День матери: концерт и выставка рисунков', text:'28 ноября в 15:00 в актовом зале пройдёт праздничный концерт, посвящённый Дню матери. Приглашаются родители, бабушки и все желающие.', views:268, likes:73, comments:[] },
     { id:4, tag:'olymp', tagLabel:'Олимпиада', date:'9 ноября 2025', title:'Итоги школьного этапа олимпиады по математике', text:'Поздравляем победителей: Софья Ковалёва (9а), Дмитрий Захаров (10), Анна Мороз (11). Призёры — 14 человек. Ребята примут участие в муниципальном этапе в декабре.', views:401, likes:96, comments:[{name:'Мама Софьи',text:'Умница, доченька!'}] },
     { id:5, tag:'info', tagLabel:'Объявление', date:'7 ноября 2025', title:'Родительское собрание 9 и 11 классов', text:'20 ноября в 18:00 состоятся общешкольные родительские собрания для 9 и 11 классов. Тема: подготовка к государственной итоговой аттестации 2026 года.', views:187, likes:12, comments:[] },
     { id:6, tag:'event', tagLabel:'Школьная жизнь', date:'3 ноября 2025', title:'Осенние каникулы завершены', text:'С 5 ноября возобновляются занятия. Каникулы прошли спокойно: ребята из 7а ездили на экскурсию в Барнаул, а школьный театр «Светлячок» выступил в районном Доме культуры.', views:154, likes:28, comments:[] },
 ];
 
+/* =========================================================
+   СТОЛОВАЯ · цены за порцию (для 5–11 классов)
+   1–4 классы питаются бесплатно по абонементу
+   ========================================================= */
 const CANTEEN_MENU = {
-    'Пн': { label:'Понедельник', dishes:[ {emoji:'🥣',name:'Каша манная на молоке',note:'с маслом и джемом',price:'бесплатно',free:true}, {emoji:'🍲',name:'Суп-лапша куриный',note:'на домашнем бульоне',price:'бесплатно',free:true}, {emoji:'🍗',name:'Котлета куриная с пюре',note:'с подливой',price:'бесплатно',free:true}, {emoji:'🥗',name:'Салат из свежей капусты',note:'',price:'бесплатно',free:true}, {emoji:'🍞',name:'Хлеб пшеничный / ржаной',note:'',price:'бесплатно',free:true}, {emoji:'🍎',name:'Яблоко',note:'сезонное',price:'бесплатно',free:true} ] },
-    'Вт': { label:'Вторник', dishes:[ {emoji:'🥣',name:'Овсяная каша с ягодами',note:'черника, смородина',price:'бесплатно',free:true}, {emoji:'🍲',name:'Рассольник',note:'',price:'бесплатно',free:true}, {emoji:'🥩',name:'Гуляш из говядины с гречкой',note:'с соусом',price:'бесплатно',free:true}, {emoji:'🥗',name:'Винегрет',note:'',price:'бесплатно',free:true}, {emoji:'🍞',name:'Хлеб',note:'',price:'бесплатно',free:true}, {emoji:'🍮',name:'Запеканка творожная',note:'с молочным соусом',price:'бесплатно',free:true} ] },
-    'Ср': { label:'Среда', dishes:[ {emoji:'🥣',name:'Каша рисовая с маслом',note:'',price:'бесплатно',free:true}, {emoji:'🍲',name:'Суп овощной',note:'с фрикадельками',price:'бесплатно',free:true}, {emoji:'🐟',name:'Рыба тушёная с картофелем',note:'треска',price:'бесплатно',free:true}, {emoji:'🥗',name:'Салат «Витаминный»',note:'морковь, яблоко, изюм',price:'бесплатно',free:true}, {emoji:'🍞',name:'Хлеб',note:'',price:'бесплатно',free:true}, {emoji:'🍵',name:'Чай с лимоном',note:'',price:'бесплатно',free:true} ] },
-    'Чт': { label:'Четверг', dishes:[ {emoji:'🥣',name:'Каша пшённая с тыквой',note:'традиционная, из печи',price:'бесплатно',free:true}, {emoji:'🍲',name:'Борщ с капустой',note:'по ГОСТу',price:'бесплатно',free:true,meme:true}, {emoji:'🍗',name:'Котлета по-киевски',note:'с картофельным пюре',price:'бесплатно',free:true}, {emoji:'🥗',name:'Салат из свёклы с чесноком',note:'',price:'бесплатно',free:true}, {emoji:'🍞',name:'Хлеб',note:'',price:'бесплатно',free:true}, {emoji:'🍹',name:'Компот из сухофруктов',note:'тот самый, из школьного детства',price:'бесплатно',free:true} ] },
-    'Пт': { label:'Пятница', dishes:[ {emoji:'🥣',name:'Каша кукурузная',note:'с маслом',price:'бесплатно',free:true}, {emoji:'🍲',name:'Щи из свежей капусты',note:'',price:'бесплатно',free:true}, {emoji:'🍝',name:'Макароны с сыром',note:'запечённые',price:'бесплатно',free:true}, {emoji:'🥗',name:'Салат морковный',note:'',price:'бесплатно',free:true}, {emoji:'🍞',name:'Хлеб',note:'',price:'бесплатно',free:true}, {emoji:'🍩',name:'Печенье песочное',note:'школьная выпечка',price:'бесплатно',free:true} ] },
-    'Сб': { label:'Суббота', dishes:[ {emoji:'ℹ️',name:'В субботу столовая не работает',note:'Занятия только у 9 и 11 классов, приносят с собой',price:'—',free:true} ] },
+    'Пн': { label:'Понедельник', dishes:[
+        {emoji:'🥣',name:'Каша манная на молоке',   note:'с маслом и джемом',       price:'30 ₽'},
+        {emoji:'🍲',name:'Суп-лапша куриный',        note:'на домашнем бульоне',     price:'45 ₽'},
+        {emoji:'🍗',name:'Котлета куриная с пюре',   note:'с подливой',              price:'70 ₽'},
+        {emoji:'🥗',name:'Салат из свежей капусты',  note:'',                        price:'25 ₽'},
+        {emoji:'🍞',name:'Хлеб пшеничный / ржаной',  note:'',                        price:'8 ₽'},
+        {emoji:'🍎',name:'Яблоко',                    note:'сезонное',                price:'20 ₽'},
+    ]},
+    'Вт': { label:'Вторник', dishes:[
+        {emoji:'🥣',name:'Овсяная каша с ягодами',   note:'черника, смородина',      price:'35 ₽'},
+        {emoji:'🍲',name:'Рассольник',                note:'',                        price:'45 ₽'},
+        {emoji:'🥩',name:'Гуляш из говядины с гречкой', note:'с соусом',             price:'75 ₽'},
+        {emoji:'🥗',name:'Винегрет',                  note:'',                        price:'25 ₽'},
+        {emoji:'🍞',name:'Хлеб',                      note:'',                        price:'8 ₽'},
+        {emoji:'🍮',name:'Запеканка творожная',       note:'с молочным соусом',       price:'40 ₽'},
+    ]},
+    'Ср': { label:'Среда', dishes:[
+        {emoji:'🥣',name:'Каша рисовая с маслом',    note:'',                        price:'28 ₽'},
+        {emoji:'🍲',name:'Суп овощной',               note:'с фрикадельками',         price:'42 ₽'},
+        {emoji:'🐟',name:'Рыба тушёная с картофелем',note:'треска',                  price:'68 ₽'},
+        {emoji:'🥗',name:'Салат «Витаминный»',       note:'морковь, яблоко, изюм',   price:'28 ₽'},
+        {emoji:'🍞',name:'Хлеб',                      note:'',                        price:'8 ₽'},
+        {emoji:'🍵',name:'Чай с лимоном',             note:'',                        price:'15 ₽'},
+    ]},
+    'Чт': { label:'Четверг', dishes:[
+        {emoji:'🥣',name:'Каша пшённая с тыквой',    note:'традиционная, из печи',   price:'30 ₽'},
+        {emoji:'🍲',name:'Борщ с капустой',           note:'по ГОСТу',                price:'48 ₽'},
+        {emoji:'🍗',name:'Котлета по-киевски',        note:'с картофельным пюре',     price:'78 ₽'},
+        {emoji:'🥗',name:'Салат из свёклы с чесноком',note:'',                        price:'24 ₽'},
+        {emoji:'🍞',name:'Хлеб',                      note:'',                        price:'8 ₽'},
+        {emoji:'🍹',name:'Компот из сухофруктов',     note:'сваренный в столовой',    price:'18 ₽'},
+    ]},
+    'Пт': { label:'Пятница', dishes:[
+        {emoji:'🥣',name:'Каша кукурузная',           note:'с маслом',                price:'28 ₽'},
+        {emoji:'🍲',name:'Щи из свежей капусты',      note:'',                        price:'45 ₽'},
+        {emoji:'🍝',name:'Макароны с сыром',          note:'запечённые',              price:'55 ₽'},
+        {emoji:'🥗',name:'Салат морковный',           note:'',                        price:'22 ₽'},
+        {emoji:'🍞',name:'Хлеб',                      note:'',                        price:'8 ₽'},
+        {emoji:'🍩',name:'Печенье песочное',          note:'школьная выпечка',        price:'20 ₽'},
+    ]},
+    'Сб': { label:'Суббота', dishes:[
+        {emoji:'ℹ️',name:'В субботу столовая не работает',note:'Занятия только у 9 и 11 классов, питание приносят с собой',price:'—'},
+    ]},
 };
 
+/* =========================================================
+   ДОСТИЖЕНИЯ
+   ========================================================= */
 const ACHIEVEMENTS = [
     { icon:'🏆', type:'gold',   title:'Призёр краевой олимпиады по математике', text:'Софья Ковалёва, 9а — 2 место. 2025 год.' },
     { icon:'🥇', type:'gold',   title:'Победитель конкурса «Учитель года Алтая»', text:'Лебедева О.Н. — лауреат краевого этапа. 2024 год.' },
@@ -71,11 +126,14 @@ const ACHIEVEMENTS = [
     { icon:'🎖️', type:'gold',   title:'Победитель краевого смотра музеев', text:'Школьный музей истории села. 2023 год.' },
 ];
 
+/* =========================================================
+   ГАЛЕРЕЯ
+   ========================================================= */
 const GALLERY = [
-    { src:'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=75', caption:'Урок в начальной школе', wide:true },
-    { src:'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=75',  caption:'Спортивные соревнования' },
-    { src:'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=75',  caption:'Выпускной 2025' },
+    { src:'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=75', caption:'Урок в начальной школе', wide:true },
+    { src:'https://images.unsplash.com/photo-1571210862729-78a52d3779a2?auto=format&fit=crop&w=800&q=75',  caption:'Спортивные соревнования' },
+    { src:'https://images.unsplash.com/photo-1627556704290-2b1f5853ff78?auto=format&fit=crop&w=800&q=75',  caption:'Выпускной 2025' },
     { src:'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=75', caption:'Школьная библиотека', wide:true },
-    { src:'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=75',  caption:'Подготовка к экзаменам' },
     { src:'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=75',  caption:'Учебный кабинет' },
+    { src:'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=75',  caption:'Подготовка к экзаменам' },
 ];
