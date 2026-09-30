@@ -1,12 +1,12 @@
 /* =========================================================
-   ЯСОШ · Логика · v4
+   ЯСОШ · Логика · v7
    ========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- СНИМАЕМ no-js ---------- */
     document.documentElement.classList.remove('no-js');
 
-    /* ---------- FALLBACK для reveal (если observer не сработал) ---------- */
+    /* ---------- FALLBACK для reveal ---------- */
     setTimeout(() => {
         document.querySelectorAll('.reveal:not(.visible)').forEach(el => el.classList.add('visible'));
     }, 1800);
