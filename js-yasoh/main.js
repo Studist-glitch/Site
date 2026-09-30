@@ -3,9 +3,18 @@
    ========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* -------------------------------------------------------
-       1. МОБИЛЬНОЕ МЕНЮ
-       ------------------------------------------------------- */
+    /* ---------- ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ ---------- */
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('yasoh-theme');
+
+    if (savedTheme === 'dark') document.body.classList.add('dark');
+
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('yasoh-theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+    });
+
+    /* ---------- МОБИЛЬНОЕ МЕНЮ ---------- */
     const burger = document.getElementById('burger');
     const nav = document.getElementById('nav');
 
@@ -23,9 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    /* -------------------------------------------------------
-       2. ШАПКА + КНОПКА НАВЕРХ
-       ------------------------------------------------------- */
+    /* ---------- ШАПКА + НАВЕРХ ---------- */
     const header = document.getElementById('header');
     const toTop = document.getElementById('toTop');
 
@@ -36,13 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
 
-    toTop.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    /* -------------------------------------------------------
-       3. REVEAL-АНИМАЦИЯ
-       ------------------------------------------------------- */
+    /* ---------- REVEAL ---------- */
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry, i) => {
             if (entry.isIntersecting) {
@@ -54,9 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-    /* -------------------------------------------------------
-       4. ПЛАВНАЯ ПРОКРУТКА
-       ------------------------------------------------------- */
+    /* ---------- ПЛАВНАЯ ПРОКРУТКА ---------- */
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', (e) => {
             const id = anchor.getAttribute('href');
@@ -65,30 +66,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!target) return;
             e.preventDefault();
             const offset = header.offsetHeight + 12;
-            const top = target.getBoundingClientRect().top + window.scrollY - offset;
-            window.scrollTo({ top, behavior: 'smooth' });
+            window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
         });
     });
 
-    /* -------------------------------------------------------
-       5. РЕНДЕР НОВОСТЕЙ
-       ------------------------------------------------------- */
+    /* ---------- НОВОСТИ ---------- */
     const newsList = document.getElementById('newsList');
-
     const iconEye = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     const iconHeart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>';
     const iconComment = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>';
-
-    const initials = (name) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const initials = (n) => n.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
 
     NEWS.forEach((n, i) => {
         const card = document.createElement('article');
         card.className = 'news-card reveal' + (i === 0 ? ' news-card--featured' : '');
         card.innerHTML = `
-            <div class="news-card__top">
-                <span class="news-tag news-tag--${n.tag}">${n.tagLabel}</span>
-                <span class="news-card__date">${n.date}</span>
-            </div>
+            <div class="news-card__top"><span class="news-tag news-tag--${n.tag}">${n.tagLabel}</span><span class="news-card__date">${n.date}</span></div>
             <h3 class="news-card__title">${n.title}</h3>
             <p class="news-card__text">${n.text}</p>
             <div class="news-card__reactions">
@@ -97,122 +90,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="reaction reaction--toggle" data-action="toggle-comments">${iconComment}<span>${n.comments.length}</span></button>
             </div>
             <div class="news-card__comments" hidden>
-                ${n.comments.map(c => `
-                    <div class="comment${c.meme ? ' comment--meme' : ''}">
-                        <div class="comment__avatar">${initials(c.name)}</div>
-                        <div class="comment__body">
-                            <div class="comment__name">${c.name}</div>
-                            <div class="comment__text">${c.text}</div>
-                        </div>
-                    </div>
-                `).join('') || '<p style="color:var(--text-muted);font-size:.86rem;">Комментариев пока нет</p>'}
-            </div>
-        `;
+                ${n.comments.map(c => `<div class="comment${c.meme?' comment--meme':''}"><div class="comment__avatar">${initials(c.name)}</div><div class="comment__body"><div class="comment__name">${c.name}</div><div class="comment__text">${c.text}</div></div></div>`).join('') || '<p style="color:var(--text-muted);font-size:.84rem;">Комментариев пока нет</p>'}
+            </div>`;
         newsList.appendChild(card);
 
-        // Реакции
         card.querySelectorAll('.reaction').forEach(btn => {
             btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                const numEl = btn.querySelector('span');
-
-                if (action === 'view') {
-                    numEl.textContent = Number(numEl.textContent) + 1;
-                } else if (action === 'like') {
-                    const liked = btn.classList.toggle('is-liked');
-                    const base = Number(numEl.textContent);
-                    numEl.textContent = liked ? base + 1 : base - 1;
-                } else if (action === 'toggle-comments') {
-                    const box = card.querySelector('.news-card__comments');
-                    box.hidden = !box.hidden;
-                }
+                const a = btn.dataset.action;
+                const num = btn.querySelector('span');
+                if (a === 'view') num.textContent = +num.textContent + 1;
+                else if (a === 'like') { const liked = btn.classList.toggle('is-liked'); num.textContent = +num.textContent + (liked ? 1 : -1); }
+                else if (a === 'toggle-comments') { const box = card.querySelector('.news-card__comments'); box.hidden = !box.hidden; }
             });
         });
     });
 
-    /* -------------------------------------------------------
-       6. РАСПИСАНИЕ
-       ------------------------------------------------------- */
-    const classTabs   = document.getElementById('classTabs');
-    const dayTabs     = document.getElementById('dayTabs');
+    /* ---------- РАСПИСАНИЕ ---------- */
+    const classSelect = document.getElementById('classSelect');
+    const daySelect = document.getElementById('daySelect');
     const scheduleBody = document.getElementById('scheduleBody');
     const scheduleEmpty = document.getElementById('scheduleEmpty');
+    const schedTable = document.querySelector('.schedule__table-wrap table');
 
-    const classes = Object.keys(SCHEDULE);
-    let activeClass = classes[0];
-    let activeDay = 'Пн';
-
-    // Табы классов
-    classes.forEach((cls, idx) => {
-        const b = document.createElement('button');
-        b.className = 'tab' + (idx === 0 ? ' is-active' : '');
-        b.textContent = cls;
-        b.dataset.class = cls;
-        b.addEventListener('click', () => {
-            activeClass = cls;
-            classTabs.querySelectorAll('.tab').forEach(t => t.classList.remove('is-active'));
-            b.classList.add('is-active');
-            renderSchedule();
-        });
-        classTabs.appendChild(b);
+    Object.keys(SCHEDULE).forEach(cls => {
+        const o = document.createElement('option'); o.value = cls; o.textContent = cls + ' класс'; classSelect.appendChild(o);
     });
-
-    // Табы дней
-    DAYS.forEach((day, idx) => {
-        const b = document.createElement('button');
-        b.className = 'tab' + (idx === 0 ? ' is-active' : '');
-        b.textContent = day;
-        b.dataset.day = day;
-        b.addEventListener('click', () => {
-            activeDay = day;
-            dayTabs.querySelectorAll('.tab').forEach(t => t.classList.remove('is-active'));
-            b.classList.add('is-active');
-            renderSchedule();
-        });
-        dayTabs.appendChild(b);
+    DAYS.forEach(d => {
+        const o = document.createElement('option'); o.value = d; o.textContent = d; daySelect.appendChild(o);
     });
 
     function renderSchedule() {
-        const lessons = (SCHEDULE[activeClass] && SCHEDULE[activeClass][activeDay]) || [];
+        const cls = classSelect.value;
+        const day = daySelect.value;
+        const lessons = (SCHEDULE[cls] && SCHEDULE[cls][day]) || [];
         scheduleBody.innerHTML = '';
 
-        if (!lessons.length) {
-            scheduleEmpty.hidden = false;
-            document.querySelector('.schedule__table-wrap table').hidden = true;
-            return;
-        }
-
-        scheduleEmpty.hidden = true;
-        document.querySelector('.schedule__table-wrap table').hidden = false;
+        if (!lessons.length) { scheduleEmpty.hidden = false; schedTable.hidden = true; return; }
+        scheduleEmpty.hidden = true; schedTable.hidden = false;
 
         lessons.forEach((l, i) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="sched__num">${i + 1}</td>
-                <td class="sched__time">${LESSON_TIMES[i]}</td>
-                <td>${l.subject}</td>
-                <td class="sched__room">${l.room}</td>
-            `;
+            tr.innerHTML = `<td class="sched__num">${i+1}</td><td class="sched__time">${LESSON_TIMES[i]}</td><td>${l.subject}</td><td class="sched__room">${l.room}</td>`;
             scheduleBody.appendChild(tr);
         });
     }
 
+    classSelect.addEventListener('change', renderSchedule);
+    daySelect.addEventListener('change', renderSchedule);
     renderSchedule();
 
-    /* -------------------------------------------------------
-       7. УЧИТЕЛЯ
-       ------------------------------------------------------- */
+    /* ---------- УЧИТЕЛЯ ---------- */
     const teacherList = document.getElementById('teacherList');
     const teacherFilters = document.getElementById('teacherFilters');
 
     function renderTeachers(filter = 'all') {
         teacherList.innerHTML = '';
-        const filtered = filter === 'all'
-            ? TEACHERS
-            : TEACHERS.filter(t => t.stage === filter);
-
+        const filtered = filter === 'all' ? TEACHERS : TEACHERS.filter(t => t.stage === filter);
         filtered.forEach(t => {
-            const stageLabel = { junior: '1–4', middle: '5–7', senior: '8–11' }[t.stage];
+            const stageLabel = { junior:'1–4', middle:'5–7', senior:'8–11' }[t.stage];
             const card = document.createElement('article');
             card.className = 'teacher reveal';
             card.innerHTML = `
@@ -223,24 +158,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="teacher__body">
                     <h3 class="teacher__name">${t.name}</h3>
                     <p class="teacher__subject">${t.subject}</p>
-                    <p class="teacher__meta">
-                        <span>Стаж: ${t.exp} лет</span>
-                        <span>${t.bio}</span>
-                    </p>
-                </div>
-            `;
+                    <p class="teacher__meta"><span>Стаж: ${t.exp} лет · ${t.category}</span><span>${t.education}</span><span>${t.bio}</span></p>
+                </div>`;
             teacherList.appendChild(card);
-
-            // Повторное подключение анимации
-            requestAnimationFrame(() => {
-                observer.observe(card);
-            });
+            requestAnimationFrame(() => observer.observe(card));
         });
     }
 
     teacherFilters.addEventListener('click', (e) => {
-        const btn = e.target.closest('.filter');
-        if (!btn) return;
+        const btn = e.target.closest('.filter'); if (!btn) return;
         teacherFilters.querySelectorAll('.filter').forEach(f => f.classList.remove('is-active'));
         btn.classList.add('is-active');
         renderTeachers(btn.dataset.filter);
@@ -248,176 +174,122 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderTeachers();
 
-    // Кнопки на карточках ступеней — переключают фильтр и скроллят
     document.querySelectorAll('.level-card__btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const targetFilter = btn.dataset.filter;
-            const fBtn = teacherFilters.querySelector(`.filter[data-filter="${targetFilter}"]`);
-            if (fBtn) fBtn.click();
+            const f = teacherFilters.querySelector(`.filter[data-filter="${btn.dataset.filter}"]`);
+            if (f) f.click();
             document.getElementById('teachers').scrollIntoView({ behavior: 'smooth' });
         });
     });
 
-    /* -------------------------------------------------------
-       8. СТОЛОВАЯ
-       ------------------------------------------------------- */
+    /* ---------- СТОЛОВАЯ ---------- */
     const canteenTabs = document.getElementById('canteenTabs');
     const canteenPanel = document.getElementById('canteenPanel');
-
     const dayKeys = Object.keys(CANTEEN_MENU);
-    let activeCanteenDay = dayKeys[0];
 
     dayKeys.forEach((key, idx) => {
         const b = document.createElement('button');
         b.className = 'tab' + (idx === 0 ? ' is-active' : '');
         b.textContent = CANTEEN_MENU[key].label;
-        b.dataset.day = key;
         b.addEventListener('click', () => {
-            activeCanteenDay = key;
             canteenTabs.querySelectorAll('.tab').forEach(t => t.classList.remove('is-active'));
             b.classList.add('is-active');
-            renderCanteen();
+            renderCanteen(key);
         });
         canteenTabs.appendChild(b);
     });
 
-    function renderCanteen() {
-        const data = CANTEEN_MENU[activeCanteenDay];
+    function renderCanteen(key) {
+        const data = CANTEEN_MENU[key];
         canteenPanel.innerHTML = '';
         data.dishes.forEach(d => {
             const row = document.createElement('div');
-            row.className = 'dish'
-                + (d.free ? ' dish--free' : '')
-                + (d.meme ? ' dish--meme' : '');
-            row.innerHTML = `
-                <div class="dish__emoji">${d.emoji}</div>
-                <div class="dish__info">
-                    <div class="dish__name">${d.name}</div>
-                    ${d.note ? `<div class="dish__note">${d.note}</div>` : ''}
-                </div>
-                <div class="dish__price">${d.price}</div>
-            `;
+            row.className = 'dish' + (d.free ? ' dish--free' : '') + (d.meme ? ' dish--meme' : '');
+            row.innerHTML = `<div class="dish__emoji">${d.emoji}</div><div class="dish__info"><div class="dish__name">${d.name}</div>${d.note ? `<div class="dish__note">${d.note}</div>` : ''}</div><div class="dish__price">${d.price}</div>`;
             canteenPanel.appendChild(row);
         });
     }
+    renderCanteen(dayKeys[0]);
 
-    renderCanteen();
+    /* ---------- ДОСТИЖЕНИЯ ---------- */
+    const achList = document.getElementById('achievementsList');
+    ACHIEVEMENTS.forEach(a => {
+        const el = document.createElement('div');
+        el.className = `achievement achievement--${a.type} reveal`;
+        el.innerHTML = `<div class="achievement__icon">${a.icon}</div><div class="achievement__body"><h3>${a.title}</h3><p>${a.text}</p></div>`;
+        achList.appendChild(el);
+        requestAnimationFrame(() => observer.observe(el));
+    });
 
-    /* -------------------------------------------------------
-       9. ФОРМА
-       ------------------------------------------------------- */
+    /* ---------- ГАЛЕРЕЯ ---------- */
+    const galleryGrid = document.getElementById('galleryGrid');
+    GALLERY.forEach(g => {
+        const fig = document.createElement('figure');
+        fig.className = 'gallery__item reveal' + (g.wide ? ' gallery__item--wide' : '');
+        fig.innerHTML = `<img src="${g.src}" alt="${g.caption}" loading="lazy"><figcaption>${g.caption}</figcaption>`;
+        galleryGrid.appendChild(fig);
+        requestAnimationFrame(() => observer.observe(fig));
+    });
+
+    /* ---------- ФОРМА ---------- */
     const form = document.getElementById('contactForm');
     const statusEl = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
 
     const rules = {
-        name: (v) => {
-            if (v.trim().length < 2) return 'Введите ФИО (минимум 2 символа)';
-            if (!/^[А-Яа-яЁёA-Za-z\s\-]+$/.test(v.trim())) return 'Только буквы, пробелы и дефис';
-            return true;
-        },
-        phone: (v) => {
-            const digits = v.replace(/\D/g, '');
-            if (digits.length < 11) return 'Введите корректный телефон';
-            return true;
-        },
-        message: (v) => {
-            if (v.trim().length < 10) return 'Опишите вопрос (минимум 10 символов)';
-            return true;
-        },
+        name: v => { if (v.trim().length < 2) return 'Введите ФИО'; if (!/^[А-Яа-яЁёA-Za-z\s\-]+$/.test(v.trim())) return 'Только буквы'; return true; },
+        phone: v => v.replace(/\D/g,'').length < 11 ? 'Введите корректный телефон' : true,
+        message: v => v.trim().length < 10 ? 'Минимум 10 символов' : true,
     };
 
-    function validateField(input) {
-        const rule = rules[input.name];
-        if (!rule) return true;
-        const result = rule(input.value);
-        const errorEl = document.querySelector(`.error[data-for="${input.name}"]`);
-
-        if (result === true) {
-            input.classList.remove('invalid');
-            if (errorEl) errorEl.textContent = '';
-            return true;
-        } else {
-            input.classList.add('invalid');
-            if (errorEl) errorEl.textContent = result;
-            return false;
-        }
+    function validate(input) {
+        const r = rules[input.name]; if (!r) return true;
+        const res = r(input.value);
+        const err = document.querySelector(`.error[data-for="${input.name}"]`);
+        if (res === true) { input.classList.remove('invalid'); if (err) err.textContent = ''; return true; }
+        input.classList.add('invalid'); if (err) err.textContent = res; return false;
     }
 
-    form.querySelectorAll('input, textarea').forEach(input => {
-        input.addEventListener('blur', () => validateField(input));
-        input.addEventListener('input', () => {
-            if (input.classList.contains('invalid')) validateField(input);
-        });
+    form.querySelectorAll('input, textarea').forEach(inp => {
+        inp.addEventListener('blur', () => validate(inp));
+        inp.addEventListener('input', () => { if (inp.classList.contains('invalid')) validate(inp); });
     });
 
-    // Маска телефона
     const phoneInput = document.getElementById('phone');
     phoneInput.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.startsWith('8')) value = '7' + value.slice(1);
-        if (value && !value.startsWith('7')) value = '7' + value;
-
-        let formatted = '';
-        if (value.length > 0) formatted = '+7';
-        if (value.length > 1) formatted += ' (' + value.slice(1, 4);
-        if (value.length >= 5) formatted += ') ' + value.slice(4, 7);
-        if (value.length >= 8) formatted += '-' + value.slice(7, 9);
-        if (value.length >= 10) formatted += '-' + value.slice(9, 11);
-
-        e.target.value = formatted;
+        let v = e.target.value.replace(/\D/g,'');
+        if (v.startsWith('8')) v = '7' + v.slice(1);
+        if (v && !v.startsWith('7')) v = '7' + v;
+        let f = '';
+        if (v.length > 0) f = '+7';
+        if (v.length > 1) f += ' (' + v.slice(1,4);
+        if (v.length >= 5) f += ') ' + v.slice(4,7);
+        if (v.length >= 8) f += '-' + v.slice(7,9);
+        if (v.length >= 10) f += '-' + v.slice(9,11);
+        e.target.value = f;
     });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const ok = [...form.querySelectorAll('input, textarea')].map(validate).every(Boolean);
+        if (!ok) { statusEl.textContent = 'Исправьте ошибки'; statusEl.className = 'status error'; return; }
 
-        const inputs = [...form.querySelectorAll('input, textarea')];
-        const allValid = inputs.map(validateField).every(Boolean);
-
-        if (!allValid) {
-            statusEl.textContent = 'Пожалуйста, исправьте ошибки в форме';
-            statusEl.className = 'status error';
-            const firstInvalid = form.querySelector('.invalid');
-            if (firstInvalid) firstInvalid.focus();
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Отправка...';
-        statusEl.textContent = '';
-        statusEl.className = 'status';
+        submitBtn.disabled = true; submitBtn.textContent = 'Отправка...'; statusEl.textContent = ''; statusEl.className = 'status';
 
         try {
-            const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: form.name.value.trim(),
-                    phone: form.phone.value.trim(),
-                    message: form.message.value.trim(),
-                    createdAt: new Date().toISOString(),
-                }),
+            const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: form.name.value.trim(), phone: form.phone.value.trim(), message: form.message.value.trim() })
             });
-
-            if (!response.ok) throw new Error('Ошибка сервера');
-
+            if (!res.ok) throw new Error();
             statusEl.textContent = '✅ Обращение отправлено! Мы свяжемся с вами в течение рабочего дня.';
-            statusEl.className = 'status success';
-            form.reset();
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = '❌ Не удалось отправить. Позвоните нам: +7 (38564) 2-45-10';
+            statusEl.className = 'status success'; form.reset();
+        } catch {
+            statusEl.textContent = '❌ Не удалось отправить. Позвоните: +7 (38564) 2-45-10';
             statusEl.className = 'status error';
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Отправить';
-        }
+        } finally { submitBtn.disabled = false; submitBtn.textContent = 'Отправить'; }
     });
 
-    /* -------------------------------------------------------
-       10. ГОД В ПОДВАЛЕ
-       ------------------------------------------------------- */
-    const yearEl = document.getElementById('year');
-    if (yearEl) yearEl.textContent = new Date().getFullYear();
-
+    /* ---------- ГОД ---------- */
+    document.getElementById('year').textContent = new Date().getFullYear();
 });

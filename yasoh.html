@@ -3,17 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="МБОУ «Яготинская средняя общеобразовательная школа» Благовещенского района Алтайского края. Официальный сайт: новости, расписание, педагоги, столовая.">
+<meta name="description" content="МБОУ «Яготинская средняя общеобразовательная школа» Благовещенского района Алтайского края. Официальный сайт.">
 <title>ЯСОШ — Яготинская средняя общеобразовательная школа</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css-yasoh/style.css">
 </head>
 <body>
 
-<!-- ============ HEADER ============ -->
 <header class="header" id="header">
     <div class="container header__inner">
         <a href="#hero" class="logo">
@@ -26,18 +21,23 @@
 
         <nav class="nav" id="nav">
             <ul class="nav__list">
-                <li><a href="#about"    class="nav__link">О школе</a></li>
-                <li><a href="#levels"   class="nav__link">Ступени</a></li>
-                <li><a href="#news"     class="nav__link">Новости</a></li>
-                <li><a href="#schedule" class="nav__link">Расписание</a></li>
-                <li><a href="#teachers" class="nav__link">Учителя</a></li>
-                <li><a href="#canteen"  class="nav__link">Столовая</a></li>
-                <li><a href="#contacts" class="nav__link">Контакты</a></li>
+                <li><a href="#about"      class="nav__link">О школе</a></li>
+                <li><a href="#levels"     class="nav__link">Ступени</a></li>
+                <li><a href="#news"       class="nav__link">Новости</a></li>
+                <li><a href="#schedule"   class="nav__link">Расписание</a></li>
+                <li><a href="#teachers"   class="nav__link">Учителя</a></li>
+                <li><a href="#canteen"    class="nav__link">Столовая</a></li>
+                <li><a href="#achievements" class="nav__link">Достижения</a></li>
+                <li><a href="#gallery"    class="nav__link">Галерея</a></li>
+                <li><a href="#contacts"   class="nav__link">Контакты</a></li>
             </ul>
         </nav>
 
         <div class="header__actions">
-            <a href="#contacts" class="btn btn--primary btn--sm header__cta">Записаться в 1 класс</a>
+            <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+                <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
             <button class="burger" id="burger" aria-label="Меню">
                 <span></span><span></span><span></span>
             </button>
@@ -45,19 +45,19 @@
     </div>
 </header>
 
-<!-- ============ HERO ============ -->
+<!-- HERO -->
 <section class="hero" id="hero">
     <div class="container hero__inner">
         <div class="hero__text reveal">
-            <p class="hero__eyebrow">с. Яготино · Благовещенский район · осн. 1938</p>
-            <h1 class="hero__title">Школа, в которую<br>хочется возвращаться</h1>
+            <p class="hero__eyebrow">с. Яготино · осн. 1938</p>
+            <h1 class="hero__title">Школа, где<br>растут люди</h1>
             <p class="hero__lead">
-                МБОУ «Яготинская средняя общеобразовательная школа» — сельская школа
-                с почти вековой историей. Мы учим думать, а не заучивать: 11 классов,
-                сильные педагоги, своя столовая и спортзал, куда дети бегут сами.
+                МБОУ «Яготинская СОШ» — сельская школа с почти вековой историей.
+                11 классов, 28 педагогов, своя столовая и спортзал.
+                Мы учим думать, а не заучивать.
             </p>
             <div class="hero__actions">
-                <a href="#schedule" class="btn btn--primary">Смотреть расписание</a>
+                <a href="#schedule" class="btn btn--primary">Расписание</a>
                 <a href="#about" class="btn btn--ghost">О школе</a>
             </div>
             <ul class="hero__stats">
@@ -66,57 +66,29 @@
                 <li><strong>87</strong><span>лет школе</span></li>
             </ul>
         </div>
-
         <div class="hero__art reveal" aria-hidden="true">
-            <div class="hero__blob"></div>
-            <div class="hero__card">
-                <div class="hero__card-top">
-                    <span class="dot dot--red"></span>
-                    <span class="dot dot--yellow"></span>
-                    <span class="dot dot--green"></span>
-                    <span class="hero__card-name">school-day.txt</span>
-                </div>
-                <p class="hero__card-title">Сегодня в школе</p>
-                <ul class="hero__card-list">
+            <div class="hero__board">
+                <p class="hero__board-title">Сегодня в школе</p>
+                <ul class="hero__board-list">
                     <li><span>08:30</span> Первый звонок</li>
-                    <li><span>13:00</span> Обед, 5–7 классы</li>
-                    <li><span>15:30</span> Кружок робототехники</li>
-                    <li><span>17:00</span> Родительское собрание 9а</li>
+                    <li><span>13:00</span> Обед · 5–7 классы</li>
+                    <li><span>15:30</span> Робототехника</li>
+                    <li><span>17:00</span> Собрание 9а</li>
                 </ul>
-                <div class="hero__card-foot">
-                    <span class="badge badge--ok">Уроки по расписанию</span>
-                </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ============ О ШКОЛЕ ============ -->
+<!-- О ШКОЛЕ -->
 <section class="section section--alt" id="about">
     <div class="container about">
         <div class="about__text reveal">
             <p class="section__eyebrow">О школе</p>
             <h2 class="section__title">Обычная сельская школа<br>с необычными людьми</h2>
-            <p>
-                Яготинская средняя общеобразовательная школа расположена в селе
-                Яготино Благовещенского района Алтайского края. Школа открыта
-                в 1938 году и с тех пор ни разу не закрывала двери — даже
-                в самые трудные годы. За это время из её стен вышло более
-                четырёх тысяч выпускников.
-            </p>
-            <p>
-                Сегодня школа — это современное образовательное пространство:
-                22 учебных кабинета, два компьютерных класса, мастерская,
-                спортивный зал, стадион, библиотека с фондом более 14 000 книг
-                и собственная столовая на 120 мест. Кабинеты физики, химии
-                и биологии оснащены цифровыми лабораториями.
-            </p>
-            <p>
-                Мы работаем по федеральным государственным образовательным
-                стандартам и стараемся, чтобы за сухими формулировками не терялся
-                главный смысл: ребёнок должен выйти из школы человеком, который
-                умеет думать, договариваться и отвечать за свои слова.
-            </p>
+            <p>Яготинская средняя общеобразовательная школа расположена в селе Яготино Благовещенского района Алтайского края. Школа открыта в 1938 году и с тех пор ни разу не закрывала двери. За это время из её стен вышло более четырёх тысяч выпускников.</p>
+            <p>Сегодня школа — это современное образовательное пространство: 22 учебных кабинета, два компьютерных класса, мастерская, спортивный зал, стадион, библиотека с фондом более 14 000 книг и собственная столовая на 120 мест. Кабинеты физики, химии и биологии оснащены цифровыми лабораториями.</p>
+            <p>Мы работаем по ФГОС и стараемся, чтобы за сухими формулировками не терялся главный смысл: ребёнок должен выйти из школы человеком, который умеет думать, договариваться и отвечать за свои слова.</p>
             <ul class="about__list">
                 <li>Реализация ФГОС начального, основного и среднего общего образования</li>
                 <li>Профильное обучение в 10–11 классах: физмат и гуманитарный профиль</li>
@@ -126,292 +98,203 @@
                 <li>Подвоз учеников из соседних сёл школьным автобусом</li>
             </ul>
         </div>
-
         <div class="about__info reveal">
-            <div class="info-card">
-                <span class="info-card__num">1938</span>
-                <span class="info-card__label">год основания</span>
-            </div>
-            <div class="info-card">
-                <span class="info-card__num">312</span>
-                <span class="info-card__label">обучающихся</span>
-            </div>
-            <div class="info-card">
-                <span class="info-card__num">28</span>
-                <span class="info-card__label">педагогов</span>
-            </div>
-            <div class="info-card">
-                <span class="info-card__num">22</span>
-                <span class="info-card__label">кабинета</span>
-            </div>
-            <div class="info-card">
-                <span class="info-card__num">14</span>
-                <span class="info-card__label">кружков и секций</span>
-            </div>
-            <div class="info-card">
-                <span class="info-card__num">100%</span>
-                <span class="info-card__label">сдача ЕГЭ по русскому</span>
-            </div>
+            <div class="info-card"><span class="info-card__num">1938</span><span class="info-card__label">год основания</span></div>
+            <div class="info-card"><span class="info-card__num">312</span><span class="info-card__label">обучающихся</span></div>
+            <div class="info-card"><span class="info-card__num">28</span><span class="info-card__label">педагогов</span></div>
+            <div class="info-card"><span class="info-card__num">22</span><span class="info-card__label">кабинета</span></div>
+            <div class="info-card"><span class="info-card__num">14</span><span class="info-card__label">кружков</span></div>
+            <div class="info-card"><span class="info-card__num">100%</span><span class="info-card__label">сдача ЕГЭ по русскому</span></div>
         </div>
     </div>
 </section>
 
-<!-- ============ СТУПЕНИ ============ -->
+<!-- СТУПЕНИ -->
 <section class="section" id="levels">
     <div class="container">
         <header class="section__head reveal">
             <p class="section__eyebrow">Ступени обучения</p>
-            <h2 class="section__title">Три ступени — три разных школы под одной крышей</h2>
-            <p class="section__lead">
-                На каждой ступени свои задачи, свой режим и свои педагоги.
-                Мы не пытаемся учить первоклассника и выпускника одинаково.
-            </p>
+            <h2 class="section__title">Три ступени — три разных школы</h2>
+            <p class="section__lead">На каждой ступени свои задачи, свой режим и свои педагоги.</p>
         </header>
-
         <div class="levels">
             <article class="level-card reveal">
                 <span class="level-card__range">1–4 классы</span>
                 <h3 class="level-card__title">Начальная школа</h3>
-                <p class="level-card__text">
-                    Первый учитель — почти член семьи. Здесь мы учим читать,
-                    считать и не бояться ошибаться. Уроки по 40 минут,
-                    обязательная прогулка, горячее питание.
-                </p>
+                <p class="level-card__text">Первый учитель — почти член семьи. Учим читать, считать и не бояться ошибаться. Уроки по 40 минут, обязательная прогулка, горячее питание.</p>
                 <ul class="level-card__list">
                     <li>Русский язык, математика, литературное чтение</li>
                     <li>Окружающий мир, технология, ИЗО, музыка</li>
                     <li>Английский язык со 2 класса</li>
                     <li>ОРКСЭ в 4 классе</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="junior">
-                    Учителя ступени →
-                </button>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="junior">Учителя ступени →</button>
             </article>
-
             <article class="level-card level-card--accent reveal">
                 <span class="level-card__range">5–7 классы</span>
                 <h3 class="level-card__title">Основная школа</h3>
-                <p class="level-card__text">
-                    Самый сложный и самый интересный возраст. Появляются
-                    предметники, новые предметы и первые серьёзные проекты.
-                    Учим не теряться, когда всё меняется.
-                </p>
+                <p class="level-card__text">Самый сложный и самый интересный возраст. Появляются предметники и первые серьёзные проекты. Учим не теряться, когда всё меняется.</p>
                 <ul class="level-card__list">
                     <li>Математика, русский язык, литература</li>
                     <li>История, обществознание, география, биология</li>
                     <li>Английский язык, информатика</li>
                     <li>Физическая культура, ОБЖ, технология</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="middle">
-                    Учителя ступени →
-                </button>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="middle">Учителя ступени →</button>
             </article>
-
             <article class="level-card reveal">
                 <span class="level-card__range">8–11 классы</span>
                 <h3 class="level-card__title">Старшая школа</h3>
-                <p class="level-card__text">
-                    Время выбирать. Профильные классы, подготовка к ОГЭ и ЕГЭ,
-                    индивидуальные проекты и первый серьёзный разговор
-                    о будущем — без давления.
-                </p>
+                <p class="level-card__text">Время выбирать. Профильные классы, подготовка к ОГЭ и ЕГЭ, индивидуальные проекты и первый серьёзный разговор о будущем.</p>
                 <ul class="level-card__list">
                     <li>Физика, химия, биология, информатика</li>
                     <li>Алгебра и начала анализа, геометрия</li>
                     <li>Профильные курсы по выбору</li>
                     <li>Индивидуальный итоговый проект</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="senior">
-                    Учителя ступени →
-                </button>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="senior">Учителя ступени →</button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ============ НОВОСТИ ============ -->
+<!-- НОВОСТИ -->
 <section class="section section--alt" id="news">
     <div class="container">
         <header class="section__head reveal">
             <p class="section__eyebrow">Новости и объявления</p>
             <h2 class="section__title">Что происходит в школе</h2>
-            <p class="section__lead">
-                Объявления, расписания, меню и школьная жизнь — коротко и по делу.
-            </p>
+            <p class="section__lead">Объявления, расписания, меню и школьная жизнь — коротко и по делу.</p>
         </header>
-
         <div class="news" id="newsList"></div>
     </div>
 </section>
 
-<!-- ============ РАСПИСАНИЕ ============ -->
+<!-- РАСПИСАНИЕ -->
 <section class="section" id="schedule">
     <div class="container">
         <header class="section__head reveal">
             <p class="section__eyebrow">Расписание</p>
             <h2 class="section__title">Расписание уроков</h2>
-            <p class="section__lead">
-                Выберите класс и день недели. Расписание действует со II четверти
-                2025/2026 учебного года.
-            </p>
+            <p class="section__lead">Выберите класс и день недели. Расписание действует со II четверти 2025/2026 учебного года.</p>
         </header>
-
         <div class="schedule reveal">
-            <div class="schedule__row">
-                <span class="schedule__label">Класс</span>
-                <div class="schedule__tabs" id="classTabs"></div>
+            <div class="schedule__controls">
+                <label class="schedule__select">
+                    <span>Класс</span>
+                    <select id="classSelect"></select>
+                </label>
+                <label class="schedule__select">
+                    <span>День</span>
+                    <select id="daySelect"></select>
+                </label>
             </div>
-            <div class="schedule__row">
-                <span class="schedule__label">День</span>
-                <div class="schedule__tabs" id="dayTabs"></div>
-            </div>
-
             <div class="schedule__table-wrap">
                 <table class="sched">
                     <thead>
-                        <tr>
-                            <th class="sched__num">№</th>
-                            <th class="sched__time">Время</th>
-                            <th>Предмет</th>
-                            <th class="sched__room">Кабинет</th>
-                        </tr>
+                        <tr><th class="sched__num">№</th><th class="sched__time">Время</th><th>Предмет</th><th class="sched__room">Кабинет</th></tr>
                     </thead>
                     <tbody id="scheduleBody"></tbody>
                 </table>
-                <p class="schedule__empty" id="scheduleEmpty" hidden>
-                    В этот день уроков нет. Отдыхайте!
-                </p>
+                <p class="schedule__empty" id="scheduleEmpty" hidden>В этот день уроков нет. Отдыхайте!</p>
             </div>
-            <p class="schedule__note">
-                В субботу занятия проводятся только для 9 и 11 классов
-                (подготовка к экзаменам). Изменения публикуются в разделе «Новости».
-            </p>
+            <p class="schedule__note">В субботу занятия проводятся только для 9 и 11 классов (подготовка к экзаменам).</p>
         </div>
     </div>
 </section>
 
-<!-- ============ УЧИТЕЛЯ ============ -->
+<!-- УЧИТЕЛЯ -->
 <section class="section section--alt" id="teachers">
     <div class="container">
         <header class="section__head reveal">
             <p class="section__eyebrow">Педагогический коллектив</p>
             <h2 class="section__title">Наши учителя</h2>
-            <p class="section__lead">
-                28 педагогов, из них 11 — выпускники Яготинской школы.
-                Средний стаж работы — 17 лет.
-            </p>
+            <p class="section__lead">28 педагогов, из них 11 — выпускники Яготинской школы. Средний стаж — 17 лет.</p>
         </header>
-
         <div class="filters reveal" id="teacherFilters">
-            <button class="filter is-active" data-filter="all">Все педагоги</button>
-            <button class="filter" data-filter="junior">Начальная школа · 1–4</button>
-            <button class="filter" data-filter="middle">Основная школа · 5–7</button>
-            <button class="filter" data-filter="senior">Старшая школа · 8–11</button>
+            <button class="filter is-active" data-filter="all">Все</button>
+            <button class="filter" data-filter="junior">1–4 классы</button>
+            <button class="filter" data-filter="middle">5–7 классы</button>
+            <button class="filter" data-filter="senior">8–11 классы</button>
         </div>
-
         <div class="teachers" id="teacherList"></div>
     </div>
 </section>
 
-<!-- ============ СТОЛОВАЯ ============ -->
+<!-- СТОЛОВАЯ -->
 <section class="section" id="canteen">
     <div class="container">
         <header class="section__head reveal">
             <p class="section__eyebrow">Столовая</p>
             <h2 class="section__title">Меню школьной столовой</h2>
-            <p class="section__lead">
-                Готовим на месте, из местных продуктов. Ученики 1–4 классов питаются
-                бесплатно, для 5–11 классов — организованное питание по абонементу.
-            </p>
+            <p class="section__lead">Готовим на месте, из местных продуктов. Ученики 1–4 классов питаются бесплатно.</p>
         </header>
-
         <div class="canteen reveal">
             <div class="canteen__tabs" id="canteenTabs"></div>
             <div class="canteen__panel" id="canteenPanel"></div>
         </div>
-
         <div class="canteen__info reveal">
-            <div class="canteen__info-card">
-                <h4>Режим работы</h4>
-                <p>Пн–Пт: 08:00 – 16:00<br>Обед по классам: 11:20 – 14:00</p>
-            </div>
-            <div class="canteen__info-card">
-                <h4>Стоимость</h4>
-                <p>1–4 классы — бесплатно<br>5–11 классы — 85 ₽ / день</p>
-            </div>
-            <div class="canteen__info-card">
-                <h4>Питание льготников</h4>
-                <p>Дети из многодетных семей — бесплатно, по заявлению</p>
-            </div>
+            <div class="canteen__info-card"><h4>Режим работы</h4><p>Пн–Пт: 08:00 – 16:00<br>Обед: 11:20 – 14:00</p></div>
+            <div class="canteen__info-card"><h4>Стоимость</h4><p>1–4 классы — бесплатно<br>5–11 классы — 85 ₽ / день</p></div>
+            <div class="canteen__info-card"><h4>Льготники</h4><p>Дети из многодетных семей — бесплатно, по заявлению</p></div>
         </div>
     </div>
 </section>
 
-<!-- ============ КОНТАКТЫ ============ -->
+<!-- ДОСТИЖЕНИЯ -->
+<section class="section section--alt" id="achievements">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Достижения</p>
+            <h2 class="section__title">Наши победы и результаты</h2>
+            <p class="section__lead">Олимпиады, конкурсы, спорт — то, чем мы гордимся.</p>
+        </header>
+        <div class="achievements" id="achievementsList"></div>
+    </div>
+</section>
+
+<!-- ГАЛЕРЕЯ -->
+<section class="section" id="gallery">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Галерея</p>
+            <h2 class="section__title">Наша школьная жизнь</h2>
+            <p class="section__lead">Фотографии из классов, со спортивных соревнований и школьных праздников.</p>
+        </header>
+        <div class="gallery" id="galleryGrid"></div>
+    </div>
+</section>
+
+<!-- КОНТАКТЫ -->
 <section class="section section--alt" id="contacts">
     <div class="container contacts">
         <div class="contacts__info reveal">
             <p class="section__eyebrow">Контакты</p>
             <h2 class="section__title">Как с нами связаться</h2>
-            <p class="contacts__lead">
-                Приём граждан ведётся ежедневно, кроме субботы и воскресенья.
-                По вопросам зачисления обращайтесь к секретарю.
-            </p>
-
+            <p class="contacts__lead">Приём граждан ведётся ежедневно, кроме субботы и воскресенья.</p>
             <ul class="contacts__list">
-                <li>
-                    <span class="contacts__label">Адрес</span>
-                    <span>658672, Алтайский край, Благовещенский район,<br>с. Яготино, ул. Школьная, д. 1</span>
-                </li>
-                <li>
-                    <span class="contacts__label">Телефон</span>
-                    <a href="tel:+73856424510">+7 (38564) 2-45-10</a>
-                </li>
-                <li>
-                    <span class="contacts__label">Email</span>
-                    <a href="mailto:yasosh.blag@edu22.ru">yasosh.blag@edu22.ru</a>
-                </li>
-                <li>
-                    <span class="contacts__label">Директор</span>
-                    <span>Ткачёв Виктор Анатольевич</span>
-                </li>
-                <li>
-                    <span class="contacts__label">Часы работы</span>
-                    <span>Пн–Пт 08:00–17:00, обед 12:00–13:00</span>
-                </li>
+                <li><span class="contacts__label">Адрес</span><span>658672, Алтайский край, Благовещенский район, с. Яготино, ул. Школьная, д. 1</span></li>
+                <li><span class="contacts__label">Телефон</span><a href="tel:+73856424510">+7 (38564) 2-45-10</a></li>
+                <li><span class="contacts__label">Email</span><a href="mailto:yasosh.blag@edu22.ru">yasosh.blag@edu22.ru</a></li>
+                <li><span class="contacts__label">Директор</span><span>Ткачёв Виктор Анатольевич</span></li>
+                <li><span class="contacts__label">Часы работы</span><span>Пн–Пт 08:00–17:00, обед 12:00–13:00</span></li>
             </ul>
-
             <div class="contacts__extra">
-                <p><strong>Как добраться:</strong> с. Яготино расположено в 20 км от районного центра Благовещенка, по трассе на Родино. От автовокзала Благовещенки ежедневно ходят рейсовые автобусы.</p>
+                <p><strong>Как добраться:</strong> с. Яготино расположено в 20 км от районного центра Благовещенка. От автовокзала ежедневно ходят рейсовые автобусы.</p>
             </div>
         </div>
-
         <form class="contacts__form reveal" id="contactForm" novalidate>
             <h3 class="contacts__form-title">Оставить обращение</h3>
             <p class="contacts__form-sub">Ответим в течение одного рабочего дня</p>
-
-            <div class="field">
-                <label for="name">ФИО</label>
-                <input type="text" id="name" name="name" placeholder="Иванова Мария Петровна" required>
-                <span class="error" data-for="name"></span>
-            </div>
-            <div class="field">
-                <label for="phone">Телефон</label>
-                <input type="tel" id="phone" name="phone" placeholder="+7 (___) ___-__-__" required>
-                <span class="error" data-for="phone"></span>
-            </div>
-            <div class="field">
-                <label for="message">Вопрос</label>
-                <textarea id="message" name="message" rows="4" placeholder="Опишите ваш вопрос..." required></textarea>
-                <span class="error" data-for="message"></span>
-            </div>
+            <div class="field"><label for="name">ФИО</label><input type="text" id="name" name="name" placeholder="Иванова Мария Петровна" required><span class="error" data-for="name"></span></div>
+            <div class="field"><label for="phone">Телефон</label><input type="tel" id="phone" name="phone" placeholder="+7 (___) ___-__-__" required><span class="error" data-for="phone"></span></div>
+            <div class="field"><label for="message">Вопрос</label><textarea id="message" name="message" rows="4" placeholder="Опишите ваш вопрос..." required></textarea><span class="error" data-for="message"></span></div>
             <button type="submit" class="btn btn--primary btn--full" id="submitBtn">Отправить</button>
             <p class="status" id="status"></p>
         </form>
     </div>
 </section>
 
-<!-- ============ FOOTER ============ -->
 <footer class="footer">
     <div class="container footer__inner">
         <div>
@@ -419,11 +302,7 @@
             <p class="footer__text">© <span id="year"></span> Все права защищены. Благовещенский район, Алтайский край.</p>
         </div>
         <nav class="footer__nav">
-            <a href="#about">О школе</a>
-            <a href="#schedule">Расписание</a>
-            <a href="#teachers">Учителя</a>
-            <a href="#canteen">Столовая</a>
-            <a href="#contacts">Контакты</a>
+            <a href="#about">О школе</a><a href="#schedule">Расписание</a><a href="#teachers">Учителя</a><a href="#canteen">Столовая</a><a href="#contacts">Контакты</a>
         </nav>
     </div>
 </footer>
