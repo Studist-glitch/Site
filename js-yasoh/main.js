@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Логика · v3
+   ЯСОШ · Логика · v4
    ========================================================= */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3 class="news-card__title">${n.title}</h3>
                 <p class="news-card__text">${n.text}</p>
                 <div class="news-card__reactions">
-                    <button class="reaction" data-action="view">${iconEye}<span>${n.views}</span></button>
+                    <span class="reaction reaction--static">${iconEye}<span>${n.views}</span></span>
                     <button class="reaction" data-action="like">${iconHeart}<span>${n.likes}</span></button>
                     <button class="reaction reaction--toggle" data-action="toggle-comments">${iconComment}<span>${n.comments.length}</span></button>
                 </div>
@@ -102,12 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             newsList.appendChild(card);
 
-            card.querySelectorAll('.reaction').forEach(btn => {
+            card.querySelectorAll('.reaction[data-action]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const a = btn.dataset.action;
                     const num = btn.querySelector('span');
-                    if (a === 'view') num.textContent = +num.textContent + 1;
-                    else if (a === 'like') { const liked = btn.classList.toggle('is-liked'); num.textContent = +num.textContent + (liked ? 1 : -1); }
+                    if (a === 'like') { const liked = btn.classList.toggle('is-liked'); num.textContent = +num.textContent + (liked ? 1 : -1); }
                     else if (a === 'toggle-comments') { const box = card.querySelector('.news-card__comments'); box.hidden = !box.hidden; }
                 });
             });
