@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<!-- 
+<!--
   ЯСОШ · Сведения об организации
   =========================================================
   Секции: page-hero → сведения (info-grid) → педагоги → footer.
-  Учителя рендерит main.js из TEACHERS по фильтру #teacherFilters.
+  Учителя рендерит main.js из TEACHERS.
+  URL-параметр ?stage=junior|middle|senior сразу включает фильтр
+  (используется кнопками «Учителя ступени →» с главной).
 -->
 <html lang="ru" class="no-js">
 <head>
@@ -30,7 +32,7 @@
                 <li><a href="info.html"               class="nav__link">О школе</a></li>
                 <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
                 <li><a href="index.html#news"         class="nav__link">Новости</a></li>
-                <li><a href="school.html#schedule"    class="nav__link">Расписание</a></li>
+                <li><a href="school.html"             class="nav__link">Школьная жизнь</a></li>
                 <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
                 <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
                 <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
@@ -155,7 +157,7 @@
     </div>
 </footer>
 
-<button class="to-top" id="toTop" aria-label="Наверх"> ↑</button>
+<button class="to-top" id="toTop" aria-label="Наверх">↑</button>
 
 <script src="js/data.js"></script>
 <script src="js/main.js"></script>

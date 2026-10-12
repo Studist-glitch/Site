@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Стили · v6
+   ЯСОШ · Стили · v8
    ---------------------------------------------------------
    1. Переменные (:root) + тёмная тема (body.dark)
    2. Сброс и база
@@ -398,10 +398,6 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 .dish__name        { font-weight: 600; font-size: .96rem; margin-bottom: 2px; color: var(--text); }
 .dish__note        { font-size: .8rem; color: var(--text-muted); font-style: italic; }
 .dish__price       { font-family: var(--font-head); font-weight: 700; color: var(--primary); font-size: .88rem; white-space: nowrap; }
-.dish--free .dish__price { color: var(--success); }
-.dish--meme            { background: var(--accent-soft); border: 1px dashed var(--accent); }
-body.dark .dish--meme  { background: rgba(255, 152, 0, .1); }
-.dish--meme .dish__note{ color: var(--accent); font-style: normal; }
 
 .canteen__info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
 .canteen__info-card    { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }

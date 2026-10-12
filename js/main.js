@@ -1,49 +1,41 @@
 /* =========================================================
-   ЯСОШ · Логика · v7
+   ЯСОШ · Логика · v9
    ---------------------------------------------------------
-   Файл отвечает за ВСЮ интерактивность сайта:
-   тема, меню, анимации, расписание, учителя, столовая,
-   новости, галерея, форма, кнопка «наверх».
-   Данные (NEWS, TEACHERS, SCHEDULE и т.д.) лежат в data.js
-   и подключаются ПЕРЕД этим файлом.
+   Один файл на все три страницы. Каждый блок обёрнут в
+   проверку наличия элемента — если нужного узла на странице
+   нет, код просто пропускается (без ошибок в консоли).
+   Данные (NEWS, TEACHERS, SCHEDULE, ...) — в data.js,
+   подключается ПЕРЕД этим файлом.
    ========================================================= */
 
-// Ждём, пока DOM полностью построится — иначе getElementById вернёт null.
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* ---------- 1. Убираем класс no-js ----------
-       В <html> стоит class="no-js". Если JS выключен — .reveal
-       не прячется (CSS-правило .no-js .reveal { opacity:1 }),
-       т.е. сайт остаётся видимым. Как только JS заработал — снимаем. */
+    /* ---------- 1. Убираем .no-js ----------
+       Пока класс стоял — .reveal был виден даже без JS
+       (см. правило .no-js .reveal в style.css). */
     document.documentElement.classList.remove('no-js');
 
     /* ---------- 2. Страховка для .reveal ----------
-       Если IntersectionObserver по какой-то причине не сработал
-       (старый браузер, ошибка) — через 1.8 сек принудительно
-       показываем все скрытые блоки. Иначе часть контента навсегда
-       останется с opacity:0. */
+       Если IntersectionObserver не сработал (старый браузер, ошибка) —
+       через 1.8 сек принудительно показываем всё. */
     setTimeout(() => {
         document.querySelectorAll('.reveal:not(.visible)')
             .forEach(el => el.classList.add('visible'));
     }, 1800);
 
-    /* ---------- 3. Переключатель темы (светлая / тёмная) ----------
-       Тема хранится в localStorage под ключом 'yasoh-theme'.
-       При загрузке читаем её и, если 'dark', вешаем класс dark
-       на <body>. CSS сам подменит переменные. */
+    /* ---------- 3. Тема (светлая / тёмная) ----------
+       Хранится в localStorage, применяется на всех трёх страницах. */
     const themeToggle = document.getElementById('themeToggle');
     if (localStorage.getItem('yasoh-theme') === 'dark') document.body.classList.add('dark');
 
     themeToggle?.addEventListener('click', () => {
         document.body.classList.toggle('dark');
-        // Пишем текущее состояние в хранилище, чтобы сохранить выбор между визитами.
         localStorage.setItem('yasoh-theme', document.body.classList.contains('dark') ? 'dark' : 'light');
     });
 
     /* ---------- 4. Мобильное меню (бургер) ----------
-       На экранах <768px nav становится выезжающей панелью.
-       Открытие = класс .open + блокировка скролла body,
-       чтобы фон не прокручивался под меню. */
+       На <768px nav превращается в выезжающую панель.
+       Открытие = .open на nav + блокировка скролла body. */
     const burger = document.getElementById('burger');
     const nav    = document.getElementById('nav');
 
@@ -53,35 +45,71 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
     });
 
-    // Клик по любой ссылке в меню закрывает панель.
+    // Клик по ссылке в меню закрывает панель (перед переходом на другую страницу).
     document.querySelectorAll('.nav__link').forEach(link => {
         link.addEventListener('click', () => {
-            burger.classList.remove('active');
-            nav.classList.remove('open');
+            burger?.classList.remove('active');
+            nav?.classList.remove('open');
             document.body.style.overflow = '';
         });
     });
 
-    /* ---------- 5. Шапка + кнопка «наверх» ----------
-       onScroll вызывается при каждом скролле (passive:true = не блокирует
-       отрисовку, лучше для производительности). */
+    /* ---------- 5. Активный пункт меню ----------
+       Сравниваем имя файла текущей страницы с href каждой ссылки.
+       Подсвечиваем ПЕРВУЮ подошедшую — чтобы не горело сразу
+       несколько пунктов (на главной, например, «Главная» и «Ступени»). */
+    (() => {
+        const current = location.pathname.split('/').pop() || 'index.html';
+        let highlighted = false;
+        document.querySelectorAll('.nav__link').forEach(link => {
+            if (highlighted) return;
+            const href = link.getAttribute('href') || '';
+            const [page] = href.split('#');
+            const targetPage = page || 'index.html';
+            if (targetPage === current) {
+                link.classList.add('is-active');
+                link.setAttribute('aria-current', 'page');
+                highlighted = true;
+            }
+        });
+    })();
+
+    /* ---------- 6. Шапка + кнопка «наверх» ----------
+       onScroll вешается с passive:true — не блокирует отрисовку. */
     const header = document.getElementById('header');
     const toTop  = document.getElementById('toTop');
 
     const onScroll = () => {
-        header.classList.toggle('scrolled', window.scrollY > 20);  // тень у шапки
-        toTop.classList.toggle('visible', window.scrollY > 500);   // показать ↑
+        header?.classList.toggle('scrolled', window.scrollY > 20);
+        toTop?.classList.toggle('visible', window.scrollY > 500);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll(); // вызов сразу — на случай, если страница открыта уже прокрученной
+    onScroll();
 
     toTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    /* ---------- 6. Анимация появления (reveal) ----------
-       IntersectionObserver следит за элементами .reveal.
-       Как только элемент входит во вьюпорт — добавляем .visible.
-       Для «каскада» делаем маленькую задержку по индексу (i*70 мс).
-       После срабатывания отписываемся (unobserve) — экономим ресурсы. */
+    /* ---------- 7. Плавная прокрутка по якорям ТЕКУЩЕЙ страницы ----------
+       Ловим только чистые href="#id". Ссылки вида «info.html#x»
+       обрабатывает сам браузер (scroll-padding-top в CSS не даёт
+       заголовку уехать под фиксированную шапку). */
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', (e) => {
+            const id = anchor.getAttribute('href');
+            if (!id || id.length < 2) return;
+            const target = document.querySelector(id);
+            if (!target) return;
+            e.preventDefault();
+            const offset = (header?.offsetHeight || 78) + 12;
+            window.scrollTo({
+                top: target.getBoundingClientRect().top + window.scrollY - offset,
+                behavior: 'smooth'
+            });
+        });
+    });
+
+    /* ---------- 8. Анимация появления ----------
+       Каскад за счёт задержки по индексу (i * 70 мс),
+       после срабатывания отписываемся — экономим ресурсы. */
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry, i) => {
             if (entry.isIntersecting) {
@@ -93,36 +121,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-    /* ---------- 7. Плавная прокрутка по якорям ----------
-       Перехватываем клики по ссылкам вида href="#id".
-       Считаем позицию с учётом высоты фиксированной шапки,
-       иначе цель уедет под шапку. */
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', (e) => {
-            const id = anchor.getAttribute('href');
-            if (!id || id.length < 2) return;
-            const target = document.querySelector(id);
-            if (!target) return;
-            e.preventDefault();
-            const offset = header.offsetHeight + 12;
-            window.scrollTo({
-                top: target.getBoundingClientRect().top + window.scrollY - offset,
-                behavior: 'smooth'
-            });
-        });
-    });
-
-    /* ---------- 8. Новости ----------
-       Берём массив NEWS из data.js и на каждый объект строим карточку.
-       Первая новость получает класс --featured (широкая).
-       Иконки сделаны SVG-строками, чтобы не тянуть сторонние библиотеки.
+    /* ---------- 9. Новости (index.html) ----------
+       Иконки — SVG-строки, чтобы не тянуть библиотеки.
        Реакции: лайк (локальный счётчик) и показать/скрыть комментарии. */
     const newsList = document.getElementById('newsList');
     const iconEye     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     const iconHeart   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>';
     const iconComment = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>';
 
-    // Из ФИО делаем инициалы для аватарки комментария: «Иванов Иван» → «ИИ».
+    // «Иванов Иван» → «ИИ» — для аватарки коммента.
     const initials = (n) => n.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
     if (newsList && typeof NEWS !== 'undefined') {
@@ -143,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             newsList.appendChild(card);
 
-            // Навешиваем обработчики на «лайк» и «комментарии» внутри карточки.
             card.querySelectorAll('.reaction[data-action]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const a = btn.dataset.action;
@@ -161,25 +167,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ---------- 9. Расписание ----------
-       1) Заполняем два <select> — классы и дни.
-       2) renderSchedule() читает выбранные значения, берёт уроки
-          из SCHEDULE[класс][день] и строит <tr> в tbody.
-       3) Если уроков нет — показываем заглушку «Отдыхайте». */
-    const classSelect  = document.getElementById('classSelect');
-    const daySelect    = document.getElementById('daySelect');
-    const scheduleBody = document.getElementById('scheduleBody');
+    /* ---------- 10. Расписание (school.html) ----------
+       Заполняем два <select>, renderSchedule() рисует <tr>
+       по SCHEDULE[класс][день]. Пустой день → заглушка. */
+    const classSelect   = document.getElementById('classSelect');
+    const daySelect     = document.getElementById('daySelect');
+    const scheduleBody  = document.getElementById('scheduleBody');
     const scheduleEmpty = document.getElementById('scheduleEmpty');
-    const schedTable   = document.querySelector('.schedule__table-wrap table');
+    const schedTable    = document.querySelector('.schedule__table-wrap table');
 
     if (classSelect && typeof SCHEDULE !== 'undefined') {
-        // Классы (ключи объекта SCHEDULE): 1а, 2а, ..., 11
+        // Классы = ключи объекта SCHEDULE (1а, 2а, ..., 11).
         Object.keys(SCHEDULE).forEach(cls => {
             const o = document.createElement('option');
             o.value = cls; o.textContent = cls + ' класс';
             classSelect.appendChild(o);
         });
-        // Дни: Пн..Сб из массива DAYS.
+        // Дни — из массива DAYS в data.js.
         DAYS.forEach(d => {
             const o = document.createElement('option');
             o.value = d; o.textContent = d;
@@ -190,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const lessons = (SCHEDULE[classSelect.value]?.[daySelect.value]) || [];
             scheduleBody.innerHTML = '';
 
-            if (!lessons.length) {            // пустой день
+            if (!lessons.length) {
                 scheduleEmpty.hidden = false;
                 schedTable.hidden = true;
                 return;
@@ -198,7 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
             scheduleEmpty.hidden = true;
             schedTable.hidden = false;
 
-            // LESSON_TIMES — общий список времён уроков из data.js.
             lessons.forEach((l, i) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td class="sched__num">${i + 1}</td><td class="sched__time">${LESSON_TIMES[i]}</td><td>${l.subject}</td><td class="sched__room">${l.room}</td>`;
@@ -211,10 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSchedule(); // первый рендер — при загрузке
     }
 
-    /* ---------- 10. Учителя ----------
-       Фильтр по ступени (junior/middle/senior/all).
-       Кнопки-фильтры делегируются одним слушателем на контейнер —
-       это экономнее, чем вешать обработчик на каждую кнопку. */
+    /* ---------- 11. Учителя (info.html) ----------
+       Фильтр по ступени: junior / middle / senior / all.
+       Делегирование: один обработчик на контейнер вместо N кнопок. */
     const teacherList    = document.getElementById('teacherList');
     const teacherFilters = document.getElementById('teacherFilters');
 
@@ -245,27 +247,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (teacherFilters) {
         teacherFilters.addEventListener('click', (e) => {
             const btn = e.target.closest('.filter'); if (!btn) return;
-            // Меняем активную кнопку и рендерим нужную группу.
             teacherFilters.querySelectorAll('.filter').forEach(f => f.classList.remove('is-active'));
             btn.classList.add('is-active');
             renderTeachers(btn.dataset.filter);
         });
     }
-    renderTeachers(); // стартовый рендер — все учителя
 
-    /* Кнопки «Учителя ступени →» на карточках ступеней.
-       Программно кликаем соответствующий фильтр и скроллим к блоку. */
-    document.querySelectorAll('.level-card__btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const f = teacherFilters?.querySelector(`.filter[data-filter="${btn.dataset.filter}"]`);
-            if (f) f.click();
-            document.getElementById('teachers').scrollIntoView({ behavior: 'smooth' });
+    /* Стартовый фильтр: если в URL пришёл ?stage=junior|middle|senior —
+       применяем его сразу, без промежуточного «показать всех».
+       Один проход рендера + синхронизация активной кнопки фильтра. */
+    const stageParam = new URLSearchParams(location.search).get('stage');
+    const initialFilter = ['junior', 'middle', 'senior'].includes(stageParam) ? stageParam : 'all';
+    renderTeachers(initialFilter);
+
+    if (teacherFilters && initialFilter !== 'all') {
+        teacherFilters.querySelectorAll('.filter').forEach(f => {
+            f.classList.toggle('is-active', f.dataset.filter === initialFilter);
         });
-    });
+    }
 
-    /* ---------- 11. Столовая ----------
-       CANTEEN_MENU — объект вида { 'Пн': { label, dishes:[...] }, ... }.
-       Табы генерируем по ключам, панель — по массиву dishes. */
+    /* ---------- 12. Столовая (school.html) ----------
+       CANTEEN_MENU: { 'Пн': { label, dishes:[...] }, ... }.
+       Табы строим по ключам, панель — по массиву dishes. */
     const canteenTabs  = document.getElementById('canteenTabs');
     const canteenPanel = document.getElementById('canteenPanel');
 
@@ -276,9 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             canteenPanel.innerHTML = '';
             CANTEEN_MENU[key].dishes.forEach(d => {
                 const row = document.createElement('div');
-                row.className = 'dish'
-                    + (d.free ? ' dish--free' : '')
-                    + (d.meme ? ' dish--meme' : '');
+                row.className = 'dish';
                 row.innerHTML = `
                     <div class="dish__emoji">${d.emoji}</div>
                     <div class="dish__info">
@@ -290,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Строим табы + сразу открываем первый день недели.
         dayKeys.forEach((key, idx) => {
             const b = document.createElement('button');
             b.type = 'button';
@@ -303,13 +303,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             canteenTabs.appendChild(b);
         });
-        renderCanteen(dayKeys[0]);
+        renderCanteen(dayKeys[0]); // открываем первый день
     }
 
-    /* ---------- 12. Достижения ----------
-       Динамически создаём блоки из ACHIEVEMENTS.
-       requestAnimationFrame — чтобы observer подхватил новые
-       элементы ПОСЛЕ их вставки в DOM и запустил им .reveal. */
+    /* ---------- 13. Достижения (index.html) ----------
+       requestAnimationFrame — чтобы observer увидел новый узел
+       в DOM и запустил ему .reveal. */
     const achList = document.getElementById('achievementsList');
     if (achList && typeof ACHIEVEMENTS !== 'undefined') {
         ACHIEVEMENTS.forEach(a => {
@@ -321,8 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ---------- 13. Галерея ----------
-       Аналогично достижениям: строим figure из массива GALLERY.
+    /* ---------- 14. Галерея (school.html) ----------
        Флаг wide даёт элементу span на 2 колонки. */
     const galleryGrid = document.getElementById('galleryGrid');
     if (galleryGrid && typeof GALLERY !== 'undefined') {
@@ -335,12 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ---------- 14. Форма обратной связи ----------
+    /* ---------- 15. Форма обратной связи (index.html) ----------
        - Валидация по правилам (rules).
        - Маска телефона приводит номер к виду +7 (XXX) XXX-XX-XX.
        - Отправка через fetch на jsonplaceholder (демо-эндпоинт).
-       - Статус success/error выводим в #status.
-    */
+       - Статус success/error выводим в #status через classList
+         (сохраняем базовый класс .status).
+       Значения полей читаем через FormData: form.name вернул бы
+       имя формы, а не <input name="name">. */
     const form      = document.getElementById('contactForm');
     const statusEl  = document.getElementById('status');
     const submitBtn = document.getElementById('submitBtn');
@@ -353,6 +353,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             return true; },
             phone:   v => v.replace(/\D/g, '').length < 11 ? 'Введите корректный телефон' : true,
             message: v => v.trim().length < 10 ? 'Минимум 10 символов' : true,
+        };
+
+        // Утилита для статуса: снимает прежнее состояние, ставит новое.
+        const setStatus = (text, state) => {
+            statusEl.textContent = text;
+            statusEl.classList.remove('success', 'error');
+            if (state) statusEl.classList.add(state);
         };
 
         function validate(input) {
@@ -371,15 +378,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Проверка при уходе с поля + перепроверка при исправлении,
         // но только если поле уже было помечено invalid — чтобы не мигало.
+        // Поле #phone исключено — у него своя логика (маска + валидация
+        // в одном обработчике, иначе валидация срабатывает до форматирования).
         form.querySelectorAll('input, textarea').forEach(inp => {
+            if (inp.name === 'phone') return;
             inp.addEventListener('blur',  () => validate(inp));
             inp.addEventListener('input', () => { if (inp.classList.contains('invalid')) validate(inp); });
         });
 
-        // Маска телефона: удаляем всё лишнее, начинаем с 7, форматируем по шаблону.
+        // Маска телефона: +7 (XXX) XXX-XX-XX, максимум 11 цифр.
+        // Сначала форматируем — потом (если поле помечено invalid) валидируем.
         const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('blur', () => validate(phoneInput));
         phoneInput.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '');
+            let v = e.target.value.replace(/\D/g, '').slice(0, 11);
             if (v.startsWith('8')) v = '7' + v.slice(1);
             if (v && !v.startsWith('7')) v = '7' + v;
 
@@ -390,6 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (v.length >= 8) f += '-'  + v.slice(7, 9);
             if (v.length >= 10) f += '-' + v.slice(9, 11);
             e.target.value = f;
+
+            if (phoneInput.classList.contains('invalid')) validate(phoneInput);
         });
 
         form.addEventListener('submit', async (e) => {
@@ -399,33 +413,33 @@ document.addEventListener('DOMContentLoaded', () => {
             // если каждое вернуло true.
             const ok = [...form.querySelectorAll('input, textarea')].map(validate).every(Boolean);
             if (!ok) {
-                statusEl.textContent = 'Исправьте ошибки';
-                statusEl.className = 'status error';
+                setStatus('Исправьте ошибки', 'error');
                 return;
             }
 
             // Блокируем кнопку и показываем «Отправка…», чтобы не спамили.
             submitBtn.disabled = true;
             submitBtn.textContent = 'Отправка...';
-            statusEl.textContent = ''; statusEl.className = 'status';
+            setStatus('');
+
+            // FormData корректно читает значения по name="…".
+            const fd = new FormData(form);
 
             try {
                 const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name: form.name.value.trim(),
-                        phone: form.phone.value.trim(),
-                        message: form.message.value.trim()
+                        name:    String(fd.get('name')    || '').trim(),
+                        phone:   String(fd.get('phone')   || '').trim(),
+                        message: String(fd.get('message') || '').trim()
                     })
                 });
                 if (!res.ok) throw new Error();
-                statusEl.textContent = '✅ Обращение отправлено! Мы свяжемся с вами в течение рабочего дня.';
-                statusEl.className = 'status success';
+                setStatus('✅ Обращение отправлено! Мы свяжемся с вами в течение рабочего дня.', 'success');
                 form.reset();
             } catch {
-                statusEl.textContent = '❌ Не удалось отправить. Позвоните: +7 (38564) 2-45-10';
-                statusEl.className = 'status error';
+                setStatus('❌ Не удалось отправить. Позвоните: +7 (38564) 2-45-10', 'error');
             } finally {
                 // Разблокировка кнопки — в любом случае.
                 submitBtn.disabled = false;
@@ -434,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ---------- 15. Год в подвале ----------
+    /* ---------- 16. Год в подвале ----------
        Вместо «2026» руками — new Date().getFullYear(). */
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();

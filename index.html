@@ -34,7 +34,7 @@
                 <li><a href="info.html"               class="nav__link">О школе</a></li>
                 <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
                 <li><a href="index.html#news"         class="nav__link">Новости</a></li>
-                <li><a href="school.html#schedule"    class="nav__link">Расписание</a></li>
+                <li><a href="school.html"             class="nav__link">Школьная жизнь</a></li>
                 <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
                 <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
                 <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
@@ -141,7 +141,8 @@
                     <li>Английский язык со 2 класса</li>
                     <li>ОРКСЭ в 4 классе</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="junior">Учителя ступени →</button>
+                <!-- ?stage=junior читает main.js на info.html и включает нужный фильтр. -->
+                <a href="info.html?stage=junior#teachers" class="btn btn--ghost btn--sm level-card__btn">Учителя ступени →</a>
             </article>
 
             <article class="level-card level-card--accent reveal">
@@ -154,7 +155,7 @@
                     <li>Английский язык, информатика</li>
                     <li>Физическая культура, ОБЖ, технология</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="middle">Учителя ступени →</button>
+                <a href="info.html?stage=middle#teachers" class="btn btn--ghost btn--sm level-card__btn">Учителя ступени →</a>
             </article>
 
             <article class="level-card reveal">
@@ -167,7 +168,7 @@
                     <li>Профильные курсы по выбору</li>
                     <li>Индивидуальный итоговый проект</li>
                 </ul>
-                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="senior">Учителя ступени →</button>
+                <a href="info.html?stage=senior#teachers" class="btn btn--ghost btn--sm level-card__btn">Учителя ступени →</a>
             </article>
         </div>
     </div>
