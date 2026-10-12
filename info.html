@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!--
+  ЯСОШ · Сведения об организации
+  =========================================================
+  Секции: page-hero → сведения (info-grid) → педагоги → footer.
+  Учителя рендерит main.js из TEACHERS по фильтру #teacherFilters.
+-->
+<html lang="ru" class="no-js">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Официальные сведения о МБОУ «Яготинская СОШ»: реквизиты, структура, педагогический состав.">
+<title>ЯСОШ — Сведения об организации</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header" id="header">
+    <div class="container header__inner">
+        <a href="index.html" class="logo">
+            <span class="logo__mark">ЯС</span>
+            <span class="logo__text">
+                Яготинская школа
+                <small>Благовещенский район · Алтайский край</small>
+            </span>
+        </a>
+        <nav class="nav" id="nav">
+            <ul class="nav__list">
+                <li><a href="index.html"              class="nav__link">Главная</a></li>
+                <li><a href="info.html"               class="nav__link">О школе</a></li>
+                <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
+                <li><a href="index.html#news"         class="nav__link">Новости</a></li>
+                <li><a href="school.html#schedule"    class="nav__link">Расписание</a></li>
+                <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
+                <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
+                <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
+                <li><a href="school.html#gallery"     class="nav__link">Галерея</a></li>
+                <li><a href="index.html#contacts"     class="nav__link">Контакты</a></li>
+            </ul>
+        </nav>
+        <div class="header__actions">
+            <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+                <svg class="icon-sun"  viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <button class="burger" id="burger" aria-label="Меню">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ============ ЗАГОЛОВОК СТРАНИЦЫ ============ -->
+<section class="page-hero">
+    <div class="container">
+        <p class="section__eyebrow">Официальный раздел</p>
+        <h1 class="page-hero__title">Сведения об образовательной организации</h1>
+        <p class="page-hero__lead">Полное и сокращённое наименование, дата создания, учредитель, место нахождения, режим работы, контактные данные и педагогический состав.</p>
+    </div>
+</section>
+
+<!-- ============ ОСНОВНЫЕ СВЕДЕНИЯ ============ -->
+<section class="section" id="info">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Основные сведения</p>
+            <h2 class="section__title">Реквизиты и режим работы</h2>
+        </header>
+
+        <div class="info-grid reveal">
+            <div class="info-row">
+                <p class="info-row__label">Полное наименование</p>
+                <p class="info-row__value">Муниципальное бюджетное общеобразовательное учреждение «Яготинская средняя общеобразовательная школа» Благовещенского района Алтайского края</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Сокращённое наименование</p>
+                <p class="info-row__value">МБОУ «Яготинская СОШ»</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Дата создания</p>
+                <p class="info-row__value">1938 год</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Учредитель</p>
+                <p class="info-row__value">Комитет администрации Благовещенского района Алтайского края по образованию</p>
+            </div>
+            <div class="info-row info-row--wide">
+                <p class="info-row__label">Место нахождения</p>
+                <p class="info-row__value">658672, Российская Федерация, Алтайский край, Благовещенский район, село Яготино, улица Школьная, дом 1</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Режим работы</p>
+                <p class="info-row__value">Пн–Пт: 08:00 – 17:00<br>Сб, Вс — выходные</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Язык обучения</p>
+                <p class="info-row__value">Русский</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Директор</p>
+                <p class="info-row__value">Ткачёв Виктор Анатольевич</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Телефон · Email</p>
+                <p class="info-row__value">
+                    <a href="tel:+73856424510">+7 (38564) 2-45-10</a><br>
+                    <a href="mailto:yasosh.blag@edu22.ru">yasosh.blag@edu22.ru</a>
+                </p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Лицензия</p>
+                <p class="info-row__value">№ 22Л01 0001234, бессрочная</p>
+            </div>
+            <div class="info-row">
+                <p class="info-row__label">Аккредитация</p>
+                <p class="info-row__value">№ 22А01 0005678, до 12.05.2027</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ ПЕДАГОГИ ============ -->
+<section class="section section--alt" id="teachers">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Педагогический коллектив</p>
+            <h2 class="section__title">Наши учителя</h2>
+            <p class="section__lead">28 педагогов, из них 11 — выпускники Яготинской школы. Средний стаж — 17 лет.</p>
+        </header>
+
+        <div class="filters reveal" id="teacherFilters">
+            <button class="filter is-active" data-filter="all">Все</button>
+            <button class="filter" data-filter="junior">1–4 классы</button>
+            <button class="filter" data-filter="middle">5–7 классы</button>
+            <button class="filter" data-filter="senior">8–11 классы</button>
+        </div>
+
+        <div class="teachers" id="teacherList"></div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container footer__inner">
+        <div>
+            <p class="footer__title">МБОУ «Яготинская средняя общеобразовательная школа»</p>
+            <p class="footer__text">© <span id="year"></span> Все права защищены. Благовещенский район, Алтайский край.</p>
+        </div>
+        <nav class="footer__nav">
+            <a href="info.html">О школе</a>
+            <a href="school.html#schedule">Расписание</a>
+            <a href="info.html#teachers">Учителя</a>
+            <a href="school.html#canteen">Столовая</a>
+            <a href="index.html#contacts">Контакты</a>
+        </nav>
+    </div>
+</footer>
+
+<button class="to-top" id="toTop" aria-label="Наверх">↑</button>
+
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

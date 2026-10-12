@@ -1,656 +1,441 @@
-// js/main.js - Полностью рефакторинг с поддержкой всех игр, добавлены обработчики кастомных событий для магазинов
-(function() {
-    'use strict';
+/* =========================================================
+   ЯСОШ · Логика · v7
+   ---------------------------------------------------------
+   Файл отвечает за ВСЮ интерактивность сайта:
+   тема, меню, анимации, расписание, учителя, столовая,
+   новости, галерея, форма, кнопка «наверх».
+   Данные (NEWS, TEACHERS, SCHEDULE и т.д.) лежат в data.js
+   и подключаются ПЕРЕД этим файлом.
+   ========================================================= */
 
-    // ---------- Фоновый канвас с частицами ----------
-    const bgCanvas = document.getElementById('bgCanvas');
-    const bgCtx = bgCanvas.getContext('2d');
-    let particles = [];
+// Ждём, пока DOM полностью построится — иначе getElementById вернёт null.
+document.addEventListener('DOMContentLoaded', () => {
 
-    function resizeBg() {
-        bgCanvas.width = window.innerWidth;
-        bgCanvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeBg);
-    resizeBg();
+    /* ---------- 1. Убираем класс no-js ----------
+       В <html> стоит class="no-js". Если JS выключен — .reveal
+       не прячется (CSS-правило .no-js .reveal { opacity:1 }),
+       т.е. сайт остаётся видимым. Как только JS заработал — снимаем. */
+    document.documentElement.classList.remove('no-js');
 
-    const PARTICLE_COUNT = 120;
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-        particles.push({
-            x: Math.random() * bgCanvas.width,
-            y: Math.random() * bgCanvas.height,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: (Math.random() - 0.5) * 0.4,
-            size: Math.random() * 2.5 + 0.5,
-            hue: Math.random() * 60 + 270,
-            baseAlpha: 0.1 + Math.random() * 0.15
-        });
-    }
+    /* ---------- 2. Страховка для .reveal ----------
+       Если IntersectionObserver по какой-то причине не сработал
+       (старый браузер, ошибка) — через 1.8 сек принудительно
+       показываем все скрытые блоки. Иначе часть контента навсегда
+       останется с opacity:0. */
+    setTimeout(() => {
+        document.querySelectorAll('.reveal:not(.visible)')
+            .forEach(el => el.classList.add('visible'));
+    }, 1800);
 
-    let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
-    document.addEventListener('mousemove', function(e) {
-        targetMouseX = e.clientX / bgCanvas.width - 0.5;
-        targetMouseY = e.clientY / bgCanvas.height - 0.5;
+    /* ---------- 3. Переключатель темы (светлая / тёмная) ----------
+       Тема хранится в localStorage под ключом 'yasoh-theme'.
+       При загрузке читаем её и, если 'dark', вешаем класс dark
+       на <body>. CSS сам подменит переменные. */
+    const themeToggle = document.getElementById('themeToggle');
+    if (localStorage.getItem('yasoh-theme') === 'dark') document.body.classList.add('dark');
+
+    themeToggle?.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        // Пишем текущее состояние в хранилище, чтобы сохранить выбор между визитами.
+        localStorage.setItem('yasoh-theme', document.body.classList.contains('dark') ? 'dark' : 'light');
     });
 
-    function animateBg() {
-        mouseX += (targetMouseX - mouseX) * 0.05;
-        mouseY += (targetMouseY - mouseY) * 0.05;
-        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-        for (let p of particles) {
-            p.x += p.vx + mouseX * 0.3;
-            p.y += p.vy + mouseY * 0.3;
-            if (p.x < -10) p.x = bgCanvas.width + 10;
-            if (p.x > bgCanvas.width + 10) p.x = -10;
-            if (p.y < -10) p.y = bgCanvas.height + 10;
-            if (p.y > bgCanvas.height + 10) p.y = -10;
-            p.hue = (p.hue + 0.15) % 360;
-            bgCtx.beginPath();
-            bgCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            const alpha = p.baseAlpha + Math.sin(Date.now() * 0.002 + p.x) * 0.05;
-            bgCtx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${alpha})`;
-            bgCtx.fill();
-            bgCtx.shadowBlur = 12;
-            bgCtx.shadowColor = `hsla(${p.hue}, 80%, 70%, 0.5)`;
-            bgCtx.fill();
-            bgCtx.shadowBlur = 0;
-        }
-        requestAnimationFrame(animateBg);
-    }
-    animateBg();
+    /* ---------- 4. Мобильное меню (бургер) ----------
+       На экранах <768px nav становится выезжающей панелью.
+       Открытие = класс .open + блокировка скролла body,
+       чтобы фон не прокручивался под меню. */
+    const burger = document.getElementById('burger');
+    const nav    = document.getElementById('nav');
 
-    // ---------- Модальное окно мини-игр ----------
-    const modalOverlay = document.getElementById('modalOverlay');
-    const modalInner = document.getElementById('modalInner');
-    let activeGame = null;
-    let activeGameInstance = null;
+    burger?.addEventListener('click', () => {
+        burger.classList.toggle('active');
+        nav.classList.toggle('open');
+        document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
+    });
 
-    function closeModal() {
-        modalOverlay.classList.remove('active');
-        if (activeGame === 'tetris') window.tetris.stop();
-        else if (activeGame === 'snake') window.snake.stop();
-        else if (activeGame === 'pong') window.pong.stop();
-        else if (activeGame === 'clicker') { /* кликер не требует остановки */ }
-        activeGame = null;
-        activeGameInstance = null;
-    }
-
-    function showSelection() {
-        activeGame = null;
-        modalInner.innerHTML = `
-            <h3>🎮 Мини-игры</h3>
-            <button class="game-btn" id="playClicker">⚡ Кликер</button>
-            <button class="game-btn" id="playTetris">🧱 Тетрис</button>
-            <button class="game-btn" id="playSnake">🐍 Змейка</button>
-            <button class="game-btn" id="playPong">🏓 Пинг-понг</button>
-            <button class="back-btn" id="closeModalBtn">Закрыть</button>
-        `;
-        document.getElementById('playClicker').onclick = showClicker;
-        document.getElementById('playTetris').onclick = showTetrisMode;
-        document.getElementById('playSnake').onclick = showSnakeMode;
-        document.getElementById('playPong').onclick = showPongMode;
-        document.getElementById('closeModalBtn').onclick = closeModal;
-    }
-
-    // ---------- Кликер ----------
-    function showClicker() {
-        activeGame = 'clicker';
-        window.clicker.init();
-        modalInner.innerHTML = `
-            <h3>⚡ Кликер</h3>
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="click">Клик</button>
-                <button class="tab-btn" data-tab="upgrades">Улучшения</button>
-                <button class="tab-btn" data-tab="stats">Статистика</button>
-            </div>
-            <div id="tab-click" class="tab-content">
-                <div class="clicker-stats">
-                    <span>💎 <span id="clickerScore">0</span></span>
-                    <span>⚡/сек: <span id="clickerPerSec">0</span></span>
-                </div>
-                <div class="combo-display" id="comboDisplay"></div>
-                <div id="bossContainer" class="boss-container" style="display:none;">
-                    <div style="color:#ff5555; font-weight:bold; font-size:0.8rem;" id="bossName">Босс</div>
-                    <div class="boss-bar-container"><div class="boss-bar" id="bossHealthBar"></div></div>
-                    <div style="font-size:0.65rem; color:#ccc;" id="bossHealthText"></div>
-                </div>
-                <div id="clickerArea" style="position:relative; min-height:70px;">
-                    <button class="clicker-main-btn" id="clickerBtn">CLICK</button>
-                </div>
-                <div id="eventsContainer"></div>
-            </div>
-            <div id="tab-upgrades" class="tab-content" style="display:none;">
-                <div id="clickerUpgrades" class="upgrades-list"></div>
-            </div>
-            <div id="tab-stats" class="tab-content" style="display:none;">
-                <table class="stats-table" id="statsTable"><tbody></tbody></table>
-            </div>
-            <button class="back-btn" id="backClicker">← Назад</button>
-        `;
-
-        window.clicker.attachUI({
-            scoreEl: document.getElementById('clickerScore'),
-            perSecEl: document.getElementById('clickerPerSec'),
-            comboEl: document.getElementById('comboDisplay'),
-            renderUpgrades: renderClickerUpgrades
+    // Клик по любой ссылке в меню закрывает панель.
+    document.querySelectorAll('.nav__link').forEach(link => {
+        link.addEventListener('click', () => {
+            burger.classList.remove('active');
+            nav.classList.remove('open');
+            document.body.style.overflow = '';
         });
+    });
 
-        document.getElementById('clickerBtn').onclick = (e) => window.clicker.handleClick(e);
-        document.getElementById('backClicker').onclick = () => { showSelection(); };
+    /* ---------- 5. Шапка + кнопка «наверх» ----------
+       onScroll вызывается при каждом скролле (passive:true = не блокирует
+       отрисовку, лучше для производительности). */
+    const header = document.getElementById('header');
+    const toTop  = document.getElementById('toTop');
 
-        function renderClickerUpgrades() {
-            const container = document.getElementById('clickerUpgrades');
-            if (!container) return;
-            container.innerHTML = '';
-            const score = window.clicker.score;
-            const tierNames = ['Базовые', 'Продвинутые', 'Экспертные', 'Мастерские', 'Легендарные'];
-            const tierUnlocks = [0, 200, 1000, 5000, 20000];
+    const onScroll = () => {
+        header.classList.toggle('scrolled', window.scrollY > 20);  // тень у шапки
+        toTop.classList.toggle('visible', window.scrollY > 500);   // показать ↑
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // вызов сразу — на случай, если страница открыта уже прокрученной
 
-            for (let t = 0; t < tierNames.length; t++) {
-                const unlocked = score >= tierUnlocks[t];
-                const header = document.createElement('div');
-                header.style.cssText = 'color:#c44eff; font-weight:600; margin:0.5rem 0 0.2rem; font-size:0.75rem;';
-                header.textContent = tierNames[t] + (unlocked ? '' : ` (🔒 ${tierUnlocks[t]}💎)`);
-                container.appendChild(header);
+    toTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-                for (let key in window.clicker.upgrades) {
-                    const upDef = window.clicker.upgradesDef?.[key];
-                    if (!upDef || upDef.tier !== t) continue;
-                    const level = window.clicker.upgrades[key];
-                    const cost = Math.floor(upDef.baseCost * Math.pow(upDef.costMult, level));
-                    const canBuy = score >= cost && unlocked;
-                    const maxed = upDef.maxLevel && level >= upDef.maxLevel;
-                    let desc = upDef.desc;
-                    if (key === 'critChance') desc = `+2% шанс крита (тек: ${(window.clicker.critChance*100).toFixed(0)}%)`;
-                    if (key === 'critPower') desc = `+0.5x крит.множитель (тек: ${window.clicker.critMult.toFixed(1)}x)`;
-                    if (key === 'goldRush') desc = `Активирует x2 доход на ${5 + level} сек`;
-                    if (key === 'meteor') desc = `Периодический бонус, интервал ${Math.max(5, 15 - level)}с`;
-                    if (key === 'acceleration') desc = `Тик быстрее (тек: ${(window.clicker.tickRate/1000).toFixed(1)}с)`;
-
-                    const item = document.createElement('div');
-                    item.className = 'upgrade-item' + (unlocked ? '' : ' locked');
-                    item.innerHTML = `
-                        <div class="info">
-                            <span class="icon">${upDef.icon}</span>
-                            <div class="details">
-                                <span class="name">${upDef.name} (ур.${level})</span>
-                                <span class="effect">${desc}</span>
-                            </div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span class="cost">${maxed ? 'МАКС' : cost + '💎'}</span>
-                            <button class="buy-btn" ${(canBuy && !maxed) ? '' : 'disabled'}>${maxed ? '✔️' : 'Купить'}</button>
-                        </div>
-                    `;
-                    if (canBuy && !maxed) {
-                        item.querySelector('.buy-btn').onclick = () => window.clicker.buyUpgrade(key);
-                    }
-                    container.appendChild(item);
-                }
+    /* ---------- 6. Анимация появления (reveal) ----------
+       IntersectionObserver следит за элементами .reveal.
+       Как только элемент входит во вьюпорт — добавляем .visible.
+       Для «каскада» делаем маленькую задержку по индексу (i*70 мс).
+       После срабатывания отписываемся (unobserve) — экономим ресурсы. */
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+                setTimeout(() => entry.target.classList.add('visible'), i * 70);
+                observer.unobserve(entry.target);
             }
-        }
+        });
+    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
 
-        function renderStatsTable() {
-            const stats = window.clicker.getStats();
-            const tableBody = document.querySelector('#statsTable tbody');
-            if (tableBody) {
-                tableBody.innerHTML = `
-                    <tr><td>Всего 💎</td><td>${stats.score}</td></tr>
-                    <tr><td>Урон клика</td><td>${stats.perClick}</td></tr>
-                    <tr><td>Пасс./сек</td><td>${stats.perSec}</td></tr>
-                    <tr><td>Крит.шанс</td><td>${stats.critChance}</td></tr>
-                    <tr><td>Крит.множитель</td><td>${stats.critMult}</td></tr>
-                    <tr><td>Всего кликов</td><td>${stats.totalClicks}</td></tr>
-                    <tr><td>Всего заработано</td><td>${stats.totalEarned}</td></tr>
-                    <tr><td>Убито боссов</td><td>${stats.bossesDefeated}</td></tr>
-                    <tr><td>Интервал тика</td><td>${(stats.tickRate/1000).toFixed(1)}с</td></tr>
-                `;
-            }
-        }
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-        const tabs = document.querySelectorAll('.tab-btn');
-        tabs.forEach(btn => {
-            btn.addEventListener('click', function() {
-                tabs.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                const tab = this.dataset.tab;
-                document.getElementById('tab-click').style.display = tab === 'click' ? 'block' : 'none';
-                document.getElementById('tab-upgrades').style.display = tab === 'upgrades' ? 'block' : 'none';
-                document.getElementById('tab-stats').style.display = tab === 'stats' ? 'block' : 'none';
-                if (tab === 'upgrades') renderClickerUpgrades();
-                if (tab === 'stats') renderStatsTable();
+    /* ---------- 7. Плавная прокрутка по якорям ----------
+       Перехватываем клики по ссылкам вида href="#id".
+       Считаем позицию с учётом высоты фиксированной шапки,
+       иначе цель уедет под шапку. */
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', (e) => {
+            const id = anchor.getAttribute('href');
+            if (!id || id.length < 2) return;
+            const target = document.querySelector(id);
+            if (!target) return;
+            e.preventDefault();
+            const offset = header.offsetHeight + 12;
+            window.scrollTo({
+                top: target.getBoundingClientRect().top + window.scrollY - offset,
+                behavior: 'smooth'
             });
         });
-
-        window.clicker.updateUI();
-        window.clicker.updateBossUI();
-        window.clicker.generateChallenge();
-        renderClickerUpgrades();
-    }
-
-    // ---------- Тетрис (режимы) ----------
-    function showTetrisMode() {
-        modalInner.innerHTML = `
-            <h3>🧱 Тетрис</h3>
-            <div class="mode-select">
-                <label><input type="radio" name="tetrisMode" value="single" checked> 1 игрок</label>
-                <label><input type="radio" name="tetrisMode" value="multi"> 2 игрока</label>
-            </div>
-            <button class="game-btn" id="startTetrisBtn">Старт</button>
-            <button class="back-btn" id="backTetrisMode">← Назад</button>
-        `;
-        document.getElementById('startTetrisBtn').onclick = () => {
-            const mode = document.querySelector('input[name="tetrisMode"]:checked').value;
-            if (mode === 'single') showTetrisSingle();
-            else showTetrisMulti();
-        };
-        document.getElementById('backTetrisMode').onclick = showSelection;
-    }
-
-    function showTetrisSingle() {
-        activeGame = 'tetris';
-        modalInner.innerHTML = `
-            <h3>🧱 Тетрис</h3>
-            <canvas id="tetrisCanvas" width="180" height="360"></canvas>
-            <div class="game-score" id="tetrisScore">Счёт: 0</div>
-            <div id="abilityStatus" style="font-size:0.65rem; color:#aaa;"></div>
-            <div class="game-controls">
-                <div>←↓→ / WASD / кнопки (удерживайте для быстрого движения)</div>
-                <button id="tetrisLeft" class="ctrl-btn">←</button>
-                <button id="tetrisDown" class="ctrl-btn">↓</button>
-                <button id="tetrisRight" class="ctrl-btn">→</button>
-                <button id="tetrisRotate" class="ctrl-btn">↻</button>
-                <button id="tetrisDrop" class="ctrl-btn">Drop</button>
-                <button id="tetrisHold" class="ctrl-btn" style="width:auto;padding:0 8px;">📦</button>
-                <button id="ability1" class="ctrl-btn" style="width:auto;padding:0 8px;">⚡</button>
-                <button id="ability2" class="ctrl-btn" style="width:auto;padding:0 8px;">❄️</button>
-                <button id="ability3" class="ctrl-btn" style="width:auto;padding:0 8px;">🧹</button>
-            </div>
-            <button class="back-btn" id="backTetris">← Назад</button>
-        `;
-        window.tetris.onGameOver = () => window.tetris.showShop();
-        window.tetris.init(1);
-        const blockSize = 18;
-        attachTetrisControls(0, blockSize);
-        document.getElementById('backTetris').onclick = () => { window.tetris.stop(); showSelection(); };
-        document.getElementById('tetrisHold').onclick = () => window.tetris.hold(0, blockSize);
-        document.getElementById('ability1').onclick = () => window.tetris.useAbility(0, 'lightning', blockSize);
-        document.getElementById('ability2').onclick = () => window.tetris.useAbility(0, 'freeze', blockSize);
-        document.getElementById('ability3').onclick = () => window.tetris.useAbility(0, 'clear', blockSize);
-    }
-
-    function showTetrisMulti() {
-        activeGame = 'tetris';
-        modalInner.innerHTML = `
-            <h3>🧱 Тетрис (2 игрока)</h3>
-            <div class="multi-canvas-wrap">
-                <div>
-                    <canvas id="tetrisCanvasP1" width="150" height="300"></canvas>
-                    <div class="game-score" id="tetrisScoreP1">Игрок 1: 0</div>
-                    <div class="game-controls">WASD, пробел</div>
-                </div>
-                <div>
-                    <canvas id="tetrisCanvasP2" width="150" height="300"></canvas>
-                    <div class="game-score" id="tetrisScoreP2">Игрок 2: 0</div>
-                    <div class="game-controls">←↑↓→, Enter</div>
-                </div>
-            </div>
-            <button class="back-btn" id="backTetrisMulti">← Назад</button>
-        `;
-        window.tetris.init(2);
-        window.tetris.onGameOver = null;
-        const blockSize = 15;
-        attachTetrisControls(0, blockSize);
-        attachTetrisControls(1, blockSize);
-        document.getElementById('backTetrisMulti').onclick = () => { window.tetris.stop(); showSelection(); };
-    }
-
-    function attachTetrisControls(playerIdx, blockSize) {
-        const actions = {
-            left: { btnId: playerIdx === 0 ? 'tetrisLeft' : `tetrisLeftP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, -1, 0, blockSize) },
-            right: { btnId: playerIdx === 0 ? 'tetrisRight' : `tetrisRightP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, 1, 0, blockSize) },
-            down: { btnId: playerIdx === 0 ? 'tetrisDown' : `tetrisDownP${playerIdx+1}`, action: () => window.tetris.move(playerIdx, 0, 1, blockSize) },
-            rotate: { btnId: playerIdx === 0 ? 'tetrisRotate' : `tetrisRotateP${playerIdx+1}`, action: () => window.tetris.rotate(playerIdx, blockSize) },
-            drop: { btnId: playerIdx === 0 ? 'tetrisDrop' : `tetrisDropP${playerIdx+1}`, action: () => window.tetris.drop(playerIdx, blockSize) }
-        };
-        const heldTimers = {};
-        for (let key in actions) {
-            const act = actions[key];
-            const btn = document.getElementById(act.btnId);
-            if (!btn) continue;
-            const startRepeat = () => {
-                if (heldTimers[key]) return;
-                act.action();
-                heldTimers[key] = {
-                    initial: setTimeout(() => {
-                        heldTimers[key].repeat = setInterval(() => act.action(), 50);
-                    }, 100)
-                };
-            };
-            const stopRepeat = () => {
-                if (heldTimers[key]) {
-                    clearTimeout(heldTimers[key].initial);
-                    clearInterval(heldTimers[key].repeat);
-                    delete heldTimers[key];
-                }
-            };
-            btn.addEventListener('pointerdown', startRepeat);
-            btn.addEventListener('pointerup', stopRepeat);
-            btn.addEventListener('pointerleave', stopRepeat);
-            btn.addEventListener('pointercancel', stopRepeat);
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startRepeat(); });
-            btn.addEventListener('touchend', stopRepeat);
-        }
-    }
-
-    // ---------- Змейка ----------
-    function showSnakeMode() {
-        modalInner.innerHTML = `
-            <h3>🐍 Змейка</h3>
-            <div class="mode-select">
-                <label><input type="radio" name="snakeMode" value="single" checked> 1 игрок</label>
-                <label><input type="radio" name="snakeMode" value="multi"> 2 игрока</label>
-            </div>
-            <button class="game-btn" id="startSnakeBtn">Старт</button>
-            <button class="back-btn" id="backSnakeMode">← Назад</button>
-        `;
-        document.getElementById('startSnakeBtn').onclick = () => {
-            const mode = document.querySelector('input[name="snakeMode"]:checked').value;
-            if (mode === 'single') showSnakeSingle();
-            else showSnakeMulti();
-        };
-        document.getElementById('backSnakeMode').onclick = showSelection;
-    }
-
-    function showSnakeSingle() {
-        activeGame = 'snake';
-        modalInner.innerHTML = `
-            <h3>🐍 Змейка</h3>
-            <canvas id="snakeCanvas" width="200" height="200"></canvas>
-            <div class="snake-hud">
-                <span class="combo-indicator" id="comboIndicator"></span>
-                <span class="dash-indicator" id="dashIndicator"></span>
-            </div>
-            <div class="active-powerups" id="powerupsContainer"></div>
-            <div class="game-score" id="snakeScore">Счёт: 0</div>
-            <div class="game-controls">
-                <div>Управление: стрелки / WASD / свайпы по холсту</div>
-                <button id="snakeUp" class="ctrl-btn">↑</button>
-                <button id="snakeLeft" class="ctrl-btn">←</button>
-                <button id="snakeDown" class="ctrl-btn">↓</button>
-                <button id="snakeRight" class="ctrl-btn">→</button>
-            </div>
-            <button class="back-btn" id="backSnake">← Назад</button>
-        `;
-        window.snake.onGameOver = () => window.snake.showShop();
-        window.snake.init(1);
-        attachSnakeControls(0);
-        setupSnakeSwipe();
-        document.getElementById('backSnake').onclick = () => { window.snake.stop(); showSelection(); };
-    }
-
-    function showSnakeMulti() {
-        activeGame = 'snake';
-        modalInner.innerHTML = `
-            <h3>🐍 Змейка (2 игрока)</h3>
-            <canvas id="snakeCanvas" width="200" height="200"></canvas>
-            <div class="game-score" id="snakeScoreP1">Игрок 1: 0</div>
-            <div class="game-score" id="snakeScoreP2">Игрок 2: 0</div>
-            <div class="game-controls">P1: WASD | P2: ←↑↓→</div>
-            <button class="back-btn" id="backSnakeMulti">← Назад</button>
-        `;
-        window.snake.init(2);
-        window.snake.onGameOver = null;
-        document.getElementById('backSnakeMulti').onclick = () => { window.snake.stop(); showSelection(); };
-    }
-
-    function attachSnakeControls(playerIdx) {
-        const dirMap = { up: {x:0, y:-1}, down: {x:0, y:1}, left: {x:-1, y:0}, right: {x:1, y:0} };
-        for (let dir in dirMap) {
-            const btn = document.getElementById(`snake${dir.charAt(0).toUpperCase()+dir.slice(1)}`);
-            if (btn) {
-                btn.addEventListener('pointerdown', (e) => {
-                    e.preventDefault();
-                    if (!window.snake.active) return;
-                    const newDir = dirMap[dir];
-                    const opposite = (newDir.x === -window.snake.dirs[playerIdx].x && newDir.y === -window.snake.dirs[playerIdx].y);
-                    if (!opposite) window.snake.nextDirs[playerIdx] = newDir;
-                    window.snake.handleDashInput(playerIdx, dir);
-                });
-            }
-        }
-    }
-
-    function setupSnakeSwipe() {
-        const canvas = document.getElementById('snakeCanvas');
-        if (!canvas) return;
-        let touchStart = null;
-        const handleStart = (e) => {
-            if (!window.snake.active) return;
-            const touch = e.touches ? e.touches[0] : e;
-            touchStart = { x: touch.clientX, y: touch.clientY };
-        };
-        const handleEnd = (e) => {
-            if (!touchStart || !window.snake.active) return;
-            const touch = e.changedTouches ? e.changedTouches[0] : e;
-            const dx = touch.clientX - touchStart.x;
-            const dy = touch.clientY - touchStart.y;
-            const absDx = Math.abs(dx), absDy = Math.abs(dy);
-            if (Math.max(absDx, absDy) < 20) { touchStart = null; return; }
-            let dir;
-            if (absDx > absDy) dir = dx > 0 ? 'right' : 'left';
-            else dir = dy > 0 ? 'down' : 'up';
-            const newDir = { up: {x:0,y:-1}, down: {x:0,y:1}, left: {x:-1,y:0}, right: {x:1,y:0} }[dir];
-            const opposite = (newDir.x === -window.snake.dirs[0].x && newDir.y === -window.snake.dirs[0].y);
-            if (!opposite) window.snake.nextDirs[0] = newDir;
-            window.snake.handleDashInput(0, dir);
-            touchStart = null;
-        };
-        canvas.addEventListener('touchstart', handleStart, { passive: false });
-        canvas.addEventListener('touchend', handleEnd);
-        canvas.addEventListener('mousedown', handleStart);
-        canvas.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('mouseleave', () => { touchStart = null; });
-    }
-
-    // ---------- Пинг-понг ----------
-    function showPongMode() {
-        modalInner.innerHTML = `
-            <h3>🏓 Пинг-понг</h3>
-            <div class="mode-select">
-                <label><input type="radio" name="pongMode" value="single" checked> 1 игрок (против бота)</label>
-                <label><input type="radio" name="pongMode" value="multi"> 2 игрока</label>
-            </div>
-            <button class="game-btn" id="startPongBtn">Старт</button>
-            <button class="back-btn" id="backPongMode">← Назад</button>
-        `;
-        document.getElementById('startPongBtn').onclick = () => {
-            const mode = document.querySelector('input[name="pongMode"]:checked').value;
-            activeGame = 'pong';
-            modalInner.innerHTML = `
-                <h3>🏓 Пинг-понг</h3>
-                <canvas id="pongCanvas" width="800" height="400" style="width:100%; height:auto; max-width:800px; background:#000; border-radius:8px;"></canvas>
-                <div style="display:flex; justify-content:space-between; margin-top:5px;">
-                    <span id="pongTimer" style="color:#c44eff;">След. улучшение: 60с</span>
-                    <span id="pongEvent" style="color:#ffaa44;"></span>
-                </div>
-                <div class="game-controls" style="font-size:0.7rem;">
-                    Игрок 1: W/S | Игрок 2: ↑/↓
-                </div>
-                <button class="back-btn" id="backPong">← Назад</button>
-            `;
-            window.pong.init(mode);
-            document.getElementById('backPong').onclick = () => { window.pong.stop(); showSelection(); };
-        };
-        document.getElementById('backPongMode').onclick = showSelection;
-    }
-
-    // ---------- Глобальная клавиатура ----------
-    function isLeft(key) { return key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'ф' || key === 'Ф'; }
-    function isRight(key) { return key === 'ArrowRight' || key === 'd' || key === 'D' || key === 'в' || key === 'В'; }
-    function isDown(key) { return key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ы' || key === 'Ы'; }
-    function isUp(key) { return key === 'ArrowUp' || key === 'w' || key === 'W' || key === 'ц' || key === 'Ц'; }
-    function isSpace(key) { return key === ' '; }
-    function isEnter(key) { return key === 'Enter'; }
-
-    const gameKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter',
-                      'w','a','s','d','W','A','S','D',
-                      'ц','ф','ы','в','Ц','Ф','Ы','В',
-                      'z','Z','x','X','c','C','h','H',
-                      'я','Я','ч','Ч','с','С','р','Р'];
-
-    document.addEventListener('keydown', function(e) {
-        const key = e.key;
-        if (gameKeys.includes(key)) e.preventDefault();
-
-        if (activeGame === 'tetris' && window.tetris.active) {
-            const t = window.tetris;
-            const bSize = t.players === 1 ? 18 : 15;
-            if (t.players === 1) {
-                if (isLeft(key)) t.move(0, -1, 0, bSize);
-                else if (isRight(key)) t.move(0, 1, 0, bSize);
-                else if (isDown(key)) t.move(0, 0, 1, bSize);
-                else if (isUp(key)) t.rotate(0, bSize);
-                else if (isSpace(key)) t.drop(0, bSize);
-                else if (key === 'h' || key === 'H' || key === 'р' || key === 'Р') t.hold(0, bSize);
-                else if (key === 'z' || key === 'Z' || key === 'я' || key === 'Я') t.useAbility(0, 'lightning', bSize);
-                else if (key === 'x' || key === 'X' || key === 'ч' || key === 'Ч') t.useAbility(0, 'freeze', bSize);
-                else if (key === 'c' || key === 'C' || key === 'с' || key === 'С') t.useAbility(0, 'clear', bSize);
-            } else {
-                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') t.move(0, -1, 0, bSize);
-                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') t.move(0, 1, 0, bSize);
-                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') t.move(0, 0, 1, bSize);
-                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') t.rotate(0, bSize);
-                else if (isSpace(key)) t.drop(0, bSize);
-                else if (key === 'ArrowLeft') t.move(1, -1, 0, bSize);
-                else if (key === 'ArrowRight') t.move(1, 1, 0, bSize);
-                else if (key === 'ArrowDown') t.move(1, 0, 1, bSize);
-                else if (key === 'ArrowUp') t.rotate(1, bSize);
-                else if (isEnter(key)) t.drop(1, bSize);
-            }
-        } else if (activeGame === 'snake' && window.snake.active) {
-            const s = window.snake;
-            function setDir(pIdx, newDir) {
-                if (newDir.x === -s.dirs[pIdx].x && newDir.y === -s.dirs[pIdx].y) return;
-                s.nextDirs[pIdx] = newDir;
-            }
-            if (s.players === 1) {
-                let dir = null;
-                if (isLeft(key)) dir = {x:-1, y:0};
-                else if (isRight(key)) dir = {x:1, y:0};
-                else if (isUp(key)) dir = {x:0, y:-1};
-                else if (isDown(key)) dir = {x:0, y:1};
-                if (dir) { setDir(0, dir); s.handleDashInput(0, dir); }
-            } else {
-                if (key === 'a' || key === 'A' || key === 'ф' || key === 'Ф') { setDir(0, {x:-1,y:0}); s.handleDashInput(0, 'left'); }
-                else if (key === 'd' || key === 'D' || key === 'в' || key === 'В') { setDir(0, {x:1,y:0}); s.handleDashInput(0, 'right'); }
-                else if (key === 'w' || key === 'W' || key === 'ц' || key === 'Ц') { setDir(0, {x:0,y:-1}); s.handleDashInput(0, 'up'); }
-                else if (key === 's' || key === 'S' || key === 'ы' || key === 'Ы') { setDir(0, {x:0,y:1}); s.handleDashInput(0, 'down'); }
-                else if (key === 'ArrowLeft') { setDir(1, {x:-1,y:0}); s.handleDashInput(1, 'left'); }
-                else if (key === 'ArrowRight') { setDir(1, {x:1,y:0}); s.handleDashInput(1, 'right'); }
-                else if (key === 'ArrowUp') { setDir(1, {x:0,y:-1}); s.handleDashInput(1, 'up'); }
-                else if (key === 'ArrowDown') { setDir(1, {x:0,y:1}); s.handleDashInput(1, 'down'); }
-            }
-        }
     });
 
-    // ========== GitHub авторизация (обновлённая, без лишней кнопки) ==========
-    const auth = window.GitHubAuth;
-    const authStatusDiv = document.getElementById('authStatus');
-    const tokenModal = document.getElementById('tokenModal');
-    const githubTokenInput = document.getElementById('githubTokenInput');
-    const submitTokenBtn = document.getElementById('submitTokenBtn');
-    const cancelTokenBtn = document.getElementById('cancelTokenBtn');
-    const logoutGithubBtn = document.getElementById('logoutGithubBtn');
+    /* ---------- 8. Новости ----------
+       Берём массив NEWS из data.js и на каждый объект строим карточку.
+       Первая новость получает класс --featured (широкая).
+       Иконки сделаны SVG-строками, чтобы не тянуть сторонние библиотеки.
+       Реакции: лайк (локальный счётчик) и показать/скрыть комментарии. */
+    const newsList = document.getElementById('newsList');
+    const iconEye     = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const iconHeart   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5.5-7 10-7 10z"/></svg>';
+    const iconComment = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>';
 
-    function updateAuthUI() {
-        if (auth && auth.isAuthenticated && auth.username) {
-            authStatusDiv.innerHTML = `✅ GitHub: ${auth.username} | <button id="syncSaveBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">💾 Синхр.</button> <button id="manualSyncLoadBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">⬇️ Загрузить</button>`;
-            const syncBtn = document.getElementById('syncSaveBtn');
-            const loadBtn = document.getElementById('manualSyncLoadBtn');
-            if (syncBtn) syncBtn.onclick = () => auth.syncSave();
-            if (loadBtn) loadBtn.onclick = () => auth.syncLoad();
-        } else {
-            authStatusDiv.innerHTML = `🔒 Не авторизован | <button id="manualLoginBtn" style="background:none; border:none; color:#c44eff; cursor:pointer;">Войти через GitHub</button>`;
-            const loginBtn = document.getElementById('manualLoginBtn');
-            if (loginBtn) loginBtn.onclick = () => tokenModal.style.display = 'flex';
-        }
-    }
+    // Из ФИО делаем инициалы для аватарки комментария: «Иванов Иван» → «ИИ».
+    const initials = (n) => n.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
-    // Удаляем старую плавающую кнопку, если она есть
-    const oldGithubBtn = document.getElementById('githubLoginBtn');
-    if (oldGithubBtn) oldGithubBtn.remove();
+    if (newsList && typeof NEWS !== 'undefined') {
+        NEWS.forEach((n, i) => {
+            const card = document.createElement('article');
+            card.className = 'news-card' + (i === 0 ? ' news-card--featured' : '');
+            card.innerHTML = `
+                <div class="news-card__top"><span class="news-tag news-tag--${n.tag}">${n.tagLabel}</span><span class="news-card__date">${n.date}</span></div>
+                <h3 class="news-card__title">${n.title}</h3>
+                <p class="news-card__text">${n.text}</p>
+                <div class="news-card__reactions">
+                    <span class="reaction reaction--static">${iconEye}<span>${n.views}</span></span>
+                    <button class="reaction" data-action="like">${iconHeart}<span>${n.likes}</span></button>
+                    <button class="reaction reaction--toggle" data-action="toggle-comments">${iconComment}<span>${n.comments.length}</span></button>
+                </div>
+                <div class="news-card__comments" hidden>
+                    ${n.comments.map(c => `<div class="comment${c.meme?' comment--meme':''}"><div class="comment__avatar">${initials(c.name)}</div><div class="comment__body"><div class="comment__name">${c.name}</div><div class="comment__text">${c.text}</div></div></div>`).join('') || '<p style="color:var(--text-muted);font-size:.84rem;">Комментариев пока нет</p>'}
+                </div>`;
+            newsList.appendChild(card);
 
-    // Клик по статусу тоже открывает модалку (для удобства)
-    if (authStatusDiv) {
-        authStatusDiv.addEventListener('click', (e) => {
-            // Не открываем, если кликнули по вложенным кнопкам (они обрабатываются отдельно)
-            if (e.target.tagName === 'BUTTON') return;
-            if (!auth.isAuthenticated) tokenModal.style.display = 'flex';
+            // Навешиваем обработчики на «лайк» и «комментарии» внутри карточки.
+            card.querySelectorAll('.reaction[data-action]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const a = btn.dataset.action;
+                    const num = btn.querySelector('span');
+                    if (a === 'like') {
+                        // toggle возвращает true, если класс ТОЛЬКО ЧТО добавлен.
+                        const liked = btn.classList.toggle('is-liked');
+                        num.textContent = +num.textContent + (liked ? 1 : -1);
+                    } else if (a === 'toggle-comments') {
+                        const box = card.querySelector('.news-card__comments');
+                        box.hidden = !box.hidden;
+                    }
+                });
+            });
         });
     }
 
-    if (cancelTokenBtn) cancelTokenBtn.onclick = () => { tokenModal.style.display = 'none'; githubTokenInput.value = ''; };
-    if (logoutGithubBtn) logoutGithubBtn.onclick = () => {
-        auth.logout();
-        tokenModal.style.display = 'none';
-        updateAuthUI();
-        window.location.reload();
-    };
-    if (submitTokenBtn) {
-        submitTokenBtn.onclick = async () => {
-            const token = githubTokenInput.value.trim();
-            if (!token) { alert('Введите токен'); return; }
-            submitTokenBtn.disabled = true;
-            submitTokenBtn.textContent = 'Проверка...';
-            try {
-                await auth.register(token);
-                await auth.syncLoad();
-                tokenModal.style.display = 'none';
-                githubTokenInput.value = '';
-                updateAuthUI();
-                alert(`Добро пожаловать, ${auth.username}! Прогресс загружен.`);
-            } catch(err) {
-                alert('Ошибка: ' + err.message);
-            } finally {
-                submitTokenBtn.disabled = false;
-                submitTokenBtn.textContent = '✅ Войти / Зарегистрироваться';
+    /* ---------- 9. Расписание ----------
+       1) Заполняем два <select> — классы и дни.
+       2) renderSchedule() читает выбранные значения, берёт уроки
+          из SCHEDULE[класс][день] и строит <tr> в tbody.
+       3) Если уроков нет — показываем заглушку «Отдыхайте». */
+    const classSelect  = document.getElementById('classSelect');
+    const daySelect    = document.getElementById('daySelect');
+    const scheduleBody = document.getElementById('scheduleBody');
+    const scheduleEmpty = document.getElementById('scheduleEmpty');
+    const schedTable   = document.querySelector('.schedule__table-wrap table');
+
+    if (classSelect && typeof SCHEDULE !== 'undefined') {
+        // Классы (ключи объекта SCHEDULE): 1а, 2а, ..., 11
+        Object.keys(SCHEDULE).forEach(cls => {
+            const o = document.createElement('option');
+            o.value = cls; o.textContent = cls + ' класс';
+            classSelect.appendChild(o);
+        });
+        // Дни: Пн..Сб из массива DAYS.
+        DAYS.forEach(d => {
+            const o = document.createElement('option');
+            o.value = d; o.textContent = d;
+            daySelect.appendChild(o);
+        });
+
+        function renderSchedule() {
+            const lessons = (SCHEDULE[classSelect.value]?.[daySelect.value]) || [];
+            scheduleBody.innerHTML = '';
+
+            if (!lessons.length) {            // пустой день
+                scheduleEmpty.hidden = false;
+                schedTable.hidden = true;
+                return;
             }
-        };
+            scheduleEmpty.hidden = true;
+            schedTable.hidden = false;
+
+            // LESSON_TIMES — общий список времён уроков из data.js.
+            lessons.forEach((l, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="sched__num">${i + 1}</td><td class="sched__time">${LESSON_TIMES[i]}</td><td>${l.subject}</td><td class="sched__room">${l.room}</td>`;
+                scheduleBody.appendChild(tr);
+            });
+        }
+
+        classSelect.addEventListener('change', renderSchedule);
+        daySelect.addEventListener('change', renderSchedule);
+        renderSchedule(); // первый рендер — при загрузке
     }
 
-    setInterval(() => {
-        if (auth && auth.isAuthenticated) auth.syncSave().catch(console.warn);
-    }, 300000);
+    /* ---------- 10. Учителя ----------
+       Фильтр по ступени (junior/middle/senior/all).
+       Кнопки-фильтры делегируются одним слушателем на контейнер —
+       это экономнее, чем вешать обработчик на каждую кнопку. */
+    const teacherList    = document.getElementById('teacherList');
+    const teacherFilters = document.getElementById('teacherFilters');
 
-    updateAuthUI();
+    function renderTeachers(filter = 'all') {
+        if (!teacherList || typeof TEACHERS === 'undefined') return;
+        teacherList.innerHTML = '';
+        const filtered = filter === 'all' ? TEACHERS : TEACHERS.filter(t => t.stage === filter);
 
-    // ---------- Обработчики кнопки мини-игр ----------
-    const openBtn = document.getElementById('openMiniGames');
-    if (openBtn) {
-        openBtn.onclick = () => {
-            modalOverlay.classList.add('active');
-            showSelection();
-        };
+        filtered.forEach(t => {
+            // Короткая метка ступени для бейджа на фото.
+            const stageLabel = { junior: '1–4', middle: '5–7', senior: '8–11' }[t.stage];
+            const card = document.createElement('article');
+            card.className = 'teacher';
+            card.innerHTML = `
+                <div class="teacher__photo">
+                    <img src="${t.photo}" alt="${t.name}" loading="lazy">
+                    <span class="teacher__stage teacher__stage--${t.stage}">${stageLabel}</span>
+                </div>
+                <div class="teacher__body">
+                    <h3 class="teacher__name">${t.name}</h3>
+                    <p class="teacher__subject">${t.subject}</p>
+                    <p class="teacher__meta"><span>Стаж: ${t.exp} лет · ${t.category}</span><span>${t.education}</span><span>${t.bio}</span></p>
+                </div>`;
+            teacherList.appendChild(card);
+        });
     }
-    if (modalOverlay) {
-        modalOverlay.onclick = (e) => {
-            if (e.target === modalOverlay) closeModal();
-        };
+
+    if (teacherFilters) {
+        teacherFilters.addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter'); if (!btn) return;
+            // Меняем активную кнопку и рендерим нужную группу.
+            teacherFilters.querySelectorAll('.filter').forEach(f => f.classList.remove('is-active'));
+            btn.classList.add('is-active');
+            renderTeachers(btn.dataset.filter);
+        });
     }
+    renderTeachers(); // стартовый рендер — все учителя
 
-    // ---------- Глобальные события для перезапуска игр из магазина ----------
-    document.addEventListener('startSnakeSingle', () => showSnakeSingle());
-    document.addEventListener('startTetrisSingle', () => showTetrisSingle());
-    document.addEventListener('openMiniGamesMenu', () => showSelection());
-
-    // ---------- Глобальные события для загрузки данных ----------
-    EventBus.on('gameDataLoaded', () => {
-        if (activeGame === 'clicker') window.clicker.updateUI();
-        if (activeGame === 'tetris') { window.tetris.stop(); window.tetris.init(1); }
-        if (activeGame === 'snake') { window.snake.stop(); window.snake.init(1); }
+    /* Кнопки «Учителя ступени →» на карточках ступеней.
+       Программно кликаем соответствующий фильтр и скроллим к блоку. */
+    document.querySelectorAll('.level-card__btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const f = teacherFilters?.querySelector(`.filter[data-filter="${btn.dataset.filter}"]`);
+            if (f) f.click();
+            document.getElementById('teachers').scrollIntoView({ behavior: 'smooth' });
+        });
     });
 
-    // Инициализация кликера (автозагрузка сохранения)
-    if (window.clicker) window.clicker.init();
-})();
+    /* ---------- 11. Столовая ----------
+       CANTEEN_MENU — объект вида { 'Пн': { label, dishes:[...] }, ... }.
+       Табы генерируем по ключам, панель — по массиву dishes. */
+    const canteenTabs  = document.getElementById('canteenTabs');
+    const canteenPanel = document.getElementById('canteenPanel');
+
+    if (canteenTabs && typeof CANTEEN_MENU !== 'undefined') {
+        const dayKeys = Object.keys(CANTEEN_MENU);
+
+        function renderCanteen(key) {
+            canteenPanel.innerHTML = '';
+            CANTEEN_MENU[key].dishes.forEach(d => {
+                const row = document.createElement('div');
+                row.className = 'dish'
+                    + (d.free ? ' dish--free' : '')
+                    + (d.meme ? ' dish--meme' : '');
+                row.innerHTML = `
+                    <div class="dish__emoji">${d.emoji}</div>
+                    <div class="dish__info">
+                        <div class="dish__name">${d.name}</div>
+                        ${d.note ? `<div class="dish__note">${d.note}</div>` : ''}
+                    </div>
+                    <div class="dish__price">${d.price}</div>`;
+                canteenPanel.appendChild(row);
+            });
+        }
+
+        // Строим табы + сразу открываем первый день недели.
+        dayKeys.forEach((key, idx) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'tab' + (idx === 0 ? ' is-active' : '');
+            b.textContent = CANTEEN_MENU[key].label;
+            b.addEventListener('click', () => {
+                canteenTabs.querySelectorAll('.tab').forEach(t => t.classList.remove('is-active'));
+                b.classList.add('is-active');
+                renderCanteen(key);
+            });
+            canteenTabs.appendChild(b);
+        });
+        renderCanteen(dayKeys[0]);
+    }
+
+    /* ---------- 12. Достижения ----------
+       Динамически создаём блоки из ACHIEVEMENTS.
+       requestAnimationFrame — чтобы observer подхватил новые
+       элементы ПОСЛЕ их вставки в DOM и запустил им .reveal. */
+    const achList = document.getElementById('achievementsList');
+    if (achList && typeof ACHIEVEMENTS !== 'undefined') {
+        ACHIEVEMENTS.forEach(a => {
+            const el = document.createElement('div');
+            el.className = `achievement achievement--${a.type} reveal`;
+            el.innerHTML = `<div class="achievement__icon">${a.icon}</div><div class="achievement__body"><h3>${a.title}</h3><p>${a.text}</p></div>`;
+            achList.appendChild(el);
+            requestAnimationFrame(() => observer.observe(el));
+        });
+    }
+
+    /* ---------- 13. Галерея ----------
+       Аналогично достижениям: строим figure из массива GALLERY.
+       Флаг wide даёт элементу span на 2 колонки. */
+    const galleryGrid = document.getElementById('galleryGrid');
+    if (galleryGrid && typeof GALLERY !== 'undefined') {
+        GALLERY.forEach(g => {
+            const fig = document.createElement('figure');
+            fig.className = 'gallery__item reveal' + (g.wide ? ' gallery__item--wide' : '');
+            fig.innerHTML = `<img src="${g.src}" alt="${g.caption}" loading="lazy"><figcaption>${g.caption}</figcaption>`;
+            galleryGrid.appendChild(fig);
+            requestAnimationFrame(() => observer.observe(fig));
+        });
+    }
+
+    /* ---------- 14. Форма обратной связи ----------
+       - Валидация по правилам (rules).
+       - Маска телефона приводит номер к виду +7 (XXX) XXX-XX-XX.
+       - Отправка через fetch на jsonplaceholder (демо-эндпоинт).
+       - Статус success/error выводим в #status.
+    */
+    const form      = document.getElementById('contactForm');
+    const statusEl  = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (form) {
+        // Каждое правило возвращает true (ок) или строку-сообщение об ошибке.
+        const rules = {
+            name:    v => { if (v.trim().length < 2) return 'Введите ФИО';
+                            if (!/^[А-Яа-яЁёA-Za-z\s\-]+$/.test(v.trim())) return 'Только буквы';
+                            return true; },
+            phone:   v => v.replace(/\D/g, '').length < 11 ? 'Введите корректный телефон' : true,
+            message: v => v.trim().length < 10 ? 'Минимум 10 символов' : true,
+        };
+
+        function validate(input) {
+            const r = rules[input.name]; if (!r) return true;
+            const res = r(input.value);
+            const err = document.querySelector(`.error[data-for="${input.name}"]`);
+            if (res === true) {
+                input.classList.remove('invalid');
+                if (err) err.textContent = '';
+                return true;
+            }
+            input.classList.add('invalid');
+            if (err) err.textContent = res;
+            return false;
+        }
+
+        // Проверка при уходе с поля + перепроверка при исправлении,
+        // но только если поле уже было помечено invalid — чтобы не мигало.
+        form.querySelectorAll('input, textarea').forEach(inp => {
+            inp.addEventListener('blur',  () => validate(inp));
+            inp.addEventListener('input', () => { if (inp.classList.contains('invalid')) validate(inp); });
+        });
+
+        // Маска телефона: удаляем всё лишнее, начинаем с 7, форматируем по шаблону.
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', (e) => {
+            let v = e.target.value.replace(/\D/g, '');
+            if (v.startsWith('8')) v = '7' + v.slice(1);
+            if (v && !v.startsWith('7')) v = '7' + v;
+
+            let f = '';
+            if (v.length > 0) f  = '+7';
+            if (v.length > 1) f += ' (' + v.slice(1, 4);
+            if (v.length >= 5) f += ') ' + v.slice(4, 7);
+            if (v.length >= 8) f += '-'  + v.slice(7, 9);
+            if (v.length >= 10) f += '-' + v.slice(9, 11);
+            e.target.value = f;
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Валидируем все поля. .map(validate).every(Boolean) — true,
+            // если каждое вернуло true.
+            const ok = [...form.querySelectorAll('input, textarea')].map(validate).every(Boolean);
+            if (!ok) {
+                statusEl.textContent = 'Исправьте ошибки';
+                statusEl.className = 'status error';
+                return;
+            }
+
+            // Блокируем кнопку и показываем «Отправка…», чтобы не спамили.
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+            statusEl.textContent = ''; statusEl.className = 'status';
+
+            try {
+                const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: form.name.value.trim(),
+                        phone: form.phone.value.trim(),
+                        message: form.message.value.trim()
+                    })
+                });
+                if (!res.ok) throw new Error();
+                statusEl.textContent = '✅ Обращение отправлено! Мы свяжемся с вами в течение рабочего дня.';
+                statusEl.className = 'status success';
+                form.reset();
+            } catch {
+                statusEl.textContent = '❌ Не удалось отправить. Позвоните: +7 (38564) 2-45-10';
+                statusEl.className = 'status error';
+            } finally {
+                // Разблокировка кнопки — в любом случае.
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить';
+            }
+        });
+    }
+
+    /* ---------- 15. Год в подвале ----------
+       Вместо «2026» руками — new Date().getFullYear(). */
+    const yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+});

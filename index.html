@@ -1,193 +1,274 @@
 <!DOCTYPE html>
-<html lang="ru">
+<!--
+  ЯСОШ · Главная страница
+  =========================================================
+  Порядок секций: hero → about → levels → news →
+  achievements (+ промо игры) → contacts (список + форма) → footer.
+  Вся интерактивность — в js/main.js, контент — в js/data.js.
+-->
+<html lang="ru" class="no-js">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Starve Neon</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/blog.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="МБОУ «Яготинская средняя общеобразовательная школа» Благовещенского района Алтайского края. Официальный сайт.">
+<title>ЯСОШ — Главная</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <canvas id="bgCanvas"></canvas>
 
-    <!-- АВТОРИЗАЦИЯ: компактный блок (без лишней кнопки) -->
-    <div class="auth-bar">
-        <div id="authStatus" class="auth-status">🔒 Не авторизован</div>
+<!-- ============ ШАПКА (одинаковая на всех страницах) ============ -->
+<header class="header" id="header">
+    <div class="container header__inner">
+        <a href="index.html" class="logo">
+            <span class="logo__mark">ЯС</span>
+            <span class="logo__text">
+                Яготинская школа
+                <small>Благовещенский район · Алтайский край</small>
+            </span>
+        </a>
+
+        <!-- Навигация между страницами и якорями внутри них. -->
+        <nav class="nav" id="nav">
+            <ul class="nav__list">
+                <li><a href="index.html"              class="nav__link">Главная</a></li>
+                <li><a href="info.html"               class="nav__link">О школе</a></li>
+                <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
+                <li><a href="index.html#news"         class="nav__link">Новости</a></li>
+                <li><a href="school.html#schedule"    class="nav__link">Расписание</a></li>
+                <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
+                <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
+                <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
+                <li><a href="school.html#gallery"     class="nav__link">Галерея</a></li>
+                <li><a href="index.html#contacts"     class="nav__link">Контакты</a></li>
+            </ul>
+        </nav>
+
+        <div class="header__actions">
+            <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+                <svg class="icon-sun"  viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <button class="burger" id="burger" aria-label="Меню">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
     </div>
+</header>
 
-    <!-- МОДАЛКА ТОКЕНА с объяснением и быстрой ссылкой -->
-    <div id="tokenModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content" style="max-width: 400px;">
-            <h3>🔐 Вход через GitHub</h3>
-            <div style="font-size: 0.75rem; text-align: left; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 8px; margin-bottom: 10px;">
-                <p><strong>Зачем нужен токен?</strong> - для сохранения игрового прогресса в облаке (Gist) и постов.</p>
-                <p><strong>Требуемые scopes:</strong> <code>repo</code> для постов и <code>gist</code> для сохранений игр.</p>
-                <p><a href="https://github.com/settings/tokens" target="_blank" style="color: #ffaa44;">→ Быстрый переход к созданию токена ←</a></p>
-                <p style="font-size:0.65rem; margin-top:6px;">Токен хранится локально в зашифрованном виде и никуда не передаётся.</p>
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero">
+    <div class="container hero__inner">
+        <div class="hero__text reveal">
+            <p class="hero__eyebrow">с. Яготино · осн. 1938</p>
+            <h1 class="hero__title">Школа, где<br>растут люди</h1>
+            <p class="hero__lead">
+                МБОУ «Яготинская СОШ» — сельская школа с почти вековой историей.
+                11 классов, 28 педагогов, своя столовая и спортзал.
+                Мы учим думать, а не заучивать.
+            </p>
+            <div class="hero__actions">
+                <a href="school.html#schedule" class="btn btn--primary">Расписание</a>
+                <a href="info.html"            class="btn btn--ghost">О школе</a>
             </div>
-            <input type="password" id="githubTokenInput" placeholder="ghp_..." style="width:100%; padding:8px; margin-bottom:12px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
-            <button id="submitTokenBtn" class="game-btn" style="margin-bottom:6px;">✅ Войти / Зарегистрироваться</button>
-            <button id="cancelTokenBtn" class="back-btn">Отмена</button>
-            <button id="logoutGithubBtn" class="back-btn" style="margin-top:8px;">🚪 Выйти</button>
-        </div>
-    </div>
-
-    <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
-    <div class="container">
-        <h1>
-            <span class="line">STARVE</span>
-            <span class="line accent">NEON</span>
-        </h1>
-
-        <div class="video-stretch">
-            <video src="images/video1.webm" autoplay loop muted playsinline></video>
-        </div>
-
-        <div class="card">
-            <h2>🌑 О проекте</h2>
-            <p><strong>Starve Neon</strong> - безжалостный симулятор выживания. Ты окажешься в мире, где нет пощады: собирай ресурсы, создавай оружие и снаряжение, строй убежища и сражайся.</p>
-        </div>
-
-        <div class="video-stretch">
-            <video src="images/video2.webm" autoplay loop muted playsinline></video>
-        </div>
-
-        <div class="card">
-            <h2>⚡ Особенности</h2>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-                <li>Полный цикл крафта (от копья до минигана)</li>
-                <li>Броня, модули, генетические улучшения</li>
-                <li>Фракции, клановые войны, рейды</li>
-                <li>Приручение существ и PvP-арена</li>
-                <li>Кроссплатформенность: Windows и Android</li>
+            <ul class="hero__stats">
+                <li><strong>312</strong><span>учеников</span></li>
+                <li><strong>28</strong><span>педагогов</span></li>
+                <li><strong>87</strong><span>лет школе</span></li>
             </ul>
         </div>
 
-        <div class="video-stretch">
-            <video src="images/video3.webm" autoplay loop muted playsinline></video>
-        </div>
-
-        <div class="card">
-            <h2>💻 Системные требования</h2>
-            <div class="specs-grid">
-                <div>FPS 60<br>Xeon E5‑2650 v2<br>GT 730</div>
-                <div>FPS 120<br>Athlon X4 840<br>GT 1030</div>
-                <div>FPS 600<br>Ryzen 7 7435HS<br>RTX 3050</div>
+        <div class="hero__art reveal" aria-hidden="true">
+            <div class="hero__board">
+                <p class="hero__board-title">Сегодня в школе</p>
+                <ul class="hero__board-list">
+                    <li><span>08:30</span> Первый звонок</li>
+                    <li><span>13:00</span> Обед · 5–7 классы</li>
+                    <li><span>15:30</span> Робототехника</li>
+                    <li><span>17:00</span> Собрание 9а</li>
+                </ul>
             </div>
         </div>
-
-        <div class="links">
-            <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon" target="_blank">🌐 Играть / Сайт</a>
-            <a href="https://github.com/NeonShadowYT/NeonImperium" target="_blank" class="alt">📁 GitHub</a>
-        </div>
-
-        <!-- БЛОК НОВОСТЕЙ / БЛОГА -->
-        <div class="blog-section">
-            <div class="blog-header">
-                <h2 class="blog-title">📰 Последние новости</h2>
-                <div id="createPostBtnWrapper" class="create-post-wrapper" style="display: none;">
-                    <button id="openCreatePostModal" class="category-btn">➕ Создать пост</button>
-                </div>
-            </div>
-            <div class="posts-categories" id="categories-container"></div>
-            <div class="posts-list" id="posts-container"></div>
-            <div id="pagination-container"></div>
-        </div>
-
-        <!-- МОДАЛЬНОЕ ОКНО СОЗДАНИЯ ПОСТА -->
-        <div id="createPostModal" class="modal-overlay" style="display:none;">
-            <div class="modal-content" style="max-width: 700px;">
-                <h3>✏️ Создать новый пост</h3>
-                <form id="createPostForm">
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Заголовок</label>
-                        <input type="text" id="postTitle" required style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
-                    </div>
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Текст (Markdown)</label>
-                        <div id="createToolbar" class="markdown-toolbar">
-                            <button type="button" data-cmd="bold">B</button>
-                            <button type="button" data-cmd="italic">I</button>
-                            <button type="button" data-cmd="h1">H1</button>
-                            <button type="button" data-cmd="h2">H2</button>
-                            <button type="button" data-cmd="ul">•</button>
-                            <button type="button" data-cmd="ol">1.</button>
-                            <button type="button" data-cmd="link">🔗</button>
-                            <button type="button" data-cmd="table">⎔ Таблица</button>
-                        </div>
-                        <textarea id="postBody" rows="10" style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px; font-family:monospace;"></textarea>
-                    </div>
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Метки (через запятую)</label>
-                        <input type="text" id="postLabels" placeholder="Новости, Обновления, События, DevLog" style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
-                        <small style="color:#aaa;">Доступные: Новости, Обновления, События, DevLog</small>
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button type="submit" class="game-btn">✅ Опубликовать</button>
-                        <button type="button" id="closeCreatePostModal" class="back-btn">Отмена</button>
-                    </div>
-                </form>
-                <div id="postCreationStatus" style="margin-top: 10px; font-size:0.75rem;"></div>
-            </div>
-        </div>
-
-        <!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ПОСТА -->
-        <div id="editPostModal" class="modal-overlay" style="display:none;">
-            <div class="modal-content" style="max-width: 700px;">
-                <h3>✏️ Редактировать пост</h3>
-                <form id="editPostForm">
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Заголовок</label>
-                        <input type="text" id="editPostTitle" required style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
-                    </div>
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Текст (Markdown)</label>
-                        <div id="editToolbar" class="markdown-toolbar">
-                            <button type="button" data-cmd="bold">B</button>
-                            <button type="button" data-cmd="italic">I</button>
-                            <button type="button" data-cmd="h1">H1</button>
-                            <button type="button" data-cmd="h2">H2</button>
-                            <button type="button" data-cmd="ul">•</button>
-                            <button type="button" data-cmd="ol">1.</button>
-                            <button type="button" data-cmd="link">🔗</button>
-                            <button type="button" data-cmd="table">⎔ Таблица</button>
-                        </div>
-                        <textarea id="editPostBody" rows="10" style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px; font-family:monospace;"></textarea>
-                    </div>
-                    <div style="margin-bottom: 0.8rem;">
-                        <label>Метки (через запятую)</label>
-                        <input type="text" id="editPostLabels" placeholder="Новости, Обновления" style="width:100%; padding:6px; background:#1e1e2a; border:1px solid #c44eff; color:white; border-radius:6px;">
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: center;">
-                        <button type="submit" class="game-btn">💾 Сохранить изменения</button>
-                        <button type="button" id="closeEditPostModal" class="back-btn">Отмена</button>
-                    </div>
-                </form>
-                <div id="editPostStatus" style="margin-top: 10px; font-size:0.75rem;"></div>
-            </div>
-        </div>
-
-        <footer>
-            © 2026 Studist · <a href="https://neonshadowyt.github.io/NeonImperium/license.html">Лицензия</a>
-        </footer>
     </div>
+</section>
 
-    <button class="mini-games-float" id="openMiniGames" title="Мини-игры">🎮</button>
+<!-- ============ О ШКОЛЕ ============ -->
+<section class="section section--alt" id="about">
+    <div class="container about">
+        <div class="about__text reveal">
+            <p class="section__eyebrow">О школе</p>
+            <h2 class="section__title">Обычная сельская школа<br>с необычными людьми</h2>
+            <p>Яготинская средняя общеобразовательная школа расположена в селе Яготино Благовещенского района Алтайского края. Школа открыта в 1938 году и с тех пор ни разу не закрывала двери. За это время из её стен вышло более четырёх тысяч выпускников.</p>
+            <p>Сегодня школа — это современное образовательное пространство: 22 учебных кабинета, два компьютерных класса, мастерская, спортивный зал, стадион, библиотека с фондом более 14 000 книг и собственная столовая на 120 мест. Кабинеты физики, химии и биологии оснащены цифровыми лабораториями.</p>
+            <p>Мы работаем по ФГОС и стараемся, чтобы за сухими формулировками не терялся главный смысл: ребёнок должен выйти из школы человеком, который умеет думать, договариваться и отвечать за свои слова.</p>
+            <ul class="about__list">
+                <li>Реализация ФГОС начального, основного и среднего общего образования</li>
+                <li>Профильное обучение в 10–11 классах: физмат и гуманитарный профиль</li>
+                <li>Внеурочная деятельность: 14 кружков и спортивных секций</li>
+                <li>Школьный спортивный клуб «Яготинский рубеж»</li>
+                <li>Бесплатное горячее питание для учеников 1–4 классов</li>
+                <li>Подвоз учеников из соседних сёл школьным автобусом</li>
+            </ul>
+        </div>
 
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content" id="modalInner"></div>
+        <div class="about__info reveal">
+            <div class="info-card"><span class="info-card__num">1938</span><span class="info-card__label">год основания</span></div>
+            <div class="info-card"><span class="info-card__num">312</span><span class="info-card__label">обучающихся</span></div>
+            <div class="info-card"><span class="info-card__num">28</span><span class="info-card__label">педагогов</span></div>
+            <div class="info-card"><span class="info-card__num">22</span><span class="info-card__label">кабинета</span></div>
+            <div class="info-card"><span class="info-card__num">14</span><span class="info-card__label">кружков</span></div>
+            <div class="info-card"><span class="info-card__num">100%</span><span class="info-card__label">сдача ЕГЭ по русскому</span></div>
+        </div>
     </div>
+</section>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="js/core.js"></script>
-    <script src="js/upgrade-manager.js"></script>
-    <script src="js/github-auth.js"></script>
-    <script src="js/clicker.js"></script>
-    <script src="js/tetris.js"></script>
-    <script src="js/snake.js"></script>
-    <script src="js/pong.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/blog.js"></script>
-    <script src="js/create-post.js"></script>
+<!-- ============ СТУПЕНИ ============ -->
+<section class="section" id="levels">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Ступени обучения</p>
+            <h2 class="section__title">Три ступени — три разных школы</h2>
+            <p class="section__lead">На каждой ступени свои задачи, свой режим и свои педагоги.</p>
+        </header>
+
+        <div class="levels">
+            <article class="level-card reveal">
+                <span class="level-card__range">1–4 классы</span>
+                <h3 class="level-card__title">Начальная школа</h3>
+                <p class="level-card__text">Первый учитель — почти член семьи. Учим читать, считать и не бояться ошибаться. Уроки по 40 минут, обязательная прогулка, горячее питание.</p>
+                <ul class="level-card__list">
+                    <li>Русский язык, математика, литературное чтение</li>
+                    <li>Окружающий мир, технология, ИЗО, музыка</li>
+                    <li>Английский язык со 2 класса</li>
+                    <li>ОРКСЭ в 4 классе</li>
+                </ul>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="junior">Учителя ступени →</button>
+            </article>
+
+            <article class="level-card level-card--accent reveal">
+                <span class="level-card__range">5–7 классы</span>
+                <h3 class="level-card__title">Основная школа</h3>
+                <p class="level-card__text">Самый сложный и самый интересный возраст. Появляются предметники и первые серьёзные проекты. Учим не теряться, когда всё меняется.</p>
+                <ul class="level-card__list">
+                    <li>Математика, русский язык, литература</li>
+                    <li>История, обществознание, география, биология</li>
+                    <li>Английский язык, информатика</li>
+                    <li>Физическая культура, ОБЖ, технология</li>
+                </ul>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="middle">Учителя ступени →</button>
+            </article>
+
+            <article class="level-card reveal">
+                <span class="level-card__range">8–11 классы</span>
+                <h3 class="level-card__title">Старшая школа</h3>
+                <p class="level-card__text">Время выбирать. Профильные классы, подготовка к ОГЭ и ЕГЭ, индивидуальные проекты и первый серьёзный разговор о будущем.</p>
+                <ul class="level-card__list">
+                    <li>Физика, химия, биология, информатика</li>
+                    <li>Алгебра и начала анализа, геометрия</li>
+                    <li>Профильные курсы по выбору</li>
+                    <li>Индивидуальный итоговый проект</li>
+                </ul>
+                <button class="btn btn--ghost btn--sm level-card__btn" data-filter="senior">Учителя ступени →</button>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- ============ НОВОСТИ (рендерит main.js) ============ -->
+<section class="section section--alt" id="news">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Новости и объявления</p>
+            <h2 class="section__title">Что происходит в школе</h2>
+            <p class="section__lead">Объявления, расписания, меню и школьная жизнь — коротко и по делу.</p>
+        </header>
+        <div class="news" id="newsList"></div>
+    </div>
+</section>
+
+<!-- ============ ДОСТИЖЕНИЯ + промо игры ============ -->
+<section class="section" id="achievements">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Достижения</p>
+            <h2 class="section__title">Наши победы и результаты</h2>
+            <p class="section__lead">Олимпиады, конкурсы, спорт — то, чем мы гордимся.</p>
+        </header>
+        <div class="achievements" id="achievementsList"></div>
+
+        <div class="game-promo reveal">
+            <div class="game-promo__image">
+                <img src="images/starve-neon.png" alt="Starve Neon — игра, созданная учеником школы">
+            </div>
+            <div class="game-promo__body">
+                <span class="game-promo__eyebrow">Ученик нашей школы</span>
+                <h3 class="game-promo__title">Starve Neon</h3>
+                <p class="game-promo__text">
+                    Ученик 7 класса разработал игру Starve Neon - хардкорный survival. По мотивам Rust и Escape From Tarkov в стилизованной графике Starve io. Уже доступен бесплатно на ПК и Android.
+                </p>
+                <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon"
+                   class="btn btn--primary btn--sm"
+                   target="_blank" rel="noopener">
+                    Перейти на страницу игры
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ КОНТАКТЫ + ФОРМА ============ -->
+<section class="section section--alt" id="contacts">
+    <div class="container contacts">
+        <div class="contacts__info reveal">
+            <p class="section__eyebrow">Контакты</p>
+            <h2 class="section__title">Как с нами связаться</h2>
+            <p class="contacts__lead">Приём граждан ведётся ежедневно, кроме субботы и воскресенья.</p>
+            <ul class="contacts__list">
+                <li><span class="contacts__label">Адрес</span><span>658672, Алтайский край, Благовещенский район, с. Яготино, ул. Школьная, д. 1</span></li>
+                <li><span class="contacts__label">Телефон</span><a href="tel:+73856424510">+7 (38564) 2-45-10</a></li>
+                <li><span class="contacts__label">Email</span><a href="mailto:yasosh.blag@edu22.ru">yasosh.blag@edu22.ru</a></li>
+                <li><span class="contacts__label">Директор</span><span>Ткачёв Виктор Анатольевич</span></li>
+                <li><span class="contacts__label">Часы работы</span><span>Пн–Пт 08:00–17:00, обед 12:00–13:00</span></li>
+            </ul>
+            <div class="contacts__extra">
+                <p><strong>Как добраться:</strong> с. Яготино расположено в 20 км от районного центра Благовещенка. От автовокзала ежедневно ходят рейсовые автобусы.</p>
+            </div>
+        </div>
+
+        <form class="contacts__form reveal" id="contactForm" novalidate>
+            <h3 class="contacts__form-title">Оставить обращение</h3>
+            <p class="contacts__form-sub">Ответим в течение одного рабочего дня</p>
+
+            <div class="field"><label for="name">ФИО</label><input type="text"  id="name"    name="name"    placeholder="Иванова Мария Петровна" required><span class="error" data-for="name"></span></div>
+            <div class="field"><label for="phone">Телефон</label><input type="tel" id="phone"   name="phone"   placeholder="+7 (___) ___-__-__"     required><span class="error" data-for="phone"></span></div>
+            <div class="field"><label for="message">Вопрос</label><textarea id="message" name="message" rows="4" placeholder="Опишите ваш вопрос..." required></textarea><span class="error" data-for="message"></span></div>
+
+            <button type="submit" class="btn btn--primary btn--full" id="submitBtn">Отправить</button>
+            <p class="status" id="status"></p>
+        </form>
+    </div>
+</section>
+
+<!-- ============ ПОДВАЛ ============ -->
+<footer class="footer">
+    <div class="container footer__inner">
+        <div>
+            <p class="footer__title">МБОУ «Яготинская средняя общеобразовательная школа»</p>
+            <p class="footer__text">© <span id="year"></span> Все права защищены. Благовещенский район, Алтайский край.</p>
+        </div>
+        <nav class="footer__nav">
+            <a href="info.html">О школе</a>
+            <a href="school.html#schedule">Расписание</a>
+            <a href="info.html#teachers">Учителя</a>
+            <a href="school.html#canteen">Столовая</a>
+            <a href="index.html#contacts">Контакты</a>
+        </nav>
+    </div>
+</footer>
+
+<button class="to-top" id="toTop" aria-label="Наверх">↑</button>
+
+<!-- data.js объявляет переменные, main.js их использует — порядок важен. -->
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

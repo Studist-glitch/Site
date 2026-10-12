@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--
+  ЯСОШ · Школьная жизнь
+  =========================================================
+  Секции: page-hero → расписание → столовая → галерея → footer.
+  Расписание и столовая рендерятся main.js из SCHEDULE / CANTEEN_MENU.
+  Галерея — из массива GALLERY.
+-->
+<html lang="ru" class="no-js">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Расписание уроков, меню школьной столовой и фотогалерея МБОУ «Яготинская СОШ».">
+<title>ЯСОШ — Школьная жизнь</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header" id="header">
+    <div class="container header__inner">
+        <a href="index.html" class="logo">
+            <span class="logo__mark">ЯС</span>
+            <span class="logo__text">
+                Яготинская школа
+                <small>Благовещенский район · Алтайский край</small>
+            </span>
+        </a>
+        <nav class="nav" id="nav">
+            <ul class="nav__list">
+                <li><a href="index.html"              class="nav__link">Главная</a></li>
+                <li><a href="info.html"               class="nav__link">О школе</a></li>
+                <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
+                <li><a href="index.html#news"         class="nav__link">Новости</a></li>
+                <li><a href="school.html#schedule"    class="nav__link">Расписание</a></li>
+                <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
+                <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
+                <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
+                <li><a href="school.html#gallery"     class="nav__link">Галерея</a></li>
+                <li><a href="index.html#contacts"     class="nav__link">Контакты</a></li>
+            </ul>
+        </nav>
+        <div class="header__actions">
+            <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+                <svg class="icon-sun"  viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <button class="burger" id="burger" aria-label="Меню">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<section class="page-hero">
+    <div class="container">
+        <p class="section__eyebrow">Расписание · питание · фото</p>
+        <h1 class="page-hero__title">Школьная жизнь</h1>
+        <p class="page-hero__lead">Всё, что помогает учиться и жить в школе: актуальное расписание уроков, меню столовой и фотографии из классов и со школьных праздников.</p>
+    </div>
+</section>
+
+<!-- ============ РАСПИСАНИЕ ============ -->
+<section class="section" id="schedule">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Расписание</p>
+            <h2 class="section__title">Расписание уроков</h2>
+            <p class="section__lead">Выберите класс и день недели. Расписание действует со II четверти 2025/2026 учебного года.</p>
+        </header>
+
+        <div class="schedule reveal">
+            <div class="schedule__controls">
+                <label class="schedule__select"><span>Класс</span><select id="classSelect"></select></label>
+                <label class="schedule__select"><span>День</span> <select id="daySelect"></select></label>
+            </div>
+
+            <div class="schedule__table-wrap">
+                <table class="sched">
+                    <thead>
+                        <tr><th class="sched__num">№</th><th class="sched__time">Время</th><th>Предмет</th><th class="sched__room">Кабинет</th></tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                </table>
+                <p class="schedule__empty" id="scheduleEmpty" hidden>В этот день уроков нет. Отдыхайте!</p>
+            </div>
+
+            <p class="schedule__note">В субботу занятия проводятся только для 9 и 11 классов (подготовка к экзаменам).</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ СТОЛОВАЯ ============ -->
+<section class="section section--alt" id="canteen">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Столовая</p>
+            <h2 class="section__title">Меню школьной столовой</h2>
+            <p class="section__lead">Готовим на месте, из местных продуктов. Ученики 1–4 классов питаются бесплатно.</p>
+        </header>
+
+        <div class="canteen reveal">
+            <div class="canteen__tabs"  id="canteenTabs"></div>
+            <div class="canteen__panel" id="canteenPanel"></div>
+        </div>
+
+        <div class="canteen__info reveal">
+            <div class="canteen__info-card"><h4>Режим работы</h4><p>Пн–Пт: 08:00 – 16:00<br>Обед: 11:20 – 14:00</p></div>
+            <div class="canteen__info-card"><h4>Стоимость</h4><p>1–4 классы — бесплатно<br>5–11 классы — 85 ₽ / день</p></div>
+            <div class="canteen__info-card"><h4>Льготники</h4><p>Дети из многодетных семей — бесплатно, по заявлению</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ ГАЛЕРЕЯ ============ -->
+<section class="section" id="gallery">
+    <div class="container">
+        <header class="section__head reveal">
+            <p class="section__eyebrow">Галерея</p>
+            <h2 class="section__title">Наша школьная жизнь</h2>
+            <p class="section__lead">Фотографии из классов, со спортивных соревнований и школьных праздников.</p>
+        </header>
+        <div class="gallery" id="galleryGrid"></div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container footer__inner">
+        <div>
+            <p class="footer__title">МБОУ «Яготинская средняя общеобразовательная школа»</p>
+            <p class="footer__text">© <span id="year"></span> Все права защищены. Благовещенский район, Алтайский край.</p>
+        </div>
+        <nav class="footer__nav">
+            <a href="info.html">О школе</a>
+            <a href="school.html#schedule">Расписание</a>
+            <a href="info.html#teachers">Учителя</a>
+            <a href="school.html#canteen">Столовая</a>
+            <a href="index.html#contacts">Контакты</a>
+        </nav>
+    </div>
+</footer>
+
+<button class="to-top" id="toTop" aria-label="Наверх">↑</button>
+
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
