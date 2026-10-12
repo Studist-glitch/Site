@@ -1,11 +1,12 @@
 /* =========================================================
-   ЯСОШ · Стили · v9
+   ЯСОШ · Стили · v10
    ---------------------------------------------------------
-   1. Переменные (:root) + тёмная тема (body.dark)
+   1. Переменные (:root) + тёмная тема (html.dark)
    2. Сброс и база
    3. Компоненты (header, hero, news, teachers, canteen, ...)
-   4. Служебные блоки (page-hero, info-grid) — для внутренних страниц
+   4. Служебные блоки (page-hero, info-grid)
    5. Адаптив
+   6. Стили отдельных страниц (.page-home / .page-info / .page-school)
    ========================================================= */
 
 :root {
@@ -40,10 +41,13 @@
 }
 
 /* ---------------------------------------------------------
-   ТЁМНАЯ ТЕМА. Переопределяем те же переменные — CSS сам
-   подхватит новые значения, дублировать селекторы не нужно.
+   ТЁМНАЯ ТЕМА.
+   Класс .dark висит на <html>, а не на <body>: его ставит
+   инлайн-скрипт в <head> ДО парсинга body — так тема
+   применяется без вспышки светлой.
+   Переменные каскадируются на body и всё, что внутри.
    --------------------------------------------------------- */
-body.dark {
+html.dark {
     --bg:          #0d0d0d;
     --bg-alt:      #141414;
     --surface:     #1c1c1c;
@@ -64,8 +68,6 @@ body.dark {
 
 /* =========================================================
    СБРОС И БАЗА
-   box-sizing:border-box — padding/border входят в width,
-   без него ломаются расчёты сеток.
    ========================================================= */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -92,7 +94,9 @@ button { font: inherit; cursor: pointer; }
 
 .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 32px; }
 
-/* Пока на <html> висит .no-js — .reveal виден без JS. */
+/* .no-js вешается на <html>. Если JS выключен — .reveal виден
+   сразу, без анимации. Если включён — инлайн-скрипт в <head>
+   снимает .no-js до первого пейнта. */
 .no-js .reveal { opacity: 1 !important; transform: none !important; }
 
 /* =========================================================
@@ -108,7 +112,7 @@ button { font: inherit; cursor: pointer; }
 }
 .btn--primary          { background: var(--primary); color: #fff; }
 .btn--primary:hover    { background: var(--primary-h); color: #fff; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(46, 125, 50, .25); }
-body.dark .btn--primary:hover { box-shadow: 0 12px 28px rgba(255, 152, 0, .3); }
+html.dark .btn--primary:hover { box-shadow: 0 12px 28px rgba(255, 152, 0, .3); }
 .btn--ghost            { background: transparent; color: var(--text); border-color: var(--border); }
 .btn--ghost:hover      { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
 .btn--full             { width: 100%; }
@@ -116,7 +120,6 @@ body.dark .btn--primary:hover { box-shadow: 0 12px 28px rgba(255, 152, 0, .3); }
 
 /* =========================================================
    ШАПКА
-   Фиксирована сверху. Полупрозрачный фон + blur = «стекло».
    ========================================================= */
 .header {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -125,7 +128,7 @@ body.dark .btn--primary:hover { box-shadow: 0 12px 28px rgba(255, 152, 0, .3); }
     border-bottom: 1px solid transparent;
     transition: border-color var(--tr), box-shadow var(--tr), background .4s ease;
 }
-body.dark .header { background: rgba(13, 13, 13, .85); }
+html.dark .header { background: rgba(13, 13, 13, .85); }
 .header.scrolled  { border-bottom-color: var(--border); box-shadow: var(--shadow-sm); }
 
 .header__inner { display: flex; align-items: center; justify-content: space-between; height: 78px; gap: 20px; }
@@ -137,14 +140,13 @@ body.dark .header { background: rgba(13, 13, 13, .85); }
     font-size: 1.02rem; letter-spacing: .5px;
     box-shadow: 0 6px 16px rgba(46, 125, 50, .25);
 }
-body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0, .3); }
+html.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0, .3); }
 .logo__text       { font-size: .94rem; display: flex; flex-direction: column; }
 .logo__text small { font-size: .72rem; font-weight: 500; color: var(--text-muted); font-family: var(--font-body); margin-top: 2px; }
 
 /* =========================================================
    НАВИГАЦИЯ
-   Короткий список верхнего уровня (5 пунктов) + выпадающие
-   подменю .nav__sub у групп «О школе» и «Школьная жизнь».
+   5 пунктов верхнего уровня + выпадающие подменю .nav__sub.
    ========================================================= */
 .nav__list { display: flex; gap: 22px; align-items: center; }
 
@@ -171,7 +173,6 @@ body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0,
 .nav__item--has-sub:hover .nav__caret,
 .nav__item--has-sub:focus-within .nav__caret { transform: rotate(180deg); }
 
-/* --- Подменю. По умолчанию скрыто, всплывает при hover/focus. --- */
 .nav__sub {
     position: absolute; top: calc(100% + 10px); left: -12px;
     min-width: 220px;
@@ -185,8 +186,6 @@ body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0,
     transition: opacity var(--tr), transform var(--tr), visibility var(--tr);
     z-index: 10;
 }
-/* Невидимый «мостик» — чтобы курсор не терял hover между
-   пунктом меню и подменю (иначе оно моргает). */
 .nav__sub::before {
     content: ''; position: absolute; top: -10px; left: 0;
     width: 100%; height: 10px;
@@ -196,21 +195,14 @@ body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0,
     opacity: 1; visibility: visible; transform: translateY(0);
 }
 .nav__sub li a {
-    display: block;
-    padding: 8px 18px;
-    font-size: .88rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-    transition: all var(--tr);
+    display: block; padding: 8px 18px;
+    font-size: .88rem; color: var(--text-muted);
+    white-space: nowrap; transition: all var(--tr);
 }
-.nav__sub li a:hover {
-    color: var(--primary);
-    background: var(--primary-soft);
-}
+.nav__sub li a:hover { color: var(--primary); background: var(--primary-soft); }
 
 .header__actions { display: flex; align-items: center; gap: 10px; }
 
-/* --- Переключатель темы. Показываем одну из двух SVG через body.dark. --- */
 .theme-toggle {
     width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border);
     background: var(--surface); color: var(--text-muted); display: grid; place-items: center;
@@ -218,10 +210,9 @@ body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0,
 }
 .theme-toggle:hover         { border-color: var(--primary); color: var(--primary); }
 .theme-toggle .icon-moon    { display: none; }
-body.dark .theme-toggle .icon-sun  { display: none; }
-body.dark .theme-toggle .icon-moon { display: block; }
+html.dark .theme-toggle .icon-sun  { display: none; }
+html.dark .theme-toggle .icon-moon { display: block; }
 
-/* --- Бургер: 3 полоски → крестик при .active. --- */
 .burger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 44px; height: 44px; background: transparent; border: none; }
 .burger span { display: block; height: 2px; width: 22px; background: var(--text); transition: all var(--tr); border-radius: 2px; }
 .burger.active span:nth-child(1) { transform: translateY(7px)  rotate(45deg); }
@@ -229,7 +220,7 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .burger.active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* =========================================================
-   HERO (главная)
+   HERO
    ========================================================= */
 .hero { padding: 160px 0 120px; position: relative; overflow: hidden; }
 .hero__inner { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: center; }
@@ -256,7 +247,7 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .hero__board-list li span { font-family: 'Courier New', monospace; font-size: .84rem; color: var(--primary); font-weight: 600; min-width: 52px; }
 
 /* =========================================================
-   СЕКЦИИ (общие обёртки)
+   СЕКЦИИ
    ========================================================= */
 .section      { padding: var(--space) 0; }
 .section--alt { background: var(--bg-alt); }
@@ -266,7 +257,7 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .section__lead    { color: var(--text-muted); font-size: 1.04rem; }
 
 /* =========================================================
-   ABOUT (главная)
+   ABOUT
    ========================================================= */
 .about { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: start; }
 .about__text p { color: var(--text-muted); margin-bottom: 16px; font-size: 1.01rem; }
@@ -327,7 +318,7 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .news-card__title { font-size: 1.15rem; font-family: var(--font-head); font-weight: 700; line-height: 1.3; margin-bottom: 10px; color: var(--text); }
 .news-card--featured .news-card__title { font-size: 1.4rem; }
 .news-card__text { color: #3d4d61; font-size: .95rem; line-height: 1.65; margin-bottom: 20px; flex: 1; }
-body.dark .news-card__text { color: #d8d8d8; }
+html.dark .news-card__text { color: #d8d8d8; }
 
 .news-card__reactions { display: flex; align-items: center; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: .86rem; color: var(--text-muted); }
 .reaction {
@@ -348,14 +339,14 @@ body.dark .news-card__text { color: #d8d8d8; }
 .news-card__comments { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); display: grid; gap: 12px; }
 .comment           { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; }
 .comment__avatar   { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
-body.dark .comment__avatar { color: #0d0d0d; }
+html.dark .comment__avatar { color: #0d0d0d; }
 .comment__body     { flex: 1; }
 .comment__name     { font-weight: 600; color: var(--text); font-size: .84rem; margin-bottom: 2px; }
 .comment__text     { color: var(--text-muted); line-height: 1.5; }
 .comment--meme .comment__avatar { background: var(--accent); }
 
 /* =========================================================
-   SCHEDULE (school.html)
+   SCHEDULE
    ========================================================= */
 .schedule { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px 32px 28px; box-shadow: var(--shadow-sm); }
 .schedule__controls { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
@@ -380,10 +371,10 @@ body.dark .comment__avatar { color: #0d0d0d; }
 .sched__room { font-size: .84rem; color: var(--text-muted); white-space: nowrap; width: 130px; }
 .schedule__empty { padding: 36px 20px; text-align: center; color: var(--text-muted); }
 .schedule__note  { margin-top: 16px; padding: 14px 18px; background: var(--accent-soft); border-radius: var(--radius-sm); font-size: .86rem; color: var(--accent); line-height: 1.5; }
-body.dark .schedule__note { color: #ffb74d; }
+html.dark .schedule__note { color: #ffb74d; }
 
 /* =========================================================
-   TEACHERS (info.html)
+   TEACHERS
    ========================================================= */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
 .filter {
@@ -394,7 +385,7 @@ body.dark .schedule__note { color: #ffb74d; }
 }
 .filter:hover       { border-color: var(--primary); color: var(--primary); }
 .filter.is-active   { background: var(--primary); border-color: var(--primary); color: #fff; }
-body.dark .filter.is-active { color: #0d0d0d; }
+html.dark .filter.is-active { color: #0d0d0d; }
 
 .teachers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
 .teacher {
@@ -415,7 +406,7 @@ body.dark .filter.is-active { color: #0d0d0d; }
     background: rgba(255, 255, 255, .92); color: var(--primary);
     backdrop-filter: blur(6px);
 }
-body.dark .teacher__stage        { background: rgba(0, 0, 0, .75); color: var(--primary); }
+html.dark .teacher__stage        { background: rgba(0, 0, 0, .75); color: var(--primary); }
 .teacher__stage--middle          { color: var(--accent); }
 .teacher__stage--senior          { color: var(--danger); }
 
@@ -426,7 +417,7 @@ body.dark .teacher__stage        { background: rgba(0, 0, 0, .75); color: var(--
 .teacher__meta span { display: block; }
 
 /* =========================================================
-   CANTEEN (school.html)
+   CANTEEN
    ========================================================= */
 .canteen { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px 32px; box-shadow: var(--shadow-sm); }
 .canteen__tabs { display: flex; flex-wrap: wrap; gap: 10px; padding-bottom: 22px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
@@ -444,7 +435,7 @@ body.dark .teacher__stage        { background: rgba(0, 0, 0, .75); color: var(--
     background: var(--primary); border-color: var(--primary); color: #fff;
     box-shadow: 0 6px 16px rgba(46, 125, 50, .25);
 }
-body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
+html.dark .canteen__tabs .tab.is-active, html.dark .canteen .tab.is-active {
     color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0, .35);
 }
 
@@ -463,7 +454,7 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 .canteen__info-card p  { font-size: .9rem; color: var(--text-muted); line-height: 1.55; }
 
 /* =========================================================
-   ACHIEVEMENTS (главная)
+   ACHIEVEMENTS
    ========================================================= */
 .achievements { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 .achievement {
@@ -503,7 +494,7 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 .game-promo__text         { color: var(--text-muted); font-size: .96rem; line-height: 1.6; margin-bottom: 20px; max-width: 520px; }
 
 /* =========================================================
-   GALLERY (school.html)
+   GALLERY
    ========================================================= */
 .gallery { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 240px; gap: 18px; }
 .gallery__item        { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface); }
@@ -518,7 +509,7 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 }
 
 /* =========================================================
-   CONTACTS + ФОРМА (главная)
+   CONTACTS + ФОРМА
    ========================================================= */
 .contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
 .contacts__lead { color: var(--text-muted); margin-bottom: 28px; font-size: 1.01rem; }
@@ -547,7 +538,7 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 .status.error   { color: var(--danger); }
 
 /* =========================================================
-   PAGE-HERO (внутренние страницы: info.html, school.html)
+   PAGE-HERO (внутренние страницы)
    ========================================================= */
 .page-hero {
     padding: 140px 0 60px;
@@ -559,9 +550,7 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 .page-hero .section__eyebrow { margin-bottom: 16px; }
 
 /* =========================================================
-   INFO-GRID (info.html: реквизиты)
-   Две колонки карточек «label → value». info-row--wide
-   растягивается на всю ширину (для длинных значений).
+   INFO-GRID
    ========================================================= */
 .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 .info-row {
@@ -591,7 +580,6 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
 
 /* =========================================================
    TO-TOP
-   visibility:hidden — важно, чтобы скрытая кнопка не ловила клики.
    ========================================================= */
 .to-top {
     position: fixed; right: 28px; bottom: 28px;
@@ -601,30 +589,23 @@ body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
     transform: translateY(10px);
     transition: all var(--tr); box-shadow: var(--shadow-lg); z-index: 90;
 }
-body.dark .to-top { color: #0d0d0d; }
+html.dark .to-top { color: #0d0d0d; }
 .to-top.visible   { opacity: 1; visibility: visible; transform: translateY(0); }
 .to-top:hover     { background: var(--primary-h); transform: translateY(-3px); }
 
 /* =========================================================
-   REVEAL (анимация появления через IntersectionObserver)
+   REVEAL
    ========================================================= */
 .reveal          { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.visible  { opacity: 1; transform: translateY(0); }
 
 /* =========================================================
    АДАПТИВ
-   1100 — сжимаем меню и скрываем подпись логотипа
-   1024 — планшеты: сетки в 1–2 колонки
-    768 — мобильные: бургер, выезжающее меню, подменю плоско
-    480 — узкие телефоны: учителя в 1 колонку, кнопки на всю ширину
    ========================================================= */
 @media (max-width: 1100px) {
     .teachers    { grid-template-columns: repeat(3, 1fr); }
-    /* Сжимаем навигацию — 5 пунктов + 2 подменю должны влезать
-       в одну строку вплоть до включения бургера (768px). */
     .nav__list   { gap: 12px; }
     .nav__link   { font-size: .82rem; }
-    /* Подпись логотипа съедает место — оставляем только название. */
     .logo__text small { display: none; }
 }
 @media (max-width: 1024px) {
@@ -659,9 +640,6 @@ body.dark .to-top { color: #0d0d0d; }
     .nav__link             { display: block; padding: 14px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
     .nav__link::after      { display: none; }
 
-    /* Подменю на мобиле — плоский список, всегда развёрнут.
-       position:static вырывает его из absolute, min-width сбрасываем,
-       границы/тени убираем — выглядит как обычный список пунктов. */
     .nav__sub {
         position: static;
         opacity: 1; visibility: visible; transform: none;
@@ -670,7 +648,7 @@ body.dark .to-top { color: #0d0d0d; }
     }
     .nav__sub::before      { display: none; }
     .nav__sub li a {
-        padding: 12px 0 12px 20px;      /* отступ = визуальная иерархия */
+        padding: 12px 0 12px 20px;
         font-size: .96rem;
         white-space: normal;
         border-bottom: 1px solid var(--border);

@@ -2,9 +2,7 @@
 <!--
   ЯСОШ · Школьная жизнь
   =========================================================
-  Секции: page-hero → расписание → столовая → галерея → footer.
-  Расписание и столовая рендерятся main.js из SCHEDULE / CANTEEN_MENU.
-  Галерея — из массива GALLERY.
+  body.page-school — метка страницы для правил в style.css.
 -->
 <html lang="ru" class="no-js">
 <head>
@@ -13,8 +11,16 @@
 <meta name="description" content="Расписание уроков, меню школьной столовой и фотогалерея МБОУ «Яготинская СОШ».">
 <title>ЯСОШ — Школьная жизнь</title>
 <link rel="stylesheet" href="css/style.css">
+<!-- Снимаем no-js и ставим тему ДО первого пейнта — без мигания. -->
+<script>
+    document.documentElement.classList.remove('no-js');
+    try {
+        if (localStorage.getItem('yasoh-theme') === 'dark')
+            document.documentElement.classList.add('dark');
+    } catch (e) {}
+</script>
 </head>
-<body>
+<body class="page-school">
 
 <header class="header" id="header">
     <div class="container header__inner">

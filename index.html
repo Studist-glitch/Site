@@ -5,6 +5,9 @@
   Порядок секций: hero → about → levels → news →
   achievements (+ промо игры) → contacts (список + форма) → footer.
   Вся интерактивность — в js/main.js, контент — в js/data.js.
+
+  body.page-home — метка страницы. По ней в style.css (раздел
+  «Стили отдельных страниц») можно задать уникальные правила.
 -->
 <html lang="ru" class="no-js">
 <head>
@@ -13,14 +16,25 @@
 <meta name="description" content="МБОУ «Яготинская средняя общеобразовательная школа» Благовещенского района Алтайского края. Официальный сайт.">
 <title>ЯСОШ — Главная</title>
 <link rel="stylesheet" href="css/style.css">
+<!--
+  Инлайн-скрипт ДО body:
+    · снимает no-js (иначе .reveal мигают: видно → скрыто → видно);
+    · ставит .dark на <html> до первого пейнта — тёмная тема
+      применяется без вспышки светлой.
+  Ставим на <html>, а не на <body>: в этот момент body ещё нет,
+  а переменные из :root всё равно унаследуются вниз.
+-->
+<script>
+    document.documentElement.classList.remove('no-js');
+    try {
+        if (localStorage.getItem('yasoh-theme') === 'dark')
+            document.documentElement.classList.add('dark');
+    } catch (e) { /* приватный режим / заблокирован localStorage */ }
+</script>
 </head>
-<body>
+<body class="page-home">
 
-<!-- ============ ШАПКА ============
-     5 пунктов верхнего уровня: короткий список влезает в одну
-     строку на любой ширине. Разделы «О школе» и «Школьная жизнь»
-     сгруппированы в выпадающие подменю (.nav__sub).
-     На мобиле (≤768px) подменю разворачивается плоско — см. style.css. -->
+<!-- ============ ШАПКА ============ -->
 <header class="header" id="header">
     <div class="container header__inner">
         <a href="index.html" class="logo">
@@ -157,7 +171,6 @@
                     <li>Английский язык со 2 класса</li>
                     <li>ОРКСЭ в 4 классе</li>
                 </ul>
-                <!-- ?stage=junior читает main.js на info.html и включает нужный фильтр. -->
                 <a href="info.html?stage=junior#teachers" class="btn btn--ghost btn--sm level-card__btn">Учителя ступени →</a>
             </article>
 
@@ -190,7 +203,7 @@
     </div>
 </section>
 
-<!-- ============ НОВОСТИ (рендерит main.js) ============ -->
+<!-- ============ НОВОСТИ ============ -->
 <section class="section section--alt" id="news">
     <div class="container">
         <header class="section__head reveal">
@@ -215,8 +228,8 @@
         <div class="game-promo reveal">
             <div class="game-promo__image">
                 <img src="https://img.itch.zone/aW1nLzI2MTg5NTgyLmpwZw==/original/SOpohG.jpg"
-                    alt="Starve Neon — игра, созданная учеником школы"
-                    loading="lazy">
+                     alt="Starve Neon — игра, созданная учеником школы"
+                     loading="lazy">
             </div>
             <div class="game-promo__body">
                 <span class="game-promo__eyebrow">Ученик нашей школы</span>
@@ -225,8 +238,8 @@
                     Ученик 7 класса разработал игру Starve Neon - хардкорный survival. По мотивам Rust и Escape From Tarkov в стилизованной графике Starve io. Уже доступен бесплатно на ПК и Android.
                 </p>
                 <a href="https://neonshadowyt.github.io/NeonImperium/starve-neon"
-                class="btn btn--primary btn--sm"
-                target="_blank" rel="noopener">
+                   class="btn btn--primary btn--sm"
+                   target="_blank" rel="noopener">
                     Перейти на страницу игры
                 </a>
             </div>
@@ -286,7 +299,6 @@
 
 <button class="to-top" id="toTop" aria-label="Наверх">↑</button>
 
-<!-- data.js объявляет переменные, main.js их использует — порядок важен. -->
 <script src="js/data.js"></script>
 <script src="js/main.js"></script>
 </body>
