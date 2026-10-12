@@ -1,38 +1,67 @@
 /* =========================================================
    ЯСОШ · Стили · v5
+   ---------------------------------------------------------
+   Структура файла:
+     1. CSS-переменные (:root)  — цвета, размеры, тени, шрифты
+     2. Тёмная тема (body.dark) — переопределяет те же переменные
+     3. Сброс и базовая типографика
+     4. Компоненты (header, hero, news, teachers, ...)
+     5. Адаптив — три контрольные точки: 1100, 1024, 768, 480
+
+   Почему CSS-переменные:
+     - меняем цвет в одном месте — обновляется везде
+     - тёмная тема = просто другой набор значений (body.dark)
+     - нет дублирования и «магических» hex-кодов по файлу
    ========================================================= */
 
 :root {
-    --bg:          #fefcf5;
-    --bg-alt:      #f6f2e8;
-    --surface:     #ffffff;
+    /* --- Фоны (три уровня: страница, чередование секций, карточка) --- */
+    --bg:          #fefcf5;   /* основной фон страницы (тёплый белый) */
+    --bg-alt:      #f6f2e8;   /* фон чётных секций (section--alt) */
+    --surface:     #ffffff;   /* фон карточек (контрастнее страницы) */
+
+    /* --- Текст (основной и приглушённый — не чистый серый, а с синевой) --- */
     --text:        #1e2a37;
     --text-muted:  #56657a;
+
+    /* --- Границы и разделители --- */
     --border:      #e6e0d4;
 
-    --primary:     #2e7d32;
-    --primary-h:   #256b29;
-    --primary-soft: rgba(46, 125, 50, .1);
-    --accent:      #d97706;
+    /* --- Акценты --- */
+    --primary:     #2e7d32;   /* зелёный — главный цвет школы */
+    --primary-h:   #256b29;   /* hover-вариант (темнее) */
+    --primary-soft: rgba(46, 125, 50, .1);  /* полупрозрачный для фонов */
+    --accent:      #d97706;   /* оранжевый — для 5–7 классов и «мемных» комментов */
     --accent-soft: #fef3e2;
 
+    /* --- Статусы формы --- */
     --danger:      #c0392b;
     --success:     #27ae60;
 
+    /* --- Тени (три уровня глубины) --- */
     --shadow-sm:   0 2px 8px rgba(30, 42, 55, .05);
     --shadow:      0 8px 24px rgba(30, 42, 55, .08);
     --shadow-lg:   0 20px 48px rgba(30, 42, 55, .12);
 
+    /* --- Скругления, размеры, анимация --- */
     --radius:      16px;
     --radius-sm:   10px;
-    --container:   1200px;
-    --space:       110px;
-    --tr:          .3s cubic-bezier(.4, 0, .2, 1);
+    --container:   1200px;    /* макс. ширина контента */
+    --space:       110px;     /* вертикальные отступы секций */
+    --tr:          .3s cubic-bezier(.4, 0, .2, 1);  /* стандартный transition */
 
+    /* --- Шрифты: разные для тела и заголовков --- */
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-head: Georgia, 'Times New Roman', serif;
+    --font-head: Georgia, 'Times New Roman', serif;   /* серифный — «школьный» вид */
 }
 
+/* ---------------------------------------------------------
+   ТЁМНАЯ ТЕМА
+   Класс body.dark переопределяет те же переменные —
+   всё остальное CSS не трогаем, всё переключится само.
+   Тени темнее и «плотнее», потому что на чёрном фоне светлые
+   тени невидимы.
+   --------------------------------------------------------- */
 body.dark {
     --bg:          #0d0d0d;
     --bg-alt:      #141414;
@@ -41,6 +70,7 @@ body.dark {
     --text-muted:  #b0b0b0;
     --border:      #2f2f2f;
 
+    /* В тёмной теме зелёный плохо читается — меняем на оранжевый. */
     --primary:     #ff9800;
     --primary-h:   #e68a00;
     --primary-soft: rgba(255, 152, 0, .14);
@@ -52,8 +82,15 @@ body.dark {
     --shadow-lg:   0 20px 48px rgba(0, 0, 0, .6);
 }
 
+/* =========================================================
+   СБРОС И БАЗА
+   box-sizing:border-box — padding/border входят в width.
+   Без него любые padding ломают расчёты сеток.
+   ========================================================= */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* scroll-padding-top — при переходе по якорю браузер оставит
+   отступ сверху (иначе фиксированная шапка перекроет заголовок). */
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 
 body {
@@ -62,31 +99,31 @@ body {
     line-height: 1.7;
     background: var(--bg);
     color: var(--text);
-    overflow-x: hidden;
+    overflow-x: hidden;              /* защита от горизонтального скролла */
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    transition: background .4s ease, color .4s ease;
+    transition: background .4s ease, color .4s ease;   /* плавная смена темы */
 }
 
-h1, h2, h3, h4 {
-    font-family: var(--font-head);
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--text);
-}
+h1, h2, h3, h4 { font-family: var(--font-head); font-weight: 700; line-height: 1.2; color: var(--text); }
 
-img { max-width: 100%; display: block; }
-a { color: inherit; text-decoration: none; transition: color var(--tr); }
-a:hover { color: var(--primary); }
-ul { list-style: none; }
+img    { max-width: 100%; display: block; }
+a      { color: inherit; text-decoration: none; transition: color var(--tr); }
+a:hover{ color: var(--primary); }
+ul     { list-style: none; }
 button { font: inherit; cursor: pointer; }
 
+/* .container — центрирующая обёртка, ограничивает ширину контента. */
 .container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 32px; }
 
+/* Если JS не работает (.no-js на <html>), .reveal показывается сразу —
+   иначе элементы с opacity:0 останутся невидимыми навсегда. */
 .no-js .reveal { opacity: 1 !important; transform: none !important; }
 
 /* =========================================================
    КНОПКИ
+   Базовый .btn — neutral. Модификаторы задают цвет и стиль.
+   Используем display:inline-flex — легко выравнивать иконки/текст.
    ========================================================= */
 .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
@@ -96,28 +133,34 @@ button { font: inherit; cursor: pointer; }
     transition: all var(--tr); white-space: nowrap;
     background: transparent; color: var(--text);
 }
-.btn--primary { background: var(--primary); color: #fff; }
-.btn--primary:hover { background: var(--primary-h); color: #fff; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(46, 125, 50, .25); }
+.btn--primary          { background: var(--primary); color: #fff; }
+.btn--primary:hover    { background: var(--primary-h); color: #fff; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(46, 125, 50, .25); }
+/* В тёмной теме hover-тень тоже оранжевая, а не зелёная. */
 body.dark .btn--primary:hover { box-shadow: 0 12px 28px rgba(255, 152, 0, .3); }
-.btn--ghost { background: transparent; color: var(--text); border-color: var(--border); }
-.btn--ghost:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-.btn--full { width: 100%; }
-.btn--sm { padding: 10px 18px; font-size: .88rem; border-radius: 8px; }
+.btn--ghost            { background: transparent; color: var(--text); border-color: var(--border); }
+.btn--ghost:hover      { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.btn--full             { width: 100%; }
+.btn--sm               { padding: 10px 18px; font-size: .88rem; border-radius: 8px; }
 
 /* =========================================================
-   HEADER
+   ШАПКА
+   Фиксирована сверху. Полупрозрачный фон + backdrop-filter:blur
+   = «стеклянный» эффект, сквозь который виден контент при скролле.
    ========================================================= */
 .header {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     background: rgba(254, 252, 245, .85);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid transparent;
+    border-bottom: 1px solid transparent;     /* резерв под .scrolled */
     transition: border-color var(--tr), box-shadow var(--tr), background .4s ease;
 }
 body.dark .header { background: rgba(13, 13, 13, .85); }
-.header.scrolled { border-bottom-color: var(--border); box-shadow: var(--shadow-sm); }
+/* .scrolled вешает JS при прокрутке >20px — появляется тень и граница. */
+.header.scrolled  { border-bottom-color: var(--border); box-shadow: var(--shadow-sm); }
+
 .header__inner { display: flex; align-items: center; justify-content: space-between; height: 78px; gap: 20px; }
 
+/* --- Логотип --- */
 .logo { display: flex; align-items: center; gap: 14px; font-family: var(--font-head); font-weight: 700; line-height: 1.15; flex-shrink: 0; }
 .logo__mark {
     display: grid; place-items: center; width: 44px; height: 44px;
@@ -126,39 +169,56 @@ body.dark .header { background: rgba(13, 13, 13, .85); }
     box-shadow: 0 6px 16px rgba(46, 125, 50, .25);
 }
 body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0, .3); }
-.logo__text { font-size: .94rem; display: flex; flex-direction: column; }
+.logo__text       { font-size: .94rem; display: flex; flex-direction: column; }
 .logo__text small { font-size: .72rem; font-weight: 500; color: var(--text-muted); font-family: var(--font-body); margin-top: 2px; }
 
+/* --- Навигация ---
+   ::after — нижнее подчёркивание. Ширина 0 → 100% при hover:
+   получается плавная «прорисовка» слева-направо.
+   Не используем border-bottom, чтобы не сдвигать текст. */
 .nav__list { display: flex; gap: 22px; }
 .nav__link { font-size: .9rem; font-weight: 500; color: var(--text-muted); position: relative; padding: 4px 0; }
 .nav__link::after { content: ''; position: absolute; left: 0; bottom: -2px; width: 0; height: 2px; background: var(--primary); transition: width var(--tr); }
-.nav__link:hover { color: var(--text); }
-.nav__link:hover::after { width: 100%; }
+.nav__link:hover              { color: var(--text); }
+.nav__link:hover::after       { width: 100%; }
 
+/* --- Кнопки в шапке --- */
 .header__actions { display: flex; align-items: center; gap: 10px; }
 
+/* --- Переключатель темы ---
+   Показываем одну из двух SVG (солнце/луну) через body.dark.
+   Так избегаем замены иконки в JS. */
 .theme-toggle {
     width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border);
     background: var(--surface); color: var(--text-muted); display: grid; place-items: center;
     transition: all var(--tr); cursor: pointer;
 }
-.theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
-.theme-toggle .icon-moon { display: none; }
-body.dark .theme-toggle .icon-sun { display: none; }
+.theme-toggle:hover         { border-color: var(--primary); color: var(--primary); }
+.theme-toggle .icon-moon    { display: none; }             /* по умолч. скрыт */
+body.dark .theme-toggle .icon-sun  { display: none; }
 body.dark .theme-toggle .icon-moon { display: block; }
 
+/* --- Бургер ---
+   Три <span> в столбик. При .active:
+     · верхний сдвигается вниз и поворачивается на 45°
+     · средний исчезает
+     · нижний сдвигается вверх и поворачивается на -45°
+   Получается «крестик» закрытия. */
 .burger { display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 44px; height: 44px; background: transparent; border: none; }
 .burger span { display: block; height: 2px; width: 22px; background: var(--text); transition: all var(--tr); border-radius: 2px; }
-.burger.active span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.burger.active span:nth-child(1) { transform: translateY(7px)  rotate(45deg); }
 .burger.active span:nth-child(2) { opacity: 0; }
 .burger.active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* =========================================================
-   HERO
+   HERO — первый экран
+   Сетка 1.1fr : .9fr — левая колонка чуть шире.
+   Справа «доска» с лёгким наклоном (-1deg) — живой вид.
    ========================================================= */
-.hero { padding: 160px 0 120px; position: relative; overflow: hidden; }
+.hero { padding: 160px 0 120px; position: relative; overflow: hidden; }  /* padding сверху = место под фикс. шапку */
 .hero__inner { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: center; }
 .hero__eyebrow { color: var(--primary); font-weight: 600; text-transform: uppercase; font-size: .78rem; letter-spacing: 1.8px; margin-bottom: 20px; }
+/* clamp(мин, идеал, макс) — размер адаптируется между мобилой и десктопом. */
 .hero__title { font-size: clamp(2.2rem, 4.5vw, 3.4rem); margin-bottom: 24px; }
 .hero__lead { font-size: 1.08rem; color: var(--text-muted); max-width: 540px; margin-bottom: 36px; }
 .hero__actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 52px; }
@@ -168,6 +228,7 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .hero__stats span { font-size: .85rem; color: var(--text-muted); }
 
 .hero__art { position: relative; aspect-ratio: 1 / 1; display: grid; place-items: center; }
+/* aspect-ratio держит пропорции даже при гибкой ширине. */
 .hero__board {
     width: min(400px, 100%); background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 28px 26px 24px; box-shadow: var(--shadow-lg);
@@ -181,42 +242,55 @@ body.dark .theme-toggle .icon-moon { display: block; }
 .hero__board-list li span { font-family: 'Courier New', monospace; font-size: .84rem; color: var(--primary); font-weight: 600; min-width: 52px; }
 
 /* =========================================================
-   СЕКЦИИ
+   СЕКЦИИ (обёртки)
+   .section      — вертикальные отступы
+   .section--alt — серо-бежевый фон (чередование)
    ========================================================= */
-.section { padding: var(--space) 0; }
+.section      { padding: var(--space) 0; }
 .section--alt { background: var(--bg-alt); }
 .section__head { max-width: 700px; margin-bottom: 64px; }
 .section__eyebrow { color: var(--primary); font-weight: 600; text-transform: uppercase; font-size: .76rem; letter-spacing: 1.8px; margin-bottom: 14px; }
-.section__title { font-size: clamp(1.7rem, 3vw, 2.4rem); margin-bottom: 14px; }
-.section__lead { color: var(--text-muted); font-size: 1.04rem; }
+.section__title   { font-size: clamp(1.7rem, 3vw, 2.4rem); margin-bottom: 14px; }
+.section__lead    { color: var(--text-muted); font-size: 1.04rem; }
 
 /* =========================================================
    ABOUT
    ========================================================= */
 .about { display: grid; grid-template-columns: 1.1fr .9fr; gap: 64px; align-items: start; }
 .about__text p { color: var(--text-muted); margin-bottom: 16px; font-size: 1.01rem; }
-.about__list { margin-top: 28px; display: grid; gap: 12px; }
+.about__list   { margin-top: 28px; display: grid; gap: 12px; }
 .about__list li { position: relative; padding-left: 32px; font-size: .96rem; line-height: 1.55; }
+/* «Галочка» через ::before — кружок с двойной обводкой (фон + inset-shadow). */
 .about__list li::before { content: ''; position: absolute; left: 0; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--primary-soft); box-shadow: inset 0 0 0 2px var(--primary); }
+
 .about__info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 18px; text-align: center; transition: all var(--tr); }
 .info-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: transparent; }
-.info-card__num { display: block; font-family: var(--font-head); font-size: 1.8rem; font-weight: 700; color: var(--primary); line-height: 1; margin-bottom: 8px; }
+.info-card__num   { display: block; font-family: var(--font-head); font-size: 1.8rem; font-weight: 700; color: var(--primary); line-height: 1; margin-bottom: 8px; }
 .info-card__label { font-size: .84rem; color: var(--text-muted); }
 
 /* =========================================================
-   LEVELS
+   LEVELS (3 карточки-ступени)
+   ::before — тонкая полоска сверху, разворачивается scaleX(0→1)
+   при hover. Это «премиальная» микро-анимация без JS.
    ========================================================= */
 .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.level-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 34px 28px; display: flex; flex-direction: column; transition: all var(--tr); position: relative; overflow: hidden; }
+.level-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 34px 28px; display: flex; flex-direction: column;
+    transition: all var(--tr); position: relative; overflow: hidden;
+}
 .level-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary); transform: scaleX(0); transform-origin: left; transition: transform .5s ease; }
 .level-card:hover::before { transform: scaleX(1); }
 .level-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: transparent; }
-.level-card--accent::before { background: var(--accent); }
+/* Модификатор --accent меняет цвет полосы и «таблетки» на оранжевый. */
+.level-card--accent::before          { background: var(--accent); }
 .level-card--accent .level-card__range { background: var(--accent-soft); color: var(--accent); }
+
 .level-card__range { display: inline-block; align-self: flex-start; padding: 4px 12px; background: var(--primary-soft); color: var(--primary); border-radius: 999px; font-size: .76rem; font-weight: 700; margin-bottom: 16px; }
 .level-card__title { font-size: 1.3rem; margin-bottom: 12px; }
-.level-card__text { color: var(--text-muted); font-size: .94rem; line-height: 1.6; margin-bottom: 20px; }
+.level-card__text  { color: var(--text-muted); font-size: .94rem; line-height: 1.6; margin-bottom: 20px; }
+/* flex:1 заставляет список растянуться — кнопка внизу карточки выровнена. */
 .level-card__list { display: grid; gap: 8px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); flex: 1; }
 .level-card__list li { position: relative; padding-left: 18px; font-size: .88rem; color: var(--text-muted); }
 .level-card__list li::before { content: ''; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--primary); opacity: .5; }
@@ -225,88 +299,59 @@ body.dark .theme-toggle .icon-moon { display: block; }
 
 /* =========================================================
    NEWS
+   Сетка 3 колонки. Первая карточка (featured) занимает 2 —
+   получается акцент на главной новости.
    ========================================================= */
 .news { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .news-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px 26px;
-    display: flex; flex-direction: column;
-    transition: all var(--tr);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px 26px; display: flex; flex-direction: column; transition: all var(--tr);
 }
-.news-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: transparent; }
-
-.news-card--featured { grid-column: span 2; }
+.news-card:hover             { transform: translateY(-4px); box-shadow: var(--shadow); border-color: transparent; }
+.news-card--featured         { grid-column: span 2; }
 
 .news-card__top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: .78rem; }
 .news-tag { padding: 4px 10px; border-radius: 999px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; font-size: .68rem; }
+/* Цветные «таблетки» для разных категорий новостей (см. data.js → n.tag). */
 .news-tag--schedule { background: var(--primary-soft); color: var(--primary); }
-.news-tag--food     { background: var(--accent-soft); color: var(--accent); }
+.news-tag--food     { background: var(--accent-soft);  color: var(--accent); }
 .news-tag--event    { background: rgba(39, 174, 96, .12); color: var(--success); }
 .news-tag--olymp    { background: rgba(192, 57, 43, .12); color: var(--danger); }
 .news-tag--info     { background: var(--bg-alt); color: var(--text-muted); }
 
-.news-card__date { color: var(--text-muted); font-weight: 500; }
-
-.news-card__title {
-    font-size: 1.15rem;
-    font-family: var(--font-head);
-    font-weight: 700;
-    line-height: 1.3;
-    margin-bottom: 10px;
-    color: var(--text);
-}
+.news-card__date  { color: var(--text-muted); font-weight: 500; }
+.news-card__title { font-size: 1.15rem; font-family: var(--font-head); font-weight: 700; line-height: 1.3; margin-bottom: 10px; color: var(--text); }
 .news-card--featured .news-card__title { font-size: 1.4rem; }
-
-.news-card__text {
-    color: #3d4d61;
-    font-size: .95rem;
-    line-height: 1.65;
-    margin-bottom: 20px;
-    flex: 1;
-}
+/* flex:1 прижимает блок реакций к низу карточки. */
+.news-card__text { color: #3d4d61; font-size: .95rem; line-height: 1.65; margin-bottom: 20px; flex: 1; }
 body.dark .news-card__text { color: #d8d8d8; }
 
-.news-card__reactions {
-    display: flex; align-items: center; gap: 16px;
-    padding-top: 16px; border-top: 1px solid var(--border);
-    font-size: .86rem; color: var(--text-muted);
-}
+.news-card__reactions { display: flex; align-items: center; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: .86rem; color: var(--text-muted); }
 .reaction {
     display: inline-flex; align-items: center; gap: 6px;
     background: transparent; border: none; color: inherit;
     padding: 4px 6px; border-radius: 8px;
     transition: all var(--tr); font-size: .86rem;
 }
-.reaction:hover { background: var(--primary-soft); color: var(--primary); }
-.reaction svg { width: 16px; height: 16px; flex-shrink: 0; }
-.reaction.is-liked { color: var(--danger); }
-.reaction.is-liked svg { fill: currentColor; }
-.reaction--toggle { margin-left: auto; }
+.reaction:hover          { background: var(--primary-soft); color: var(--primary); }
+.reaction svg            { width: 16px; height: 16px; flex-shrink: 0; }   /* фикс. размер = иконка не «прыгает» */
+.reaction.is-liked       { color: var(--danger); }
+.reaction.is-liked svg   { fill: currentColor; }   /* залитая сердечко при лайке */
+/* margin-left:auto сдвигает иконку комментариев вправо. */
+.reaction--toggle        { margin-left: auto; }
 
-/* Просмотры: не кликабельны */
-.reaction--static {
-    cursor: default;
-    pointer-events: none;
-    user-select: none;
-}
-.reaction--static:hover {
-    background: transparent;
-    color: var(--text-muted);
-}
+/* Просмотры — не кликабельны: убираем курсор, hover и выделение. */
+.reaction--static                 { cursor: default; pointer-events: none; user-select: none; }
+.reaction--static:hover           { background: transparent; color: var(--text-muted); }
 
-.news-card__comments {
-    margin-top: 14px; padding-top: 14px;
-    border-top: 1px dashed var(--border);
-    display: grid; gap: 12px;
-}
-.comment { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; }
-.comment__avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
-body.dark .comment__avatar { color: #0d0d0d; }
-.comment__body { flex: 1; }
-.comment__name { font-weight: 600; color: var(--text); font-size: .84rem; margin-bottom: 2px; }
-.comment__text { color: var(--text-muted); line-height: 1.5; }
+.news-card__comments { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); display: grid; gap: 12px; }
+.comment           { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; }
+.comment__avatar   { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: .72rem; font-weight: 700; flex-shrink: 0; }
+body.dark .comment__avatar { color: #0d0d0d; }    /* тёмный текст на оранжевом фоне */
+.comment__body     { flex: 1; }
+.comment__name     { font-weight: 600; color: var(--text); font-size: .84rem; margin-bottom: 2px; }
+.comment__text     { color: var(--text-muted); line-height: 1.5; }
+/* «Мемные» комментарии помечаются акцентным (оранжевым) аватаром. */
 .comment--meme .comment__avatar { background: var(--accent); }
 
 /* =========================================================
@@ -314,30 +359,34 @@ body.dark .comment__avatar { color: #0d0d0d; }
    ========================================================= */
 .schedule { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px 32px 28px; box-shadow: var(--shadow-sm); }
 .schedule__controls { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
-.schedule__select { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
-.schedule__select span { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+.schedule__select       { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+.schedule__select span  { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
 .schedule__select select {
     padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
     font-size: .96rem; font-family: var(--font-body);
     background: var(--bg); color: var(--text); cursor: pointer;
     transition: border-color var(--tr);
 }
+/* :focus — доступность: подсвечиваем рамку + мягкое свечение вокруг. */
 .schedule__select select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+/* overflow-x:auto — на узких экранах таблица скроллится, вёрстка не рвётся. */
 .schedule__table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
 .sched { width: 100%; border-collapse: collapse; font-size: .94rem; min-width: 480px; }
 .sched thead { background: var(--bg-alt); }
 .sched th { text-align: left; padding: 14px 18px; font-family: var(--font-head); font-weight: 700; font-size: .76rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
 .sched td { padding: 13px 18px; border-top: 1px solid var(--border); }
 .sched tbody tr:hover { background: var(--primary-soft); }
-.sched__num { width: 50px; font-family: var(--font-head); font-weight: 700; color: var(--primary); }
+.sched__num  { width: 50px; font-family: var(--font-head); font-weight: 700; color: var(--primary); }
 .sched__time { font-family: 'Courier New', monospace; font-size: .84rem; color: var(--text-muted); white-space: nowrap; }
 .sched__room { font-size: .84rem; color: var(--text-muted); white-space: nowrap; width: 130px; }
 .schedule__empty { padding: 36px 20px; text-align: center; color: var(--text-muted); }
-.schedule__note { margin-top: 16px; padding: 14px 18px; background: var(--accent-soft); border-radius: var(--radius-sm); font-size: .86rem; color: var(--accent); line-height: 1.5; }
+.schedule__note  { margin-top: 16px; padding: 14px 18px; background: var(--accent-soft); border-radius: var(--radius-sm); font-size: .86rem; color: var(--accent); line-height: 1.5; }
 body.dark .schedule__note { color: #ffb74d; }
 
 /* =========================================================
    TEACHERS
+   Кнопки-фильтры «таблетки» + сетка карточек 4-в-ряд.
    ========================================================= */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
 .filter {
@@ -346,8 +395,8 @@ body.dark .schedule__note { color: #ffb74d; }
     font-size: .88rem; font-weight: 600; color: var(--text-muted);
     transition: all var(--tr);
 }
-.filter:hover { border-color: var(--primary); color: var(--primary); }
-.filter.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.filter:hover       { border-color: var(--primary); color: var(--primary); }
+.filter.is-active   { background: var(--primary); border-color: var(--primary); color: #fff; }
 body.dark .filter.is-active { color: #0d0d0d; }
 
 .teachers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
@@ -357,9 +406,13 @@ body.dark .filter.is-active { color: #0d0d0d; }
     transition: all var(--tr); display: flex; flex-direction: column;
 }
 .teacher:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: transparent; }
-.teacher__photo { aspect-ratio: 4 / 5; overflow: hidden; background: var(--bg-alt); position: relative; }
+
+/* Фото 4:5. object-fit:cover — кадр заполняет без искажений.
+   object-position: top — обрезает снизу, головы не отрежутся. */
+.teacher__photo     { aspect-ratio: 4 / 5; overflow: hidden; background: var(--bg-alt); position: relative; }
 .teacher__photo img { width: 100%; height: 100%; object-fit: cover; object-position: center top; transition: transform .6s ease; }
 .teacher:hover .teacher__photo img { transform: scale(1.05); }
+
 .teacher__stage {
     position: absolute; top: 10px; left: 10px;
     padding: 3px 10px; border-radius: 999px;
@@ -367,12 +420,15 @@ body.dark .filter.is-active { color: #0d0d0d; }
     background: rgba(255, 255, 255, .92); color: var(--primary);
     backdrop-filter: blur(6px);
 }
-body.dark .teacher__stage { background: rgba(0, 0, 0, .75); color: var(--primary); }
-.teacher__stage--middle { color: var(--accent); }
-.teacher__stage--senior { color: var(--danger); }
+body.dark .teacher__stage        { background: rgba(0, 0, 0, .75); color: var(--primary); }
+/* Разные цвета бейджа по ступени — визуально различать 1–4 / 5–7 / 8–11. */
+.teacher__stage--middle          { color: var(--accent); }
+.teacher__stage--senior          { color: var(--danger); }
+
 .teacher__body { padding: 18px 20px 20px; display: flex; flex-direction: column; flex: 1; }
 .teacher__name { font-family: var(--font-head); font-size: 1rem; font-weight: 700; margin-bottom: 5px; line-height: 1.3; }
 .teacher__subject { color: var(--primary); font-size: .84rem; font-weight: 600; margin-bottom: 10px; }
+/* margin-top:auto — прижимает блок «стаж» к низу карточки. */
 .teacher__meta { font-size: .82rem; color: var(--text-muted); line-height: 1.5; padding-top: 10px; border-top: 1px dashed var(--border); margin-top: auto; }
 .teacher__meta span { display: block; }
 
@@ -381,72 +437,48 @@ body.dark .teacher__stage { background: rgba(0, 0, 0, .75); color: var(--primary
    ========================================================= */
 .canteen { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 32px 32px; box-shadow: var(--shadow-sm); }
 
-.canteen__tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding-bottom: 22px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-}
+.canteen__tabs { display: flex; flex-wrap: wrap; gap: 10px; padding-bottom: 22px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
 
+/* Табы-дни. Селектор продублирован (.canteen .tab) — на случай,
+   если разметка слегка изменится: табы всё равно найдутся. */
 .canteen__tabs .tab,
 .canteen .tab {
-    padding: 10px 22px;
-    background: var(--bg-alt);
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    font-size: .92rem;
-    font-weight: 600;
-    font-family: var(--font-body);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all var(--tr);
-    line-height: 1.2;
-    white-space: nowrap;
+    padding: 10px 22px; background: var(--bg-alt);
+    border: 1.5px solid var(--border); border-radius: 12px;
+    font-size: .92rem; font-weight: 600; font-family: var(--font-body);
+    color: var(--text-muted); cursor: pointer; transition: all var(--tr);
+    line-height: 1.2; white-space: nowrap;
 }
-.canteen__tabs .tab:hover,
-.canteen .tab:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: var(--primary-soft);
-    transform: translateY(-1px);
-}
-.canteen__tabs .tab.is-active,
-.canteen .tab.is-active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
+.canteen__tabs .tab:hover, .canteen .tab:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); transform: translateY(-1px); }
+.canteen__tabs .tab.is-active, .canteen .tab.is-active {
+    background: var(--primary); border-color: var(--primary); color: #fff;
     box-shadow: 0 6px 16px rgba(46, 125, 50, .25);
 }
-body.dark .canteen__tabs .tab.is-active,
-body.dark .canteen .tab.is-active {
-    color: #0d0d0d;
-    box-shadow: 0 6px 16px rgba(255, 152, 0, .35);
+body.dark .canteen__tabs .tab.is-active, body.dark .canteen .tab.is-active {
+    color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0, .35);
 }
 
+/* Сетка блюда: [иконка 40px] [инфа] [цена]. grid удобнее flex
+   из-за гарантированной ширины колонки иконки. */
 .canteen__panel { display: grid; gap: 12px; }
-.dish {
-    display: grid; grid-template-columns: 40px 1fr auto;
-    align-items: center; gap: 18px;
-    padding: 16px 18px; border-radius: var(--radius-sm);
-    background: var(--bg); transition: all var(--tr);
-}
-.dish:hover { background: var(--primary-soft); transform: translateX(4px); }
-.dish__emoji { font-size: 1.6rem; text-align: center; }
-.dish__info { min-width: 0; }
-.dish__name { font-weight: 600; font-size: .96rem; margin-bottom: 2px; color: var(--text); }
-.dish__note { font-size: .8rem; color: var(--text-muted); font-style: italic; }
-.dish__price { font-family: var(--font-head); font-weight: 700; color: var(--primary); font-size: .88rem; white-space: nowrap; }
+.dish { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 18px; padding: 16px 18px; border-radius: var(--radius-sm); background: var(--bg); transition: all var(--tr); }
+.dish:hover        { background: var(--primary-soft); transform: translateX(4px); }
+.dish__emoji       { font-size: 1.6rem; text-align: center; }
+.dish__info        { min-width: 0; }        /* нужно, чтобы длинное имя обрезалось, а не расширяло колонку */
+.dish__name        { font-weight: 600; font-size: .96rem; margin-bottom: 2px; color: var(--text); }
+.dish__note        { font-size: .8rem; color: var(--text-muted); font-style: italic; }
+.dish__price       { font-family: var(--font-head); font-weight: 700; color: var(--primary); font-size: .88rem; white-space: nowrap; }
+/* Специальные «бесплатные» блюда (детский абонемент). */
 .dish--free .dish__price { color: var(--success); }
-.dish--meme { background: var(--accent-soft); border: 1px dashed var(--accent); }
-body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
-.dish--meme .dish__note { color: var(--accent); font-style: normal; }
+/* «Мемное» блюдо (сатира) — оранжевый фон + пунктирная рамка. */
+.dish--meme            { background: var(--accent-soft); border: 1px dashed var(--accent); }
+body.dark .dish--meme  { background: rgba(255, 152, 0, .1); }
+.dish--meme .dish__note{ color: var(--accent); font-style: normal; }
 
 .canteen__info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
-.canteen__info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
+.canteen__info-card    { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
 .canteen__info-card h4 { font-family: var(--font-head); font-size: .92rem; font-weight: 700; margin-bottom: 8px; color: var(--primary); }
-.canteen__info-card p { font-size: .9rem; color: var(--text-muted); line-height: 1.55; }
+.canteen__info-card p  { font-size: .9rem; color: var(--text-muted); line-height: 1.55; }
 
 /* =========================================================
    ACHIEVEMENTS
@@ -459,97 +491,60 @@ body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
 }
 .achievement:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: transparent; }
 .achievement__icon { width: 48px; height: 48px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-size: 1.4rem; flex-shrink: 0; }
-.achievement--gold .achievement__icon { background: rgba(255, 193, 7, .18); color: #f59e0b; }
+/* Разный фон иконки для «золота» и «серебра» — см. field type в data.js. */
+.achievement--gold   .achievement__icon { background: rgba(255, 193, 7, .18); color: #f59e0b; }
 .achievement--silver .achievement__icon { background: rgba(148, 163, 184, .18); color: #64748b; }
 .achievement__body h3 { font-size: .98rem; font-weight: 700; margin-bottom: 6px; font-family: var(--font-body); color: var(--text); }
-.achievement__body p { font-size: .88rem; color: var(--text-muted); line-height: 1.5; }
+.achievement__body p  { font-size: .88rem; color: var(--text-muted); line-height: 1.5; }
 
 /* =========================================================
-   GAME PROMO (мини-реклама игры ученика)
+   GAME PROMO — мини-реклама игры ученика
+   Слева картинка, справа текст. Слева тонкая цветная полоса
+   (::before), появляется при hover.
    ========================================================= */
 .game-promo {
-    margin-top: 32px;
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    gap: 32px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px 36px;
-    align-items: center;
-    transition: all var(--tr);
-    position: relative;
-    overflow: hidden;
+    margin-top: 32px; display: grid; grid-template-columns: 260px 1fr; gap: 32px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 32px 36px; align-items: center;
+    transition: all var(--tr); position: relative; overflow: hidden;
 }
 .game-promo::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
+    content: ''; position: absolute; top: 0; left: 0;
     width: 4px; height: 100%;
     background: linear-gradient(180deg, var(--primary), var(--accent));
-    opacity: 0;
-    transition: opacity var(--tr);
+    opacity: 0; transition: opacity var(--tr);
 }
 .game-promo:hover::before { opacity: 1; }
-.game-promo:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: transparent;
-}
-.game-promo__image {
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--bg-alt);
-    aspect-ratio: 4 / 3;
-}
-.game-promo__image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform .6s ease;
-}
+.game-promo:hover         { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: transparent; }
+.game-promo__image        { border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-alt); aspect-ratio: 4 / 3; }
+.game-promo__image img    { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
 .game-promo:hover .game-promo__image img { transform: scale(1.04); }
-.game-promo__eyebrow {
-    display: block;
-    color: var(--primary);
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: .72rem;
-    letter-spacing: 1.4px;
-    margin-bottom: 10px;
-}
-.game-promo__title {
-    font-family: var(--font-head);
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    line-height: 1.2;
-}
-.game-promo__text {
-    color: var(--text-muted);
-    font-size: .96rem;
-    line-height: 1.6;
-    margin-bottom: 20px;
-    max-width: 520px;
-}
+.game-promo__eyebrow      { display: block; color: var(--primary); font-weight: 600; text-transform: uppercase; font-size: .72rem; letter-spacing: 1.4px; margin-bottom: 10px; }
+.game-promo__title        { font-family: var(--font-head); font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; line-height: 1.2; }
+.game-promo__text         { color: var(--text-muted); font-size: .96rem; line-height: 1.6; margin-bottom: 20px; max-width: 520px; }
 
 /* =========================================================
    GALLERY
+   Сетка 3 колонки, ряды по 240px. wide-элементы занимают 2 колонки.
+   Подпись — градиентная плашка снизу для читаемости поверх фото.
    ========================================================= */
 .gallery { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 240px; gap: 18px; }
-.gallery__item { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface); }
-.gallery__item--wide { grid-column: span 2; }
-.gallery__item img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.gallery__item        { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface); }
+.gallery__item--wide  { grid-column: span 2; }
+.gallery__item img    { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
 .gallery__item:hover img { transform: scale(1.06); }
 .gallery__item figcaption {
     position: absolute; left: 0; right: 0; bottom: 0;
     padding: 22px 20px;
+    /* Градиент: прозрачный → тёмный. Текст читаем поверх любого фото. */
     background: linear-gradient(transparent, rgba(0, 0, 0, .78));
     color: #fff; font-weight: 600; font-size: .92rem; font-family: var(--font-head);
 }
 
 /* =========================================================
-   CONTACTS
+   CONTACTS + ФОРМА
+   Сетка 1:1 (50/50). Форма — .contacts__form (белая карточка).
+   Поля валидируются через .invalid (красная рамка).
    ========================================================= */
 .contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
 .contacts__lead { color: var(--text-muted); margin-bottom: 28px; font-size: 1.01rem; }
@@ -560,16 +555,27 @@ body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
 .contacts__extra { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); font-size: .92rem; color: var(--text-muted); line-height: 1.6; }
 .contacts__form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px 34px; box-shadow: var(--shadow); }
 .contacts__form-title { font-size: 1.25rem; margin-bottom: 4px; }
-.contacts__form-sub { color: var(--text-muted); font-size: .88rem; margin-bottom: 24px; }
+.contacts__form-sub   { color: var(--text-muted); font-size: .88rem; margin-bottom: 24px; }
+
+/* --- Поля ввода ---
+   resize:vertical — пользователь может тянуть только за низ (не в бока).
+   Фокус: зелёная рамка + мягкая подсветка через box-shadow. */
 .field { display: flex; flex-direction: column; margin-bottom: 18px; }
 .field label { font-size: .88rem; font-weight: 600; margin-bottom: 7px; }
-.field input, .field textarea { padding: 13px 15px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .96rem; font-family: var(--font-body); background: var(--bg); color: var(--text); transition: border-color var(--tr), box-shadow var(--tr); resize: vertical; }
+.field input, .field textarea {
+    padding: 13px 15px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: .96rem; font-family: var(--font-body); background: var(--bg); color: var(--text);
+    transition: border-color var(--tr), box-shadow var(--tr); resize: vertical;
+}
 .field input:focus, .field textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+/* .invalid вешает JS при провале валидации. */
 .field input.invalid, .field textarea.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(192, 57, 43, .1); }
+/* min-height:1em — резервирует место под сообщение, поля не «прыгают». */
 .field .error { font-size: .8rem; color: var(--danger); margin-top: 4px; min-height: 1em; }
+
 .status { text-align: center; margin-top: 14px; font-weight: 600; font-size: .9rem; min-height: 1.2em; }
 .status.success { color: var(--success); }
-.status.error { color: var(--danger); }
+.status.error   { color: var(--danger); }
 
 /* =========================================================
    FOOTER
@@ -577,13 +583,16 @@ body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
 .footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 48px 0; }
 .footer__inner { display: flex; justify-content: space-between; align-items: center; gap: 36px; flex-wrap: wrap; }
 .footer__title { font-family: var(--font-head); font-weight: 700; margin-bottom: 5px; line-height: 1.4; }
-.footer__text { font-size: .86rem; color: var(--text-muted); }
-.footer__nav { display: flex; gap: 24px; flex-wrap: wrap; }
+.footer__text  { font-size: .86rem; color: var(--text-muted); }
+.footer__nav   { display: flex; gap: 24px; flex-wrap: wrap; }
 .footer__nav a { font-size: .9rem; color: var(--text-muted); }
 .footer__nav a:hover { color: var(--primary); }
 
 /* =========================================================
-   TO-TOP
+   TO-TOP (кнопка «наверх»)
+   По умолчанию невидима (opacity:0 + visibility:hidden).
+   visibility:hidden — важно: скрытый элемент не ловит клики.
+   .visible включает плавный показ.
    ========================================================= */
 .to-top {
     position: fixed; right: 28px; bottom: 28px;
@@ -594,72 +603,91 @@ body.dark .dish--meme { background: rgba(255, 152, 0, .1); }
     transition: all var(--tr); box-shadow: var(--shadow-lg); z-index: 90;
 }
 body.dark .to-top { color: #0d0d0d; }
-.to-top.visible { opacity: 1; visibility: visible; transform: translateY(0); }
-.to-top:hover { background: var(--primary-h); transform: translateY(-3px); }
+.to-top.visible   { opacity: 1; visibility: visible; transform: translateY(0); }
+.to-top:hover     { background: var(--primary-h); transform: translateY(-3px); }
 
 /* =========================================================
-   REVEAL
+   REVEAL (анимация появления)
+   По умолчанию скрыт и сдвинут вниз на 24px.
+   Класс .visible добавляет JS (IntersectionObserver).
+   transition вешаем на сам .reveal — так CSS сам обработает
+   плавный переход при появлении.
    ========================================================= */
-.reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
-.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal          { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+.reveal.visible  { opacity: 1; transform: translateY(0); }
 
 /* =========================================================
    АДАПТИВ
+   ---------------------------------------------------------
+   Контрольные точки выбраны по «поломкам» сетки:
+     1100 — 4 карточки учителей не влезают → 3
+     1024 — планшеты:hero/about/contacts → 1 колонка, уровни → 1
+      768 — мобильные:бургер, меню выезжает, всё в 1–2 колонки
+      480 — узкие телефоны:учителя в 1 колонку, кнопки на всю ширину
    ========================================================= */
 @media (max-width: 1100px) {
-    .teachers { grid-template-columns: repeat(3, 1fr); }
-    .nav__list { gap: 16px; }
-    .nav__link { font-size: .86rem; }
+    .teachers    { grid-template-columns: repeat(3, 1fr); }
+    .nav__list   { gap: 16px; }
+    .nav__link   { font-size: .86rem; }
 }
 @media (max-width: 1024px) {
-    :root { --space: 90px; }
+    :root { --space: 90px; }                       /* чуть меньше воздуха */
     .hero__inner, .about, .contacts { grid-template-columns: 1fr; gap: 48px; }
-    .hero__art { max-width: 400px; margin: 0 auto; }
-    .levels { grid-template-columns: 1fr; }
-    .news { grid-template-columns: repeat(2, 1fr); }
+    .hero__art      { max-width: 400px; margin: 0 auto; }
+    .levels         { grid-template-columns: 1fr; }
+    .news           { grid-template-columns: repeat(2, 1fr); }
     .news-card--featured { grid-column: span 2; }
-    .teachers { grid-template-columns: repeat(2, 1fr); }
-    .canteen__info { grid-template-columns: 1fr; }
-    .achievements { grid-template-columns: repeat(2, 1fr); }
-    .section__head { margin-bottom: 48px; }
-    .game-promo { grid-template-columns: 1fr; gap: 24px; }
+    .teachers       { grid-template-columns: repeat(2, 1fr); }
+    .canteen__info  { grid-template-columns: 1fr; }
+    .achievements   { grid-template-columns: repeat(2, 1fr); }
+    .section__head  { margin-bottom: 48px; }
+    .game-promo     { grid-template-columns: 1fr; gap: 24px; }
 }
 @media (max-width: 768px) {
-    :root { --space: 68px; }
-    .container { padding: 0 20px; }
-    .hero { padding: 120px 0 72px; }
-    .burger { display: flex; }
-    .nav { position: fixed; top: 78px; left: 0; right: 0; bottom: 0; background: var(--bg); padding: 28px 22px; transform: translateX(100%); transition: transform var(--tr); overflow-y: auto; z-index: 99; }
-    .nav.open { transform: translateX(0); }
-    .nav__list { flex-direction: column; gap: 0; }
-    .nav__link { display: block; padding: 14px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
-    .news { grid-template-columns: 1fr; }
-    .news-card--featured { grid-column: span 1; }
-    .teachers { grid-template-columns: repeat(2, 1fr); }
-    .achievements { grid-template-columns: 1fr; }
-    .gallery { grid-template-columns: 1fr; grid-auto-rows: 200px; }
-    .gallery__item--wide { grid-column: span 1; }
-    .about__info { grid-template-columns: 1fr 1fr; }
-    .schedule { padding: 22px 18px; }
-    .schedule__controls { gap: 12px; }
-    .schedule__select { min-width: 100%; }
-    .hero__stats { gap: 28px; padding-top: 22px; }
-    .hero__stats strong { font-size: 1.4rem; }
-    .contacts__form { padding: 26px 20px; }
-    .canteen { padding: 22px 18px; }
-    .dish { grid-template-columns: 34px 1fr auto; gap: 12px; padding: 13px 14px; }
+    :root     { --space: 68px; }
+    .container{ padding: 0 20px; }
+    .hero     { padding: 120px 0 72px; }
+
+    /* Показываем бургер, меню превращаем в выезжающую панель. */
+    .burger   { display: flex; }
+    .nav {
+        position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
+        background: var(--bg); padding: 28px 22px;
+        transform: translateX(100%);            /* спрятано за правым краем */
+        transition: transform var(--tr);
+        overflow-y: auto; z-index: 99;
+    }
+    .nav.open              { transform: translateX(0); }   /* выехало */
+    .nav__list             { flex-direction: column; gap: 0; }
+    .nav__link             { display: block; padding: 14px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
+
+    .news                  { grid-template-columns: 1fr; }
+    .news-card--featured   { grid-column: span 1; }
+    .teachers              { grid-template-columns: repeat(2, 1fr); }
+    .achievements          { grid-template-columns: 1fr; }
+    .gallery               { grid-template-columns: 1fr; grid-auto-rows: 200px; }
+    .gallery__item--wide   { grid-column: span 1; }
+    .about__info           { grid-template-columns: 1fr 1fr; }
+    .schedule              { padding: 22px 18px; }
+    .schedule__controls    { gap: 12px; }
+    .schedule__select      { min-width: 100%; }
+    .hero__stats           { gap: 28px; padding-top: 22px; }
+    .hero__stats strong    { font-size: 1.4rem; }
+    .contacts__form        { padding: 26px 20px; }
+    .canteen               { padding: 22px 18px; }
+    .dish                  { grid-template-columns: 34px 1fr auto; gap: 12px; padding: 13px 14px; }
     .canteen__tabs .tab, .canteen .tab { padding: 8px 16px; font-size: .86rem; }
-    .game-promo { padding: 24px 22px; }
-    .footer__inner { flex-direction: column; text-align: center; }
-    .footer__nav { justify-content: center; }
-    .to-top { right: 16px; bottom: 16px; width: 42px; height: 42px; }
+    .game-promo            { padding: 24px 22px; }
+    .footer__inner         { flex-direction: column; text-align: center; }
+    .footer__nav           { justify-content: center; }
+    .to-top                { right: 16px; bottom: 16px; width: 42px; height: 42px; }
 }
 @media (max-width: 480px) {
-    .teachers { grid-template-columns: 1fr; }
-    .about__info { grid-template-columns: 1fr; }
-    .hero__actions { flex-direction: column; }
-    .hero__actions .btn { width: 100%; }
-    .logo__text { display: none; }
-    .hero__board { transform: none; }
-    .section__title { font-size: 1.5rem; }
+    .teachers          { grid-template-columns: 1fr; }
+    .about__info       { grid-template-columns: 1fr; }
+    .hero__actions     { flex-direction: column; }
+    .hero__actions .btn{ width: 100%; }
+    .logo__text        { display: none; }            /* на узком экране прячем текст логотипа */
+    .hero__board       { transform: none; }          /* наклон убираем — на мобиле лишний */
+    .section__title    { font-size: 1.5rem; }
 }
