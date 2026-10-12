@@ -16,7 +16,11 @@
 </head>
 <body>
 
-<!-- ============ ШАПКА (одинаковая на всех страницах) ============ -->
+<!-- ============ ШАПКА ============
+     5 пунктов верхнего уровня: короткий список влезает в одну
+     строку на любой ширине. Разделы «О школе» и «Школьная жизнь»
+     сгруппированы в выпадающие подменю (.nav__sub).
+     На мобиле (≤768px) подменю разворачивается плоско — см. style.css. -->
 <header class="header" id="header">
     <div class="container header__inner">
         <a href="index.html" class="logo">
@@ -27,19 +31,31 @@
             </span>
         </a>
 
-        <!-- Навигация между страницами и якорями внутри них. -->
         <nav class="nav" id="nav">
             <ul class="nav__list">
-                <li><a href="index.html"              class="nav__link">Главная</a></li>
-                <li><a href="info.html"               class="nav__link">О школе</a></li>
-                <li><a href="index.html#levels"       class="nav__link">Ступени</a></li>
-                <li><a href="index.html#news"         class="nav__link">Новости</a></li>
-                <li><a href="school.html"             class="nav__link">Школьная жизнь</a></li>
-                <li><a href="info.html#teachers"      class="nav__link">Учителя</a></li>
-                <li><a href="school.html#canteen"     class="nav__link">Столовая</a></li>
-                <li><a href="index.html#achievements" class="nav__link">Достижения</a></li>
-                <li><a href="school.html#gallery"     class="nav__link">Галерея</a></li>
-                <li><a href="index.html#contacts"     class="nav__link">Контакты</a></li>
+                <li><a href="index.html" class="nav__link">Главная</a></li>
+
+                <li class="nav__item--has-sub">
+                    <a href="info.html" class="nav__link">О школе <span class="nav__caret">▾</span></a>
+                    <ul class="nav__sub">
+                        <li><a href="info.html">Сведения об организации</a></li>
+                        <li><a href="info.html#teachers">Учителя</a></li>
+                        <li><a href="index.html#levels">Ступени обучения</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav__item--has-sub">
+                    <a href="school.html" class="nav__link">Школьная жизнь <span class="nav__caret">▾</span></a>
+                    <ul class="nav__sub">
+                        <li><a href="school.html#schedule">Расписание</a></li>
+                        <li><a href="school.html#canteen">Столовая</a></li>
+                        <li><a href="school.html#gallery">Галерея</a></li>
+                        <li><a href="index.html#achievements">Достижения</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="index.html#news"     class="nav__link">Новости</a></li>
+                <li><a href="index.html#contacts" class="nav__link">Контакты</a></li>
             </ul>
         </nav>
 

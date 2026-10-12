@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Логика · v9
+   ЯСОШ · Логика · v10
    ---------------------------------------------------------
    Один файл на все три страницы. Каждый блок обёрнут в
    проверку наличия элемента — если нужного узла на странице
@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------- 4. Мобильное меню (бургер) ----------
        На <768px nav превращается в выезжающую панель.
-       Открытие = .open на nav + блокировка скролла body. */
+       Открытие = .open на nav + блокировка скролла body.
+       Закрытие — по бургеру И по клику на ЛЮБУЮ ссылку в nav
+       (включая ссылки в подменю .nav__sub, они теперь тоже «глушат» панель). */
     const burger = document.getElementById('burger');
     const nav    = document.getElementById('nav');
 
@@ -45,8 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
     });
 
-    // Клик по ссылке в меню закрывает панель (перед переходом на другую страницу).
-    document.querySelectorAll('.nav__link').forEach(link => {
+    // Селектор '.nav a' захватывает и .nav__link, и ссылки в .nav__sub.
+    document.querySelectorAll('.nav a').forEach(link => {
         link.addEventListener('click', () => {
             burger?.classList.remove('active');
             nav?.classList.remove('open');
@@ -55,9 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ---------- 5. Активный пункт меню ----------
-       Сравниваем имя файла текущей страницы с href каждой ссылки.
+       Сравниваем имя файла текущей страницы с href каждой .nav__link.
        Подсвечиваем ПЕРВУЮ подошедшую — чтобы не горело сразу
-       несколько пунктов (на главной, например, «Главная» и «Ступени»). */
+       несколько пунктов (на главной, например, «Главная» и «Новости»). */
     (() => {
         const current = location.pathname.split('/').pop() || 'index.html';
         let highlighted = false;

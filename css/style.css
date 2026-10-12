@@ -1,5 +1,5 @@
 /* =========================================================
-   ЯСОШ · Стили · v8
+   ЯСОШ · Стили · v9
    ---------------------------------------------------------
    1. Переменные (:root) + тёмная тема (body.dark)
    2. Сброс и база
@@ -141,14 +141,72 @@ body.dark .logo__mark { color: #0d0d0d; box-shadow: 0 6px 16px rgba(255, 152, 0,
 .logo__text       { font-size: .94rem; display: flex; flex-direction: column; }
 .logo__text small { font-size: .72rem; font-weight: 500; color: var(--text-muted); font-family: var(--font-body); margin-top: 2px; }
 
-.nav__list { display: flex; gap: 22px; }
-.nav__link { font-size: .9rem; font-weight: 500; color: var(--text-muted); position: relative; padding: 4px 0; }
-.nav__link::after { content: ''; position: absolute; left: 0; bottom: -2px; width: 0; height: 2px; background: var(--primary); transition: width var(--tr); }
+/* =========================================================
+   НАВИГАЦИЯ
+   Короткий список верхнего уровня (5 пунктов) + выпадающие
+   подменю .nav__sub у групп «О школе» и «Школьная жизнь».
+   ========================================================= */
+.nav__list { display: flex; gap: 22px; align-items: center; }
+
+.nav__link {
+    font-size: .9rem; font-weight: 500; color: var(--text-muted);
+    position: relative; padding: 4px 0; white-space: nowrap;
+}
+.nav__link::after {
+    content: ''; position: absolute; left: 0; bottom: -2px;
+    width: 0; height: 2px; background: var(--primary);
+    transition: width var(--tr);
+}
 .nav__link:hover              { color: var(--text); }
 .nav__link:hover::after       { width: 100%; }
-/* Активный пункт — страница, на которой сейчас пользователь. */
 .nav__link.is-active          { color: var(--primary); }
 .nav__link.is-active::after   { width: 100%; }
+
+/* --- Пункт с выпадающим подменю --- */
+.nav__item--has-sub { position: relative; }
+.nav__caret {
+    display: inline-block; font-size: .55rem; margin-left: 3px;
+    opacity: .55; transition: transform var(--tr);
+}
+.nav__item--has-sub:hover .nav__caret,
+.nav__item--has-sub:focus-within .nav__caret { transform: rotate(180deg); }
+
+/* --- Подменю. По умолчанию скрыто, всплывает при hover/focus. --- */
+.nav__sub {
+    position: absolute; top: calc(100% + 10px); left: -12px;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    padding: 6px 0;
+    opacity: 0; visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity var(--tr), transform var(--tr), visibility var(--tr);
+    z-index: 10;
+}
+/* Невидимый «мостик» — чтобы курсор не терял hover между
+   пунктом меню и подменю (иначе оно моргает). */
+.nav__sub::before {
+    content: ''; position: absolute; top: -10px; left: 0;
+    width: 100%; height: 10px;
+}
+.nav__item--has-sub:hover .nav__sub,
+.nav__item--has-sub:focus-within .nav__sub {
+    opacity: 1; visibility: visible; transform: translateY(0);
+}
+.nav__sub li a {
+    display: block;
+    padding: 8px 18px;
+    font-size: .88rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: all var(--tr);
+}
+.nav__sub li a:hover {
+    color: var(--primary);
+    background: var(--primary-soft);
+}
 
 .header__actions { display: flex; align-items: center; gap: 10px; }
 
@@ -555,15 +613,19 @@ body.dark .to-top { color: #0d0d0d; }
 
 /* =========================================================
    АДАПТИВ
-   1100 — 4 карточки учителей не влезают → 3
-   1024 — планшеты: hero/about/contacts → 1 колонка, уровни → 1
-    768 — мобильные: бургер, выезжающее меню, всё в 1–2 колонки
+   1100 — сжимаем меню и скрываем подпись логотипа
+   1024 — планшеты: сетки в 1–2 колонки
+    768 — мобильные: бургер, выезжающее меню, подменю плоско
     480 — узкие телефоны: учителя в 1 колонку, кнопки на всю ширину
    ========================================================= */
 @media (max-width: 1100px) {
     .teachers    { grid-template-columns: repeat(3, 1fr); }
-    .nav__list   { gap: 16px; }
-    .nav__link   { font-size: .86rem; }
+    /* Сжимаем навигацию — 5 пунктов + 2 подменю должны влезать
+       в одну строку вплоть до включения бургера (768px). */
+    .nav__list   { gap: 12px; }
+    .nav__link   { font-size: .82rem; }
+    /* Подпись логотипа съедает место — оставляем только название. */
+    .logo__text small { display: none; }
 }
 @media (max-width: 1024px) {
     :root { --space: 90px; }
@@ -593,9 +655,28 @@ body.dark .to-top { color: #0d0d0d; }
         overflow-y: auto; z-index: 99;
     }
     .nav.open              { transform: translateX(0); }
-    .nav__list             { flex-direction: column; gap: 0; }
+    .nav__list             { flex-direction: column; gap: 0; align-items: stretch; }
     .nav__link             { display: block; padding: 14px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
     .nav__link::after      { display: none; }
+
+    /* Подменю на мобиле — плоский список, всегда развёрнут.
+       position:static вырывает его из absolute, min-width сбрасываем,
+       границы/тени убираем — выглядит как обычный список пунктов. */
+    .nav__sub {
+        position: static;
+        opacity: 1; visibility: visible; transform: none;
+        background: transparent; border: none; box-shadow: none;
+        padding: 0; min-width: 0;
+    }
+    .nav__sub::before      { display: none; }
+    .nav__sub li a {
+        padding: 12px 0 12px 20px;      /* отступ = визуальная иерархия */
+        font-size: .96rem;
+        white-space: normal;
+        border-bottom: 1px solid var(--border);
+    }
+    .nav__sub li a:hover   { background: transparent; }
+    .nav__caret            { display: none; }
 
     .news                  { grid-template-columns: 1fr; }
     .news-card--featured   { grid-column: span 1; }
