@@ -4,35 +4,6 @@
 const NB = global.NB;
 const CL = NB.views.client;
 
-const NAV = [
-  { id: 'dashboard', label: 'Обзор', icon: '◧' },
-  { id: 'tariff', label: 'Мой тариф', icon: '◆' },
-  { id: 'invoices', label: 'Счета', icon: '▤' },
-  { id: 'speed', label: 'Скорость', icon: '⚡' },
-  { id: 'support', label: 'Поддержка', icon: '✉' }
-];
-
-CL.shell = function (content, name) {
-  return `
-    <div class="app">
-      <aside class="sidebar">
-        <div class="brand"><span class="brand-logo">◉</span><span>NetBill</span></div>
-        <nav class="nav">
-          ${NAV.map(n => `<button class="nav-item ${NB.ui.view === n.id ? 'active' : ''}" data-view="${n.id}">
-            <span class="nav-icon">${n.icon}</span><span>${n.label}</span></button>`).join('')}
-        </nav>
-        <div class="sidebar-foot">
-          <div class="user-card">
-            <div class="user-ava">${NB.esc(NB.initials(name))}</div>
-            <div class="user-info"><b>${NB.esc(name)}</b><small>Абонент</small></div>
-          </div>
-          <button class="btn ghost small" data-action="logout">Выйти</button>
-        </div>
-      </aside>
-      <main class="main"><div class="view fade" id="view">${content}</div></main>
-    </div>`;
-};
-
 CL.dashboard = function () {
   const c = NB.client(NB.state.session.id);
   const t = NB.tariff(c.tariffId) || { name: '—', speed: 0, price: 0, color: '#7a7a86' };

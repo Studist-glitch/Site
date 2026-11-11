@@ -1,29 +1,43 @@
-/* isp_billing_boot.js — рендер, события, инициализация */
+/* isp_billing_boot.js — рендер, делегирование, старт */
 (function (global) {
 'use strict';
 const NB = global.NB;
 
-/* --- render --- */
 NB.render = function () {
   const root = document.getElementById('root');
   if (!NB.state.session) return NB.auth.renderLogin();
 
   if (NB.state.session.role === 'staff') {
     const v = NB.views.staff;
-    const content = {
-      dashboard: v.dashboard, clients: v.clients, tariffs: v.tariffs,
-      invoices: v.invoices, tickets: v.tickets, activity: v.activity
-    }[NB.ui.view]();
-    root.innerHTML = v.shell(content);
+    const content = v[NB.ui.view] ? v[NB.ui.view]() : v.dashboard();
+    const name = NB.state.session.displayName || NB.state.session.username || 'Администратор';
+    root.innerHTML = NB.buildShell(
+      [
+        { id: 'dashboard', label: 'Дашборд', icon: '◧' },
+        { id: 'clients', label: 'Клиенты', icon: '◔' },
+        { id: 'tariffs', label: 'Тарифы', icon: '◆' },
+        { id: 'invoices', label: 'Счета', icon: '▤' },
+        { id: 'tickets', label: 'Заявки', icon: '✉' },
+        { id: 'activity', label: 'Активность', icon: '◷' },
+        { id: 'settings', label: 'Настройки', icon: '⚙' }
+      ],
+      name, 'Сотрудник', content, { isStaff: true }
+    );
   } else {
     const c = NB.client(NB.state.session.id);
     if (!c) { NB.auth.logout(); return; }
     const v = NB.views.client;
-    const content = {
-      dashboard: v.dashboard, tariff: v.tariff, invoices: v.invoices,
-      speed: v.speed, support: v.support
-    }[NB.ui.view]();
-    root.innerHTML = v.shell(content, c.name);
+    const content = v[NB.ui.view] ? v[NB.ui.view]() : v.dashboard();
+    root.innerHTML = NB.buildShell(
+      [
+        { id: 'dashboard', label: 'Обзор', icon: '◧' },
+        { id: 'tariff', label: 'Мой тариф', icon: '◆' },
+        { id: 'invoices', label: 'Счета', icon: '▤' },
+        { id: 'speed', label: 'Скорость', icon: '⚡' },
+        { id: 'support', label: 'Поддержка', icon: '✉' }
+      ],
+      c.name, 'Абонент', content, {}
+    );
   }
   afterRender();
 };
@@ -32,14 +46,18 @@ function afterRender() {
   if (NB.ui.view === 'dashboard') NB.charts.startTraffic();
   else NB.charts.stopTraffic();
   NB.charts.animateCounters();
+  setTimeout(() => {
+    const rv = document.getElementById('revenue-chart');
+    if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
+  }, 50);
 }
 
-/* --- click-делегирование --- */
+/* ---------- клик-делегирование ---------- */
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-action]');
   if (t) {
     const fn = NB.actions.map[t.dataset.action];
-    if (fn) { fn(Number(t.dataset.id)); return; }
+    if (fn) { fn(t.dataset); return; }
   }
   const v = e.target.closest('[data-view]');
   if (v) {
@@ -65,8 +83,16 @@ document.addEventListener('click', e => {
   if (e.target.id === 'start-speed') NB.charts.runSpeedTest();
 });
 
-/* --- поиск --- */
+/* ---------- поиск ---------- */
 document.addEventListener('input', e => {
+  if (e.target.id === 'churn-range') {
+    const v = Number(e.target.value);
+    NB.state.settings.churnChance = v / 100;
+    NB.save();
+    const el = document.getElementById('churn-val');
+    if (el) el.textContent = v + '%';
+    return;
+  }
   if (e.target.id !== 'client-search') return;
   NB.ui.query = e.target.value;
   const pos = e.target.selectionStart;
@@ -75,25 +101,37 @@ document.addEventListener('input', e => {
   if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (err) {} }
 });
 
-/* --- клик по фону модалки / Esc --- */
+/* ---------- настройки (чекбоксы) ---------- */
+document.addEventListener('change', e => {
+  const key = e.target.dataset.setting;
+  if (!key) return;
+  if (e.target.type === 'checkbox') {
+    NB.state.settings[key] = e.target.checked;
+    NB.save();
+    if (key === 'autoTick') {
+      if (e.target.checked) NB.sim.start(); else NB.sim.stop();
+    }
+    NB.render();
+  }
+});
+
+/* ---------- модалка: фон/Esc ---------- */
 const modalEl = document.getElementById('modal');
 modalEl.addEventListener('click', e => { if (e.target === modalEl) NB.closeModal(); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) NB.closeModal();
 });
 
-/* --- живая активность --- */
+/* ---------- живая активность (независимо от симуляции) ---------- */
 const POOL = [
   () => { const c = NB.pick(NB.state.clients); return c ? { text: `Клиент «${c.name}» проверил баланс`, type: 'sys' } : null; },
-  () => { const c = NB.pick(NB.state.clients); return c ? { text: `«${c.name}» оплатил счёт`, type: 'pay' } : null; },
   () => ({ text: `Скорость узла №${NB.randInt(1, 8)}: ${NB.randInt(120, 980)} Мбит/с`, type: 'net' }),
-  () => { const c = NB.pick(NB.state.clients); return c ? { text: `«${c.name}» обновил контактные данные`, type: 'sys' } : null; },
-  () => ({ text: `Синхронизация биллинга завершена`, type: 'sys' }),
-  () => { const c = NB.pick(NB.state.clients); return c ? { text: `«${c.name}» открыл заявку в поддержку`, type: 'ticket' } : null; }
+  () => ({ text: `Синхронизация биллинга завершена`, type: 'sys' })
 ];
 
 setInterval(() => {
-  if (!NB.state.session) return;
+  if (!NB.state.session || NB.state.session.role !== 'staff') return;
+  if (!document.getElementById('activity-list')) return;
   const evt = NB.pick(POOL)();
   if (!evt) return;
   NB.addActivity(evt.text, evt.type);
@@ -107,15 +145,20 @@ setInterval(() => {
     <div class="activity-body">${NB.esc(evt.text)}<small>${NB.fmtDateTime(new Date().toISOString())}</small></div>`;
   list.prepend(div);
   while (list.children.length > 12) list.lastChild.remove();
-}, 9000);
+}, 12000);
 
-/* --- resize для графика --- */
+/* ---------- resize ---------- */
 window.addEventListener('resize', () => {
   const c = document.getElementById('traffic-chart');
   if (c) NB.charts.drawLine(c, NB.charts.trafficData);
+  const rv = document.getElementById('revenue-chart');
+  if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
 });
 
-/* --- старт --- */
+/* ---------- старт ---------- */
 NB.render();
+if (NB.state.session && NB.state.session.role === 'staff' && NB.state.settings.autoTick) {
+  NB.sim.start();
+}
 
 })(window);

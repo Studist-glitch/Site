@@ -4,36 +4,6 @@
 const NB = global.NB;
 const S = NB.views.staff;
 
-const NAV = [
-  { id: 'dashboard', label: 'Дашборд', icon: '◧' },
-  { id: 'clients', label: 'Клиенты', icon: '◔' },
-  { id: 'tariffs', label: 'Тарифы', icon: '◆' },
-  { id: 'invoices', label: 'Счета', icon: '▤' },
-  { id: 'tickets', label: 'Заявки', icon: '✉' },
-  { id: 'activity', label: 'Активность', icon: '◷' }
-];
-
-S.shell = function (content) {
-  return `
-    <div class="app">
-      <aside class="sidebar">
-        <div class="brand"><span class="brand-logo">◉</span><span>NetBill</span></div>
-        <nav class="nav">
-          ${NAV.map(n => `<button class="nav-item ${NB.ui.view === n.id ? 'active' : ''}" data-view="${n.id}">
-            <span class="nav-icon">${n.icon}</span><span>${n.label}</span></button>`).join('')}
-        </nav>
-        <div class="sidebar-foot">
-          <div class="user-card">
-            <div class="user-ava">${NB.esc(NB.initials('Администратор'))}</div>
-            <div class="user-info"><b>Администратор</b><small>Сотрудник</small></div>
-          </div>
-          <button class="btn ghost small" data-action="logout">Выйти</button>
-        </div>
-      </aside>
-      <main class="main"><div class="view fade" id="view">${content}</div></main>
-    </div>`;
-};
-
 S.dashboard = function () {
   const total = NB.state.clients.length;
   const active = NB.state.clients.filter(c => c.status === 'active');
@@ -43,9 +13,24 @@ S.dashboard = function () {
   const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
   const openTickets = NB.state.tickets.filter(t => t.status === 'open').length;
 
+  /* топ клиентов по оплатам */
+  const paidByClient = {};
+  NB.state.invoices.filter(i => i.status === 'paid').forEach(i => {
+    paidByClient[i.clientId] = (paidByClient[i.clientId] || 0) + i.amount;
+  });
+  const top = Object.entries(paidByClient)
+    .map(([id, sum]) => ({ client: NB.client(Number(id)), sum }))
+    .filter(x => x.client)
+    .sort((a, b) => b.sum - a.sum)
+    .slice(0, 5);
+
+  /* распределение по тарифам */
   const dist = NB.state.tariffs.map(t => ({ ...t, count: NB.state.clients.filter(c => c.tariffId === t.id).length }))
     .sort((a, b) => b.count - a.count);
   const maxCount = Math.max(1, ...dist.map(d => d.count));
+
+  /* суммарная выручка за 14 дней */
+  const totalRev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
 
   return `
     <div class="page-head">
@@ -59,9 +44,20 @@ S.dashboard = function () {
     <div class="stats">
       ${NB.statCard('Абоненты', total, `${active.length} активных`, false, '#ff6b00')}
       ${NB.statCard('MRR', mrr, 'выручка/мес', true, '#ff9500')}
-      ${NB.statCard('Оплачено', paid, 'в этом периоде', true, '#22c55e')}
+      ${NB.statCard('Выручка', totalRev, 'за 14 дней', true, '#ffb347')}
       ${NB.statCard('К оплате', due, 'неоплачено', true, '#f59e0b')}
     </div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-head"><h2>Выручка по дням</h2>
+        <span class="muted small">за ${NB.state.revenue.length} дней</span></div>
+      <canvas id="revenue-chart" class="revenue-chart"></canvas>
+      <div class="chart-foot">
+        <span>Итого: <b>${NB.money(totalRev)}</b></span>
+        <span class="muted">Период: ${NB.state.revenue.length ? NB.fmtDate(NB.state.revenue[0].date) + ' — ' + NB.fmtDate(NB.state.revenue[NB.state.revenue.length-1].date) : '—'}</span>
+      </div>
+    </div>
+
     <div class="grid-2">
       <div class="panel">
         <div class="panel-head"><h2>Сетевой трафик</h2><span class="live-badge"><i></i>live</span></div>
@@ -78,34 +74,34 @@ S.dashboard = function () {
         </div>
       </div>
     </div>
+
     <div class="grid-2">
       <div class="panel">
-        <div class="panel-head"><h2>Распределение по тарифам</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
+        <div class="panel-head"><h2>Топ клиентов</h2><button class="btn tiny" data-view="clients">Все →</button></div>
+        ${top.length ? `<div class="top-list">
+          ${top.map((t, i) => `
+            <div class="top-item">
+              <div class="top-rank">${i+1}</div>
+              <div class="top-body">
+                <b>${NB.esc(t.client.name)}</b>
+                <small>${NB.esc(t.client.phone)}</small>
+              </div>
+              <div class="top-amount">${NB.money(t.sum)}</div>
+            </div>`).join('')}
+        </div>` : '<p class="empty">Пока нет данных</p>'}
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Тарифы</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
         ${dist.map(d => `<div class="tariff-bar">
           <div class="tariff-bar-top">
-            <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b>
+            <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span>
+            <b>${d.count}</b>
           </div>
           <div class="bar"><i style="width:${(d.count / maxCount) * 100}%;background:${d.color}"></i></div>
         </div>`).join('')}
       </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Узлы сети</h2><span class="muted small">нагрузка</span></div>
-        <div class="nodes">
-          ${Array.from({ length: 6 }, (_, i) => {
-            const ok = Math.random() > 0.18;
-            const load = NB.randInt(25, 92);
-            return `<div class="node">
-              <div class="node-top">
-                <span class="node-name">Узел ${i + 1}</span>
-                <span class="pill ${ok ? 'ok' : 'warn'}">${ok ? 'ok' : 'load'}</span>
-              </div>
-              <div class="bar"><i style="width:${load}%;background:${ok ? '#22c55e' : '#f59e0b'}"></i></div>
-              <small class="muted">${load}% нагрузки</small>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>`;
+    </div>
+  `;
 };
 
 S.clients = function () {
@@ -126,7 +122,7 @@ S.clients = function () {
   const rows = list.map(c => {
     const t = NB.tariff(c.tariffId) || { name: '—', color: '#7a7a86' };
     return `<tr class="fade">
-      <td><div class="who">
+      <td><div class="who" data-action="open-client" data-id="${c.id}">
         <div class="ava" style="background:${t.color}26;color:${t.color}">${NB.initials(c.name)}</div>
         <div><b>${NB.esc(c.name)}</b><small>${NB.esc(c.phone)}</small></div>
       </div></td>
@@ -145,7 +141,7 @@ S.clients = function () {
 
   return `
     <div class="page-head">
-      <div><h1>Клиенты</h1><p class="muted">${NB.state.clients.length} абонентов в базе</p></div>
+      <div><h1>Клиенты</h1><p class="muted">${NB.state.clients.length} абонентов · ${NB.state.clients.filter(c => c.status === 'active').length} активных</p></div>
       <button class="btn primary" data-action="add-client">＋ Новый клиент</button>
     </div>
     <div class="panel">
@@ -214,9 +210,11 @@ S.invoices = function () {
     </tr>`;
   }).join('');
 
+  const totalUnpaid = NB.state.invoices.filter(i => i.status === 'unpaid').reduce((s, i) => s + i.amount, 0);
+
   return `
     <div class="page-head">
-      <div><h1>Счета</h1><p class="muted">Период ${NB.periodLabel(NB.period())}</p></div>
+      <div><h1>Счета</h1><p class="muted">Период ${NB.periodLabel(NB.period())} · к оплате ${NB.money(totalUnpaid)}</p></div>
       <button class="btn primary" data-action="gen-invoices">Выставить счета</button>
     </div>
     <div class="panel">
@@ -263,6 +261,85 @@ S.activity = function () {
     <div class="panel">
       <div class="activity-list" id="activity-list">
         ${NB.state.activity.slice().reverse().map(S._activityItem).join('') || '<p class="empty">Пусто</p>'}
+      </div>
+    </div>`;
+};
+
+S.settings = function () {
+  const st = NB.state.settings;
+  return `
+    <div class="page-head">
+      <div><h1>Настройки</h1><p class="muted">Управление симуляцией и данными</p></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <div class="settings-section">
+        <h3>Симуляция времени</h3>
+        <p>Каждый тик — это один день: клиенты платят, подключаются, отключаются.</p>
+        <div class="setting-row">
+          <div class="setting-row-info">
+            <b>Авто-ход</b>
+            <small>Автоматически проживать день каждые N секунд</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" ${st.autoTick ? 'checked' : ''} data-setting="autoTick">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-info">
+            <b>Скорость</b>
+            <small>Как быстро идут дни при авто-ходе</small>
+          </div>
+          <div class="sim-speed">
+            ${[
+              { v: 8000, l: '▶ медл' },
+              { v: 3000, l: '▶▶ сред' },
+              { v: 1000, l: '▶▶▶ быстр' }
+            ].map(s => `<button data-action="set-tick" data-ms="${s.v}" class="${st.tickMs === s.v ? 'active' : ''}">${s.l}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>События</h3>
+        <p>Что может произойти за день</p>
+        <div class="setting-row">
+          <div class="setting-row-info">
+            <b>Новые клиенты</b>
+            <small>Случайные абоненты подключаются с рандомным тарифом</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" ${st.autoNewClients ? 'checked' : ''} data-setting="autoNewClients">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-info">
+            <b>Автоплатежи</b>
+            <small>Клиенты сами оплачивают счета при достаточном балансе</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" ${st.autoPayments ? 'checked' : ''} data-setting="autoPayments">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-info">
+            <b>Вероятность оттока</b>
+            <small>Шанс, что клиент отключится за день</small>
+          </div>
+          <div class="range-row">
+            <input type="range" min="0" max="20" value="${Math.round(st.churnChance * 100)}" id="churn-range">
+            <span class="range-val" id="churn-val">${Math.round(st.churnChance * 100)}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Данные</h3>
+        <p>Экспорт и сброс</p>
+        <div class="detail-actions">
+          <button class="btn ghost" data-action="export">📥 Экспорт JSON</button>
+          <button class="btn ghost" data-action="reset-data" style="color:var(--danger);border-color:rgba(239,68,68,.3)">🗑 Сбросить всё</button>
+        </div>
       </div>
     </div>`;
 };
