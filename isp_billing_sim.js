@@ -1,63 +1,66 @@
-/* isp_billing_sim.js — движок симуляции времени (дневная система) */
+/* isp_billing_sim.js — движок дня. Никакого realtime. Только +1 день. */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const S = NB.sim = NB.sim || {};
-let timer = null;
-
-S.start = function () {
-  S.stop();
-  if (!NB.state.settings.autoTick) return;
-  timer = setInterval(() => {
-    if (!NB.state.session || NB.state.session.role !== 'staff') { S.stop(); return; }
-    if (NB.state.game.activeEvent) return;
-    if (NB.state.game.daily.dayCompleted) return;
-    if (!document.getElementById('modal').classList.contains('hidden')) return;
-    NB.advanceDay(NB.ui.view !== 'dashboard');
-  }, NB.state.settings.tickMs);
-};
-
-S.stop = function () { if (timer) { clearInterval(timer); timer = null; } };
 
 const DAILY_BASE_COST = 3000;
 
-NB.advanceDay = function (silent) {
+/* Предупреждения перед завершением дня */
+S.dayWarnings = function () {
+  const g = NB.state.game;
+  const w = [];
+  if (g.activeEvent) w.push({ level: 'block', text: 'Активное событие — нужно решение.' });
+  if (g.daily.pendingRevenue > 0) w.push({ level: 'warn', text: `Несобрано ${NB.money(g.daily.pendingRevenue)} — сгорит 20%.` });
+  if (g.world.storyQueue.length > 0) w.push({ level: 'block', text: `Сюжетное событие в очереди (${g.world.storyQueue.length}) — откроется после дня.` });
+  return w;
+};
+
+S.canAdvance = function () {
+  const w = S.dayWarnings().filter(x => x.level === 'block');
+  return w.length === 0;
+};
+
+S.advanceDay = function () {
   const st = NB.state;
-  if (st.game.stats.won || st.game.stats.lost) {
-    if (!silent) NB.toast('Игра окончена', 'err');
-    return;
-  }
-  if (st.game.activeEvent) { if (!silent) NB.toast('Сначала решите событие', 'err'); return; }
+  const g = st.game;
 
-  /* Завершаем текущий день: собираем выручку, если автосбор */
-  if (!st.game.daily.dayCompleted) {
-    if (st.game.upgrades.autoCollect > 0) {
-      st.game.cash += st.game.daily.pendingRevenue;
-      st.game.daily.collectedToday += st.game.daily.pendingRevenue;
-      st.game.daily.pendingRevenue = 0;
-    } else {
-      /* Если не собрано — сгорает? Нет, переносится, но игрок теряет бонус. */
-      st.game.daily.pendingRevenue = Math.round(st.game.daily.pendingRevenue * 0.8);
+  if (g.stats.won || g.stats.lost) { NB.toast('Игра окончена', 'err'); return; }
+  if (g.activeEvent) { NB.toast('Сначала решите событие', 'err'); return; }
+
+  /* Предупреждение о несобранной выручке */
+  if (g.daily.pendingRevenue > 0) {
+    const loss = Math.round(g.daily.pendingRevenue * 0.2);
+    if (!confirm(`Несобрано ${NB.money(g.daily.pendingRevenue)}. Сгорит ${NB.money(loss)}. Продолжить?`)) return;
+    g.daily.pendingRevenue -= loss;
+    if (g.upgrades.autoCollect > 0) {
+      g.cash += g.daily.pendingRevenue;
+      g.daily.collectedToday += g.daily.pendingRevenue;
+      g.daily.pendingRevenue = 0;
     }
+  } else if (g.upgrades.autoCollect > 0) {
+    g.cash += g.daily.pendingRevenue;
   }
 
-  /* Новый день */
-  st.game.daily.dayCompleted = false;
-  st.game.daily.pendingRevenue = 0;
-  st.game.daily.pendingClients = 0;
-  st.game.daily.pendingInvoices = 0;
-  st.game.daily.collectedToday = 0;
-  st.game.daily.lastDayRevenue = 0;
-
+  /* Обнуляем день */
+  g.daily.dayCompleted = false;
+  g.daily.pendingRevenue = 0;
+  g.daily.pendingClients = 0;
+  g.daily.pendingInvoices = 0;
+  g.daily.collectedToday = 0;
+  g.daily.lastDayRevenue = 0;
+  g.daily.dayNumber++;
   st.simDate = NB.addDays(st.simDate, 1);
-  const events = [];
+  g.stats.daysPlayed++;
+
+  /* ===== Расчёт выручки за день ===== */
   let revenueToday = 0;
-  let payments = 0;
+  const events = [];
 
   /* 1. Автоплатежи */
   if (st.settings.autoPayments) {
     st.invoices.filter(i => i.status === 'unpaid').forEach(i => {
-      const payChance = 0.35 + (st.game.upgrades.support || 0) * 0.05;
+      const payChance = 0.35 + (g.upgrades.support || 0) * 0.06;
       if (Math.random() > payChance) return;
       const c = NB.client(i.clientId);
       if (!c || c.status !== 'active' || c.balance < i.amount) return;
@@ -65,41 +68,46 @@ NB.advanceDay = function (silent) {
       i.status = 'paid';
       i.paidAt = new Date().toISOString();
       revenueToday += i.amount;
-      payments++;
     });
   }
 
-  /* 2. Starve Neon пассивный доход */
-  if (st.game.sn.ally) {
-    const snRev = Math.round(500 * (1 + st.game.sn.trust / 100) * (1 + st.game.marketShare / 100));
+  /* 2. Пассивный доход от Neon Shadow */
+  if (g.world.neon.state === 'active' && g.world.neon.helped > 0) {
+    const snRev = Math.round(400 * (1 + g.world.neon.trust / 100) * (1 + g.marketShare / 100));
     revenueToday += snRev;
-    st.game.sn.revenue += snRev;
-    events.push({ text: `Starve Neon принёс ${NB.money(snRev)}`, type: 'ok' });
+    events.push({ text: `Neon Shadow перевёл ${NB.money(snRev)}`, type: 'ok' });
   }
 
   /* 3. Новые клиенты */
   if (st.settings.autoNewClients) {
-    const base = 0.22 + (st.game.upgrades.marketing || 0) * 0.12 + (st.game.sn.ally ? 0.05 : 0) + (st.game.upgrades.salesBoost || 0) * 0.1;
+    const base = 0.22 + (g.upgrades.marketing || 0) * 0.12 + (g.upgrades.salesBoost || 0) * 0.1;
     if (Math.random() < base) {
       const n = NB.randInt(1, 2);
       const curPeriod = st.simDate.slice(0, 7);
       for (let k = 0; k < n; k++) {
         const t = NB.pick(st.tariffs);
+        const isDrone = g.world.drones.enabled && Math.random() < 0.4;
         const nc = {
-          id: st.seq.client++, name: NB.genName(), address: NB.genAddress(),
-          phone: NB.genPhone(), tariffId: t.id, balance: NB.randInt(0, 2000),
-          status: 'active', createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS
+          id: st.seq.client++,
+          name: isDrone ? NB.genDroneName() : NB.genName(),
+          address: NB.genAddress(),
+          phone: NB.genPhone(),
+          tariffId: t.id, balance: NB.randInt(0, 2000),
+          status: 'active', createdAt: new Date().toISOString(),
+          password: NB.DEFAULT_PASS,
+          isDrone
         };
         st.clients.push(nc);
         st.invoices.push({ id: st.seq.invoice++, clientId: nc.id, period: curPeriod,
           amount: t.price, status: 'unpaid', paidAt: null });
+        if (isDrone) g.world.drones.droneClients++;
       }
       events.push({ text: `+${n} клиентов`, type: 'ok' });
     }
   }
 
-  /* 4. Отток */
-  const churn = st.settings.churnChance * (1 - (st.game.upgrades.support || 0) * 0.15 - (st.game.upgrades.bandwidth || 0) * 0.1);
+  /* 4. Отток (без настройки — фиксированная формула) */
+  const churn = 0.04 * (1 - (g.upgrades.support || 0) * 0.15 - (g.upgrades.bandwidth || 0) * 0.1);
   if (Math.random() < Math.max(0.01, churn)) {
     const active = st.clients.filter(c => c.status === 'active');
     if (active.length > 3) {
@@ -125,74 +133,63 @@ NB.advanceDay = function (silent) {
     if (created) events.push({ text: `Выставлено ${created} счетов`, type: 'info' });
   }
 
-  /* 6. Финансы */
+  /* 6. Расходы */
   const upkeep = NB.game.dailyUpkeep();
   const expenses = DAILY_BASE_COST + upkeep;
-  const net = revenueToday - expenses;
-  st.game.cash += net;
-  st.game.stats.totalRevenue += revenueToday;
-  st.game.stats.totalExpenses += expenses;
-  st.game.stats.daysPlayed++;
+  g.cash += revenueToday - expenses;
+  g.stats.totalRevenue += revenueToday;
+  g.stats.totalExpenses += expenses;
 
   /* 7. История */
   st.revenue.push({ date: st.simDate, amount: revenueToday });
-  if (st.revenue.length > 60) st.revenue.shift();
+  if (st.revenue.length > 90) st.revenue.shift();
   st.growth.push({ date: st.simDate, count: st.clients.length });
-  if (st.growth.length > 60) st.growth.shift();
+  if (st.growth.length > 90) st.growth.shift();
 
   /* 8. Рынок */
   NB.game.updateMarketShare();
 
-  /* 9. Событие */
+  /* 9. Событие дня (обычное, не сюжетное) */
   let eventTriggered = false;
-  if (Math.random() < 0.22) {
+  if (Math.random() < 0.28) {
     NB.game.triggerEvent();
     eventTriggered = true;
   }
 
-  /* 10. Реклама */
-  if (Math.random() < 0.15 && NB.state.settings.snSpam) {
-    setTimeout(() => NB.story.showSpam(), 500);
-  }
-  if (Math.random() < 0.05 && NB.state.game.sn.videoShown < 3) {
-    setTimeout(() => NB.story.showVideo(), 1000);
+  /* 10. Сюжетный тик */
+  NB.story.tick();
+
+  /* 11. Обычная реклама-спам (не Starve Neon) */
+  if (st.settings.spamEnabled && Math.random() < 0.2) {
+    setTimeout(() => NB.story.showSpam(), 800);
   }
 
   NB.checkGameState();
   NB.save();
 
-  if (!silent) {
-    events.forEach(ev => {
-      NB.notify(ev.text, ev.type, { noToast: true });
-      NB.addActivity(ev.text, ev.type === 'ok' ? 'pay' : ev.type === 'warn' ? 'block' : 'sys');
-    });
-    if (NB.ui.view === 'dashboard') NB.refreshLive();
-    else NB.renderView();
-  } else {
-    events.forEach(ev => NB.addActivity(ev.text, ev.type === 'ok' ? 'pay' : 'sys'));
-  }
+  events.forEach(ev => {
+    NB.notify(ev.text, ev.type, { noToast: true });
+    NB.addActivity(ev.text, ev.type === 'ok' ? 'pay' : ev.type === 'warn' ? 'block' : 'sys');
+  });
 
-  if (eventTriggered && !silent) setTimeout(() => NB.game.showEventModal(), 250);
+  if (NB.ui.view === 'dashboard') NB.refreshLive();
+  else NB.renderView();
+
+  /* Сюжетное событие — показываем после дня */
+  setTimeout(() => {
+    if (NB.state.game.world.storyQueue.length) NB.story.showNextInQueue();
+    else if (eventTriggered) NB.game.showEventModal();
+  }, 300);
 };
 
+NB.advanceDay = function () { S.advanceDay(); };
 NB.advanceWeek = function () {
   for (let i = 0; i < 7; i++) {
     if (NB.state.game.activeEvent) break;
-    NB.advanceDay(true);
+    if (NB.state.game.world.storyQueue.length) break;
+    S.advanceDay();
+    if (NB.state.game.activeEvent || NB.state.game.world.storyQueue.length) break;
   }
-  NB.renderView();
-  if (NB.state.game.activeEvent) setTimeout(() => NB.game.showEventModal(), 200);
-  else NB.toast('Прошло 7 дней', 'ok');
-};
-
-NB.setSimSpeed = function (code) {
-  const map = { '0': 0, '1': 8000, '2': 3000, '3': 1000 };
-  const ms = map[String(code)];
-  if (ms === 0) NB.state.settings.autoTick = false;
-  else { NB.state.settings.autoTick = true; NB.state.settings.tickMs = ms; }
-  NB.save();
-  if (NB.state.settings.autoTick) S.start(); else S.stop();
-  NB.renderView();
 };
 
 })(window);

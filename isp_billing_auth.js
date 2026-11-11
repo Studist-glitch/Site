@@ -4,6 +4,9 @@
 const NB = global.NB;
 const A = NB.auth = {};
 
+/* ============================================================
+   ЭКРАН ВХОДА
+   ============================================================ */
 A.renderLogin = function () {
   document.getElementById('root').innerHTML = `
     <div class="login">
@@ -33,12 +36,16 @@ A.renderLogin = function () {
   });
 };
 
+/* ============================================================
+   ПАНЕЛЬ (login / register)
+   ============================================================ */
 A._panel = function (tab, mode) {
   const panel = document.getElementById('login-panel');
   panel.innerHTML = (tab === 'staff')
     ? (mode === 'register' ? A._staffRegister() : A._staffLogin())
     : (mode === 'register' ? A._clientRegister() : A._clientLogin());
 
+  /* Быстрый вход */
   panel.querySelectorAll('[data-quick]').forEach(b => {
     b.addEventListener('click', () => A._quickLogin(tab, Number(b.dataset.quick)));
   });
@@ -51,9 +58,11 @@ A._panel = function (tab, mode) {
       A._panel(tab, 'login');
     });
   });
+  /* Переключение login/register */
   panel.querySelectorAll('[data-switch]').forEach(b => {
     b.addEventListener('click', e => { e.preventDefault(); A._panel(tab, b.dataset.switch); });
   });
+  /* Тариф-плитки */
   panel.querySelectorAll('.tariff-pick').forEach(el => {
     el.addEventListener('click', () => {
       panel.querySelectorAll('.tariff-pick').forEach(x => x.classList.remove('selected'));
@@ -62,6 +71,7 @@ A._panel = function (tab, mode) {
       if (r) r.checked = true;
     });
   });
+  /* Submit */
   const form = panel.querySelector('form');
   if (form) {
     form.addEventListener('submit', e => {
@@ -73,6 +83,9 @@ A._panel = function (tab, mode) {
   }
 };
 
+/* ============================================================
+   БЛОК БЫСТРОГО ВХОДА
+   ============================================================ */
 A._quickLogins = function (tab) {
   const list = NB.state.favorites[tab === 'staff' ? 'staff' : 'clients'] || [];
   if (!list.length) return '';
@@ -92,6 +105,9 @@ A._quickLogins = function (tab) {
   </div>`;
 };
 
+/* ============================================================
+   ФОРМЫ — АБОНЕНТ
+   ============================================================ */
 A._clientLogin = function () {
   return `
     ${A._quickLogins('client')}
@@ -137,6 +153,9 @@ A._clientRegister = function () {
     </form>`;
 };
 
+/* ============================================================
+   ФОРМЫ — СОТРУДНИК
+   ============================================================ */
 A._staffLogin = function () {
   return `
     ${A._quickLogins('staff')}
@@ -167,6 +186,9 @@ A._staffRegister = function () {
     </form>`;
 };
 
+/* ============================================================
+   ЛОГИН
+   ============================================================ */
 A._handleLogin = function (tab, fd) {
   if (tab === 'staff') {
     const username = String(fd.get('u') || '').trim();
@@ -183,6 +205,7 @@ A._handleLogin = function (tab, fd) {
     }
     return;
   }
+
   const phone = String(fd.get('phone') || '').trim();
   const password = String(fd.get('p') || '');
   const c = NB.state.clients.find(x => x.phone === phone);
@@ -197,6 +220,9 @@ A._handleLogin = function (tab, fd) {
   }
 };
 
+/* ============================================================
+   РЕГИСТРАЦИЯ
+   ============================================================ */
 A._handleRegister = function (tab, fd) {
   const pw = String(fd.get('password') || '');
   const pw2 = String(fd.get('password2') || '');
@@ -214,7 +240,9 @@ A._handleRegister = function (tab, fd) {
     const nc = {
       id: NB.state.seq.client++, name, phone, address, tariffId,
       balance: 1000, status: 'active',
-      createdAt: new Date().toISOString(), password: pw
+      createdAt: new Date().toISOString(),
+      password: pw,
+      isDrone: false
     };
     NB.state.clients.push(nc);
     NB.state.invoices.push({
@@ -231,6 +259,7 @@ A._handleRegister = function (tab, fd) {
     return;
   }
 
+  /* Сотрудник */
   const username = String(fd.get('username') || '').trim();
   const name = String(fd.get('name') || '').trim() || username;
   if (!username) return NB.toast('Введите логин', 'err');
@@ -245,6 +274,9 @@ A._handleRegister = function (tab, fd) {
   setTimeout(() => NB.game.startTour('staff'), 400);
 };
 
+/* ============================================================
+   БЫСТРЫЙ ВХОД
+   ============================================================ */
 A._quickLogin = function (tab, idx) {
   const list = NB.state.favorites[tab === 'staff' ? 'staff' : 'clients'];
   const f = list[idx];
@@ -264,10 +296,15 @@ A._quickLogin = function (tab, idx) {
   NB.render();
 };
 
+/* ============================================================
+   ВЫХОД
+   ============================================================ */
 A.logout = function () {
-  NB.state.session = null; NB.save();
-  NB.sim.stop();
-  NB.ui.view = 'dashboard'; NB.render();
+  NB.state.session = null;
+  NB.save();
+  if (NB.sim && NB.sim.stop) NB.sim.stop();
+  NB.ui.view = 'dashboard';
+  NB.render();
 };
 
 })(window);

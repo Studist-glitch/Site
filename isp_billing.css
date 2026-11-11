@@ -607,3 +607,108 @@ p{margin:0}
 .comp-body b{font-size:14px;color:#fff;display:block}
 .comp-body small{font-size:11.5px;color:var(--muted)}
 .comp-share{font-size:13px;font-weight:700;color:var(--primary-3);font-variant-numeric:tabular-nums}
+
+/* ========== STORY / NEW UI ========== */
+:root {
+  --story-theme: #ff6b00;
+}
+
+/* Тема меняется по мере сюжета */
+body[data-arc="ordinary"]     { --primary: #ff6b00; --primary-2: #ff9500; --primary-3: #ffb347; }
+body[data-arc="first_signal"] { --primary: #ff9500; --primary-2: #ffb347; --primary-3: #ffd27a; }
+body[data-arc="neon_shadow"]  { --primary: #ff7a00; --primary-2: #ff9500; --primary-3: #ffb347; }
+body[data-arc="whispers"]     { --primary: #a855f7; --primary-2: #c084fc; --primary-3: #d8b4fe; }
+body[data-arc="the_gala"]     { --primary: #dc2626; --primary-2: #ef4444; --primary-3: #fca5a5; }
+body[data-arc="drones"]       { --primary: #0ea5e9; --primary-2: #38bdf8; --primary-3: #7dd3fc; }
+body[data-arc="bunker"]       { --primary: #475569; --primary-2: #64748b; --primary-3: #94a3b8; }
+body[data-arc="silence"]      { --primary: #64748b; --primary-2: #94a3b8; --primary-3: #cbd5e1; }
+body[data-arc="resolution"]   { --primary: #22c55e; --primary-2: #4ade80; --primary-3: #86efac; }
+
+/* Панель дня */
+.sim-bar .sim-day { font-size: 12px; color: var(--muted); margin-left: 6px; }
+.sim-note {
+  font-size: 12.5px; color: var(--text-2); padding: 4px 10px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px;
+}
+.sim-note.warn { color: #fbbf24; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.08); }
+.sim-note.story { color: var(--primary-3); border-color: rgba(255,107,0,.4); background: rgba(255,107,0,.08); }
+.sim-note.muted { color: var(--muted); }
+
+/* Дневная панель на дашборде */
+.day-panel { border-color: var(--primary) !important; background: linear-gradient(135deg, var(--surface), rgba(255,107,0,.06)) !important; }
+
+/* Сюжетная панель */
+.story-panel { background: linear-gradient(135deg, var(--surface), rgba(168,85,247,.08));
+  border: 1px solid rgba(168,85,247,.4); }
+.story-panel .story-chapter { color: var(--primary-3); }
+
+/* Сюжетное модальное окно */
+.story-modal-box {
+  width: min(600px, 100%) !important;
+  border: 1px solid var(--primary) !important;
+  background: linear-gradient(135deg, var(--surface), rgba(0,0,0,.4)) !important;
+  box-shadow: 0 0 60px -20px var(--primary) !important;
+}
+.story-modal-box .story-title { font-size: 22px; margin-bottom: 14px; }
+.story-modal-box .story-text {
+  font-size: 14px; line-height: 1.7; color: var(--text-2);
+  white-space: pre-wrap;
+  margin-bottom: 20px;
+  min-height: 60px;
+}
+.story-modal-box .story-choice {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all .2s;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+.story-modal-box .story-choice:hover {
+  border-color: var(--primary);
+  background: rgba(255,107,0,.06);
+  transform: translateX(3px);
+}
+.story-modal-box .story-choice-hint { font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
+
+/* Новости */
+.news-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; }
+.news-item {
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+  font-size: 13px; color: var(--text-2); line-height: 1.45;
+}
+.news-item:last-child { border-bottom: 0; }
+.news-item small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+
+/* Спам (реклама) — фиолетовая, отдельно от сюжета */
+.sn-spam {
+  background: linear-gradient(135deg, #141420, #1a1220) !important;
+  border-color: rgba(168,85,247,.4) !important;
+}
+.sn-spam .sn-spam-brand { color: #c084fc !important; }
+.sn-spam .sn-spam-body { color: #d8b4fe !important; }
+
+/* Сюжетный бейдж */
+.story-badge.neutral { background: rgba(122,122,134,.2); color: var(--muted); }
+.story-badge.risk    { background: rgba(239,68,68,.15); color: #f87171; }
+.story-badge.reward  { background: rgba(34,197,94,.15); color: #4ade80; }
+
+/* Компактный UI */
+.main { padding: 16px 24px 60px; }
+.game-panel { padding: 16px 18px; margin-bottom: 12px; }
+.stats { gap: 12px; margin-bottom: 12px; }
+.stat { padding: 14px 16px; }
+.stat-value { font-size: 22px; }
+.panel { padding: 16px; }
+.grid-2 { gap: 12px; margin-bottom: 12px; }
+h1 { font-size: 22px; }
+.page-head { margin-bottom: 16px; }

@@ -16,7 +16,6 @@ A.genInvoices = function () {
   NB.save();
   if (created) {
     NB.notify(`Выставлено ${created} счетов`, 'ok');
-    NB.addActivity(`Выставлено ${created} счетов`, 'sys');
     NB.renderView();
   } else NB.toast('Все счета уже выставлены');
 };
@@ -56,8 +55,7 @@ A.showNotifs = function () {
         <div class="notif-item ${n.read ? '' : 'unread'}">
           <div class="notif-dot" style="background:${n.type === 'ok' ? '#22c55e' : n.type === 'warn' ? '#f59e0b' : '#ff6b00'}"></div>
           <div class="notif-item-body"><b>${NB.esc(n.text)}</b><small>${NB.timeAgo(n.at)}</small></div>
-        </div>`).join('')}
-  `;
+        </div>`).join('')}`;
   document.body.appendChild(panel);
   requestAnimationFrame(() => panel.classList.add('show'));
   setTimeout(() => {
@@ -93,8 +91,9 @@ A.openClient = function (id) {
     <div class="detail-section">
       <div class="detail-row"><span>Телефон</span><span>${NB.esc(c.phone)}</span></div>
       <div class="detail-row"><span>Адрес</span><span>${NB.esc(c.address)}</span></div>
+      <div class="detail-row"><span>Тип</span><span>${c.isDrone ? '🤖 Дрон' : '👤 Человек'}</span></div>
       <div class="detail-row"><span>С нами с</span><span>${NB.fmtDate(c.createdAt)}</span></div>
-      <div class="detail-row"><span>Статус</span><span>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Заблокирован</span>'}</span></div>
+      <div class="detail-row"><span>Статус</span><span>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</span></div>
     </div>
     <div class="detail-section">
       <h4>Финансы</h4>
@@ -123,7 +122,7 @@ A.openClient = function (id) {
       <button type="button" class="btn ghost small" data-action="del-client" data-id="${c.id}" style="color:var(--danger)">Удалить</button>
     </div>`;
 
-  NB.openModal({ title: c.name, html, submit: null, wide: true });
+  NB.openModal({ title: c.name, html, noSubmit: true, wide: true });
 };
 
 A.addClient = function () {
@@ -142,11 +141,11 @@ A.addClient = function () {
         phone: String(fd.get('phone') || '').trim() || NB.genPhone(),
         tariffId: Number(fd.get('tariffId')),
         balance: 0, status: 'active',
-        createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS
+        createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
+        isDrone: false
       });
       NB.save();
       NB.notify(`Добавлен клиент «${name}»`, 'ok');
-      NB.addActivity(`Добавлен клиент «${name}»`, 'sys');
       NB.closeModal(); NB.renderView();
     }
   });
@@ -188,7 +187,6 @@ A.rechargeClient = function (id) {
       c.balance += amt;
       NB.save();
       NB.notify(`Баланс «${c.name}» пополнен`, 'ok');
-      NB.addActivity(`Баланс «${c.name}» +${NB.money(amt)}`, 'recharge');
       NB.closeModal(); NB.renderView();
     }
   });
@@ -200,7 +198,6 @@ A.toggleClient = function (id) {
   c.status = c.status === 'active' ? 'blocked' : 'active';
   NB.save();
   NB.notify(`${c.status === 'active' ? 'Разблокирован' : 'Заблокирован'} «${c.name}»`, 'ok');
-  NB.addActivity(`${c.status === 'active' ? 'Разблокирован' : 'Заблокирован'} «${c.name}»`, 'block');
   NB.closeModal(); NB.renderView();
 };
 
@@ -213,7 +210,6 @@ A.delClient = function (id) {
   NB.state.tickets = NB.state.tickets.filter(t => t.clientId !== c.id);
   NB.save();
   NB.notify(`Клиент «${c.name}» удалён`, 'warn');
-  NB.addActivity(`Клиент «${c.name}» удалён`, 'sys');
   NB.closeModal(); NB.renderView();
 };
 
@@ -223,9 +219,7 @@ A.payInvoiceStaff = function (id) {
   inv.status = 'paid';
   inv.paidAt = new Date().toISOString();
   NB.save();
-  const c = NB.client(inv.clientId);
   NB.notify(`Счёт #${inv.id} оплачен (${NB.money(inv.amount)})`, 'ok');
-  NB.addActivity(`Счёт #${inv.id} (${c ? c.name : '—'}) оплачен`, 'pay');
   NB.renderView();
 };
 
@@ -238,7 +232,6 @@ A.payInvoiceSelf = function (id) {
   inv.status = 'paid';
   inv.paidAt = new Date().toISOString();
   NB.save();
-  NB.addActivity(`Клиент «${c.name}» оплатил счёт #${inv.id}`, 'pay');
   NB.renderView();
   NB.confetti();
   NB.toast(`Оплата ${NB.money(inv.amount)} прошла`, 'ok');
@@ -273,7 +266,6 @@ A.addTariff = function () {
       });
       NB.save();
       NB.notify(`Создан тариф «${name}»`, 'ok');
-      NB.addActivity(`Создан тариф «${name}»`, 'tariff');
       NB.closeModal(); NB.renderView();
     }
   });
@@ -295,7 +287,6 @@ A.editTariff = function (id) {
       t.price = Number(fd.get('price')) || t.price;
       NB.save();
       NB.notify(`Тариф «${t.name}» обновлён`, 'ok');
-      NB.addActivity(`Тариф «${t.name}» обновлён`, 'tariff');
       NB.closeModal(); NB.renderView();
     }
   });
@@ -311,14 +302,11 @@ A.delTariff = function (id) {
     const target = others[0];
     if (!confirm(`Тариф «${t.name}» у ${affected.length} клиентов. Перевести на «${target.name}» (${NB.money(target.price)})?`)) return;
     affected.forEach(c => c.tariffId = target.id);
-    NB.notify(`Тариф «${t.name}» удалён, ${affected.length} клиентов → «${target.name}»`, 'warn');
   } else {
     if (!confirm(`Удалить тариф «${t.name}»?`)) return;
-    NB.notify(`Тариф «${t.name}» удалён`, 'warn');
   }
   NB.state.tariffs = NB.state.tariffs.filter(x => x.id !== t.id);
   NB.save();
-  NB.addActivity(`Тариф «${t.name}» удалён`, 'tariff');
   NB.renderView();
 };
 
@@ -330,7 +318,6 @@ A.switchTariff = function (id) {
   c.tariffId = t.id;
   NB.save();
   NB.notify(`Вы перешли на «${t.name}»`, 'ok');
-  NB.addActivity(`Клиент «${c.name}» перешёл на «${t.name}»`, 'tariff');
   NB.renderView();
 };
 
@@ -347,7 +334,6 @@ A.rechargeSelf = function () {
       if (amt <= 0) return NB.toast('Введите положительную сумму', 'err');
       c.balance += amt;
       NB.save();
-      NB.addActivity(`Клиент «${c.name}» пополнил баланс`, 'recharge');
       NB.closeModal(); NB.renderView();
       NB.confetti();
       NB.toast(`+${NB.money(amt)} зачислено`, 'ok');
@@ -361,7 +347,6 @@ A.resolveTicket = function (id) {
   t.status = 'resolved';
   NB.save();
   NB.notify(`Заявка «${t.subject}» решена`, 'ok');
-  NB.addActivity(`Заявка «${t.subject}» решена`, 'ticket');
   NB.renderView();
 };
 
@@ -370,8 +355,7 @@ A.newTicket = function () {
   NB.openModal({
     title: 'Новая заявка',
     submit: 'Отправить',
-    html: NB.textareaField('Опишите проблему', 'subject') +
-      `<p class="muted small" style="margin-top:6px">Ответим в течение 24 часов</p>`,
+    html: NB.textareaField('Опишите проблему', 'subject'),
     onSubmit(fd) {
       const subject = String(fd.get('subject') || '').trim();
       if (!subject) return NB.toast('Опишите проблему', 'err');
@@ -381,64 +365,27 @@ A.newTicket = function () {
       });
       NB.save();
       NB.notify(`Клиент «${c.name}» создал заявку`, 'ok');
-      NB.addActivity(`Клиент «${c.name}» создал заявку`, 'ticket');
       NB.closeModal(); NB.renderView();
     }
   });
 };
 
-A.buyUpgrade = function (key) {
-  NB.game.buyUpgrade(key);
-};
+A.buyUpgrade = function (key) { NB.game.buyUpgrade(key); };
+A.resolveEventModal = function () { if (NB.state.game.activeEvent) NB.game.showEventModal(); };
+A.startTour = function () { NB.startTour(); };
 
-A.resolveEventModal = function () {
-  if (NB.state.game.activeEvent) NB.game.showEventModal();
-};
+A.advanceDay = function () { NB.advanceDay(); };
 
-A.startTour = function () {
-  NB.startTour();
-};
+A.setTick = function () { /* убрано */ };
+A.simSpeed = function () { /* убрано */ };
 
-A.simSpeed = function (speed) {
-  NB.setSimSpeed(speed);
-};
+A.resetData = function () { NB.resetState(); };
 
-A.advanceDay = function () {
-  NB.advanceDay(false);
-};
+A.openStory = function () { NB.story.showNextInQueue(); };
 
-A.advanceWeek = function () {
-  NB.advanceWeek();
-};
-
-A.setTick = function (ms) {
-  const map = { 8000: '1', 3000: '2', 1000: '3' };
-  NB.setSimSpeed(map[Number(ms)] || '2');
-};
-
-A.resetData = function () {
-  NB.resetState();
-};
-
-A.cynChoice = function (choice) {
-  const g = NB.state.game;
-  if (choice === 'open') {
-    g.cyn.discovered = true;
-    g.cyn.threat += 2;
-    g.cyn.messages.push('Ты открыл файл. Синесса заметила тебя.');
-    NB.effects.shake(800);
-    NB.effects.redFlash();
-  } else if (choice === 'delete') {
-    g.cyn.threat = Math.max(0, g.cyn.threat - 1);
-  }
-  NB.save();
-  NB.renderView();
-};
-
-/* =========== ДЕЙСТВИЯ ДНЕВНОЙ СИСТЕМЫ =========== */
+/* Сбор выручки */
 A.collectRevenue = function () {
   const g = NB.state.game;
-  if (g.daily.dayCompleted) return NB.toast('День уже завершён', 'err');
   if (g.daily.pendingRevenue <= 0) return NB.toast('Нечего собирать', 'err');
   const amount = g.daily.pendingRevenue;
   g.cash += amount;
@@ -453,53 +400,40 @@ A.collectRevenue = function () {
 };
 
 A.finishDay = function () {
-  const g = NB.state.game;
-  if (g.daily.dayCompleted) return NB.toast('День уже завершён', 'err');
-  if (g.daily.pendingRevenue > 0) {
-    if (!confirm(`У вас осталась несобранная выручка (${NB.money(g.daily.pendingRevenue)}). Она сгорит на 20%. Продолжить?`)) return;
-    g.daily.pendingRevenue = Math.round(g.daily.pendingRevenue * 0.8);
-  }
-  g.daily.dayCompleted = true;
-  NB.notify('День завершён', 'ok');
-  NB.addActivity('День завершён', 'sys');
-  NB.save();
-  NB.renderView();
+  NB.advanceDay();
 };
 
 A.map = {
-  'logout': () => NB.auth.logout(),
-  'export': A.exportData,
-  'reset-data': A.resetData,
+  'logout':       () => NB.auth.logout(),
+  'export':       A.exportData,
+  'reset-data':   A.resetData,
   'clear-activity': A.clearActivity,
-  'advance-day': A.advanceDay,
-  'advance-week': A.advanceWeek,
-  'sim-speed': d => A.simSpeed(d.speed),
-  'set-tick': d => A.setTick(d.ms),
-  'show-notifs': A.showNotifs,
-  'mark-read': A.markRead,
-  'start-tour': A.startTour,
-  'buy-upgrade': d => A.buyUpgrade(d.key),
+  'advance-day':  A.advanceDay,
+  'show-notifs':  A.showNotifs,
+  'mark-read':    A.markRead,
+  'start-tour':   A.startTour,
+  'buy-upgrade':  d => A.buyUpgrade(d.key),
   'resolve-event-modal': A.resolveEventModal,
-  'open-client': d => A.openClient(d.id),
-  'add-client': A.addClient,
-  'edit-client': d => A.editClient(d.id),
-  'recharge': d => A.rechargeClient(d.id),
+  'open-story':   A.openStory,
+  'open-client':  d => A.openClient(d.id),
+  'add-client':   A.addClient,
+  'edit-client':  d => A.editClient(d.id),
+  'recharge':     d => A.rechargeClient(d.id),
   'recharge-self': A.rechargeSelf,
-  'toggle': d => A.toggleClient(d.id),
-  'del-client': d => A.delClient(d.id),
-  'add-tariff': A.addTariff,
-  'edit-tariff': d => A.editTariff(d.id),
-  'del-tariff': d => A.delTariff(d.id),
+  'toggle':       d => A.toggleClient(d.id),
+  'del-client':   d => A.delClient(d.id),
+  'add-tariff':   A.addTariff,
+  'edit-tariff':  d => A.editTariff(d.id),
+  'del-tariff':   d => A.delTariff(d.id),
   'switch-tariff': d => A.switchTariff(d.id),
-  'pay-invoice': d => A.payInvoiceStaff(d.id),
+  'pay-invoice':  d => A.payInvoiceStaff(d.id),
   'pay-invoice-self': d => A.payInvoiceSelf(d.id),
-  'del-invoice': d => A.delInvoice(d.id),
+  'del-invoice':  d => A.delInvoice(d.id),
   'resolve-ticket': d => A.resolveTicket(d.id),
-  'new-ticket': A.newTicket,
+  'new-ticket':   A.newTicket,
   'gen-invoices': A.genInvoices,
-  'cyn-choice': d => A.cynChoice(d.choice),
   'collect-revenue': A.collectRevenue,
-  'finish-day': A.finishDay
+  'finish-day':   A.finishDay
 };
 
 })(window);
