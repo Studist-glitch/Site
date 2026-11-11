@@ -5,56 +5,85 @@ const NB = global.NB;
 const S = NB.views.staff;
 
 S.dashboard = function () {
-  const total = NB.state.clients.length;
-  const active = NB.state.clients.filter(c => c.status === 'active');
-  const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
-  const p = NB.period();
-  const paid = NB.state.invoices.filter(i => i.status === 'paid' && i.period === p).reduce((s, i) => s + i.amount, 0);
-  const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
-  const openTickets = NB.state.tickets.filter(t => t.status === 'open').length;
+  const st = NB.state;
+  const g = st.game;
+  const stats = NB.computeStats();
+  const openTickets = st.tickets.filter(t => t.status === 'open').length;
+  const levelLabel = NB.game.LEVELS[g.level - 1] ? NB.game.LEVELS[g.level - 1].label : 'Новичок';
 
-  /* топ клиентов по оплатам */
   const paidByClient = {};
-  NB.state.invoices.filter(i => i.status === 'paid').forEach(i => {
+  st.invoices.filter(i => i.status === 'paid').forEach(i => {
     paidByClient[i.clientId] = (paidByClient[i.clientId] || 0) + i.amount;
   });
   const top = Object.entries(paidByClient)
     .map(([id, sum]) => ({ client: NB.client(Number(id)), sum }))
-    .filter(x => x.client)
-    .sort((a, b) => b.sum - a.sum)
-    .slice(0, 5);
+    .filter(x => x.client).sort((a, b) => b.sum - a.sum).slice(0, 5);
 
-  /* распределение по тарифам */
-  const dist = NB.state.tariffs.map(t => ({ ...t, count: NB.state.clients.filter(c => c.tariffId === t.id).length }))
+  const dist = st.tariffs.map(t => ({ ...t, count: st.clients.filter(c => c.tariffId === t.id).length }))
     .sort((a, b) => b.count - a.count);
   const maxCount = Math.max(1, ...dist.map(d => d.count));
 
-  /* суммарная выручка за 14 дней */
-  const totalRev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
+  const evt = g.activeEvent;
+  const eventBanner = evt ? `<div class="game-panel" style="border-color:rgba(239,68,68,.6);background:linear-gradient(135deg,#1a0808,#1a0f07)">
+    <div class="game-head">
+      <div><div class="game-title" style="color:#f87171">⚠ Требуется решение</div>
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px">${evt.title}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px;max-width:520px">${evt.desc}</div></div>
+      <button class="btn primary" data-action="resolve-event-modal">Решить →</button>
+    </div>
+  </div>` : '';
+
+  const status = g.stats.won ? '<span class="game-status win">Победа</span>'
+    : g.stats.lost ? '<span class="game-status lose">Провал</span>'
+    : '<span class="game-status playing">В игре</span>';
+
+  const goalPct = Math.min(100, (g.cash / g.goal) * 100);
 
   return `
     <div class="page-head">
       <div><h1>Дашборд</h1>
-        <p class="muted">Период ${NB.periodLabel(p)} · ${openTickets} заявок в работе</p></div>
+        <p class="muted">День ${g.stats.daysPlayed} · ${openTickets} заявок · уровень «${levelLabel}»</p></div>
       <div class="head-actions">
         <button class="btn ghost" data-action="export">Экспорт</button>
         <button class="btn primary" data-action="gen-invoices">Выставить счета</button>
       </div>
     </div>
+
+    ${eventBanner}
+
+    <div class="game-panel">
+      <div class="game-head">
+        <div>
+          <div class="game-title">Касса компании</div>
+          <div class="game-cash" id="game-cash">${NB.money(g.cash)}<small>из ${NB.money(g.goal)}</small></div>
+          <div class="game-goal-wrap">
+            <div class="game-goal-labels"><span>Прогресс к цели</span><b>${Math.round(goalPct)}%</b></div>
+            <div class="game-goal-bar"><i id="game-goal-bar" style="width:${goalPct}%"></i></div>
+          </div>
+        </div>
+        <div class="game-stats">
+          <div class="game-stat"><b id="game-level">${g.level}</b><span>уровень</span></div>
+          <div class="game-stat"><b id="game-rep">${g.reputation}</b><span>репутация</span></div>
+          <div class="game-stat"><b>${g.stats.eventsResolved}</b><span>событий</span></div>
+          <div class="game-stat">${status}</div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats">
-      ${NB.statCard('Абоненты', total, `${active.length} активных`, false, '#ff6b00')}
-      ${NB.statCard('MRR', mrr, 'выручка/мес', true, '#ff9500')}
-      ${NB.statCard('Выручка', totalRev, 'за 14 дней', true, '#ffb347')}
-      ${NB.statCard('К оплате', due, 'неоплачено', true, '#f59e0b')}
+      ${NB.statCard('Абоненты', stats.clients, `${st.clients.filter(c => c.status === 'active').length} активных`, false, '#ff6b00', 'clients')}
+      ${NB.statCard('MRR', stats.mrr, 'выручка/мес', true, '#ff9500', 'mrr')}
+      ${NB.statCard('Выручка', stats.revenue, 'за 14 дней', true, '#ffb347', 'revenue')}
+      ${NB.statCard('К оплате', stats.due, 'неоплачено', true, '#f59e0b', 'due')}
     </div>
 
     <div class="panel" style="margin-bottom:16px">
       <div class="panel-head"><h2>Выручка по дням</h2>
-        <span class="muted small">за ${NB.state.revenue.length} дней</span></div>
+        <span class="muted small">${st.revenue.length} дней</span></div>
       <canvas id="revenue-chart" class="revenue-chart"></canvas>
       <div class="chart-foot">
-        <span>Итого: <b>${NB.money(totalRev)}</b></span>
-        <span class="muted">Период: ${NB.state.revenue.length ? NB.fmtDate(NB.state.revenue[0].date) + ' — ' + NB.fmtDate(NB.state.revenue[NB.state.revenue.length-1].date) : '—'}</span>
+        <span>Итого: <b>${NB.money(stats.revenue)}</b></span>
+        <span class="muted">Расходы: ${NB.money(NB.game.dailyUpkeep() + 3000)}/день</span>
       </div>
     </div>
 
@@ -70,7 +99,7 @@ S.dashboard = function () {
       <div class="panel">
         <div class="panel-head"><h2>Активность</h2><button class="btn tiny" data-view="activity">Все →</button></div>
         <div class="activity-list" id="activity-list">
-          ${NB.state.activity.slice(-6).reverse().map(S._activityItem).join('')}
+          ${st.activity.slice(-6).reverse().map(S._activityItem).join('')}
         </div>
       </div>
     </div>
@@ -79,23 +108,19 @@ S.dashboard = function () {
       <div class="panel">
         <div class="panel-head"><h2>Топ клиентов</h2><button class="btn tiny" data-view="clients">Все →</button></div>
         ${top.length ? `<div class="top-list">
-          ${top.map((t, i) => `
-            <div class="top-item">
-              <div class="top-rank">${i+1}</div>
-              <div class="top-body">
-                <b>${NB.esc(t.client.name)}</b>
-                <small>${NB.esc(t.client.phone)}</small>
-              </div>
-              <div class="top-amount">${NB.money(t.sum)}</div>
-            </div>`).join('')}
-        </div>` : '<p class="empty">Пока нет данных</p>'}
+          ${top.map((t, i) => `<div class="top-item">
+            <div class="top-rank">${i+1}</div>
+            <div class="top-body"><b>${NB.esc(t.client.name)}</b>
+              <small>${NB.esc(t.client.phone)}</small></div>
+            <div class="top-amount">${NB.money(t.sum)}</div>
+          </div>`).join('')}
+        </div>` : '<p class="empty">Нет данных</p>'}
       </div>
       <div class="panel">
         <div class="panel-head"><h2>Тарифы</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
         ${dist.map(d => `<div class="tariff-bar">
           <div class="tariff-bar-top">
-            <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span>
-            <b>${d.count}</b>
+            <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b>
           </div>
           <div class="bar"><i style="width:${(d.count / maxCount) * 100}%;background:${d.color}"></i></div>
         </div>`).join('')}
@@ -107,10 +132,7 @@ S.dashboard = function () {
 S.clients = function () {
   const q = NB.ui.query.trim().toLowerCase();
   let list = NB.state.clients.filter(c => !q ||
-    c.name.toLowerCase().includes(q) ||
-    c.address.toLowerCase().includes(q) ||
-    c.phone.toLowerCase().includes(q));
-
+    c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
   const dir = NB.ui.clientSort.dir === 'asc' ? 1 : -1;
   list.sort((a, b) => {
     if (NB.ui.clientSort.key === 'name') return a.name.localeCompare(b.name) * dir;
@@ -132,7 +154,7 @@ S.clients = function () {
       <td>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</td>
       <td class="actions">
         <button class="icon" title="Пополнить" data-action="recharge" data-id="${c.id}">＋</button>
-        <button class="icon" title="Редактировать" data-action="edit-client" data-id="${c.id}">✎</button>
+        <button class="icon" title="Изменить" data-action="edit-client" data-id="${c.id}">✎</button>
         <button class="icon" title="${c.status === 'active' ? 'Блок' : 'Разблок'}" data-action="toggle" data-id="${c.id}">${c.status === 'active' ? '❙' : '▶'}</button>
         <button class="icon danger" title="Удалить" data-action="del-client" data-id="${c.id}">✕</button>
       </td>
@@ -167,24 +189,23 @@ S.tariffs = function () {
       <div><h1>Тарифы</h1><p class="muted">${NB.state.tariffs.length} планов</p></div>
       <button class="btn primary" data-action="add-tariff">＋ Новый тариф</button>
     </div>
-    <div class="tariff-grid">
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
       ${NB.state.tariffs.map((t, i) => {
         const count = NB.state.clients.filter(c => c.tariffId === t.id).length;
-        return `<article class="tariff-card fade" style="--c:${t.color};animation-delay:${i * 60}ms">
-          <div class="tariff-glow"></div>
-          <div class="tariff-head">
-            <h3>${NB.esc(t.name)}</h3>
-            <div class="tariff-actions">
-              <button class="icon" data-action="edit-tariff" data-id="${t.id}" title="Редактировать">✎</button>
+        return `<article class="tariff-card fade" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;transition:.3s;animation-delay:${i * 60}ms">
+          <div class="tariff-glow" style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.16;filter:blur(32px);pointer-events:none"></div>
+          <div class="tariff-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <h3 style="font-size:15.5px;color:#fff">${NB.esc(t.name)}</h3>
+            <div style="display:flex;gap:4px">
+              <button class="icon" data-action="edit-tariff" data-id="${t.id}" title="Изменить">✎</button>
               <button class="icon danger" data-action="del-tariff" data-id="${t.id}" title="Удалить">✕</button>
             </div>
           </div>
-          <p class="tariff-desc">${NB.esc(t.desc || '')}</p>
-          <div class="tariff-speed"><b>${t.speed}</b> Мбит/с</div>
-          <div class="tariff-price">${NB.money(t.price)}<small>/мес</small></div>
-          <div class="tariff-foot">
-            <span>${count} клиентов</span>
-            <span>${NB.money(count * t.price)}</span>
+          <p style="color:var(--muted);font-size:12.5px;margin-bottom:14px;min-height:16px">${NB.esc(t.desc || '')}</p>
+          <div style="font-size:13px;color:var(--muted)"><b style="font-size:24px;color:var(--primary-3);letter-spacing:-.03em;margin-right:3px">${t.speed}</b> Мбит/с</div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;margin:8px 0 16px;color:#fff">${NB.money(t.price)}<small style="font-size:12px;font-weight:500;color:var(--muted);margin-left:3px">/мес</small></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px">
+            <span>${count} клиентов</span><span>${NB.money(count * t.price)}</span>
           </div>
         </article>`;
       }).join('')}
@@ -214,7 +235,7 @@ S.invoices = function () {
 
   return `
     <div class="page-head">
-      <div><h1>Счета</h1><p class="muted">Период ${NB.periodLabel(NB.period())} · к оплате ${NB.money(totalUnpaid)}</p></div>
+      <div><h1>Счета</h1><p class="muted">${NB.periodLabel(NB.period())} · к оплате ${NB.money(totalUnpaid)}</p></div>
       <button class="btn primary" data-action="gen-invoices">Выставить счета</button>
     </div>
     <div class="panel">
@@ -252,10 +273,54 @@ S.tickets = function () {
     </div>`;
 };
 
+S.upgrades = function () {
+  const g = NB.state.game;
+  return `
+    <div class="page-head">
+      <div><h1>Магазин улучшений</h1>
+        <p class="muted">Касса: <b style="color:var(--primary-3)">${NB.money(g.cash)}</b> · Апгрейды работают постоянно</p></div>
+    </div>
+    <div class="upgrades-grid">
+      ${Object.keys(NB.game.UPGRADES).map((key, i) => {
+        const u = NB.game.UPGRADES[key];
+        const lvl = g.upgrades[key];
+        const cost = NB.game.upgradeCost(key);
+        const maxed = cost === null;
+        const canBuy = !maxed && g.cash >= cost;
+        return `<div class="upgrade fade ${maxed ? 'maxed' : ''}" style="animation-delay:${i * 70}ms">
+          <div class="upgrade-head">
+            <div class="upgrade-icon">${u.icon}</div>
+            <div style="flex:1">
+              <h3>${u.name}</h3>
+            </div>
+          </div>
+          <div class="upgrade-desc">${u.desc}</div>
+          <div class="upgrade-levels">
+            ${[0,1,2].map(i => `<i class="${i < lvl ? 'filled' : ''}"></i>`).join('')}
+          </div>
+          <div class="upgrade-effect ${lvl === 0 ? 'neutral' : ''}">
+            ${lvl === 0 ? 'Не куплено' : `Ур. ${lvl}: ${u.levels[lvl-1]}`}
+          </div>
+          <div class="upgrade-foot" style="margin-top:14px">
+            <div class="upgrade-price">${maxed ? '— MAX —' : NB.money(cost)}</div>
+            ${maxed
+              ? '<button class="btn ghost small" disabled>Максимум</button>'
+              : `<button class="btn ${canBuy ? 'primary' : 'ghost'} small" data-action="buy-upgrade" data-key="${key}" ${canBuy ? '' : 'disabled'}>
+                  ${lvl === 0 ? 'Купить' : `Улучшить до ${lvl+1}`}
+                </button>`}
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:10px">
+            Обслуживание: ${lvl > 0 ? u.upkeep.slice(0, lvl).reduce((a,b) => a+b, 0) : 0} ₽/день
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+};
+
 S.activity = function () {
   return `
     <div class="page-head">
-      <div><h1>Активность</h1><p class="muted">журнал событий системы</p></div>
+      <div><h1>Активность</h1><p class="muted">журнал событий</p></div>
       <button class="btn ghost" data-action="clear-activity">Очистить</button>
     </div>
     <div class="panel">
@@ -269,64 +334,36 @@ S.settings = function () {
   const st = NB.state.settings;
   return `
     <div class="page-head">
-      <div><h1>Настройки</h1><p class="muted">Управление симуляцией и данными</p></div>
+      <div><h1>Настройки</h1><p class="muted">Симуляция и данные</p></div>
     </div>
-    <div class="panel" style="margin-bottom:16px">
+    <div class="panel">
       <div class="settings-section">
         <h3>Симуляция времени</h3>
-        <p>Каждый тик — это один день: клиенты платят, подключаются, отключаются.</p>
+        <p>Каждый тик — один день. Клиенты платят, подключаются, уходят.</p>
         <div class="setting-row">
-          <div class="setting-row-info">
-            <b>Авто-ход</b>
-            <small>Автоматически проживать день каждые N секунд</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" ${st.autoTick ? 'checked' : ''} data-setting="autoTick">
-            <span class="switch-track"></span>
-          </label>
+          <div class="setting-row-info"><b>Авто-ход</b><small>Автоматически проживать день</small></div>
+          <label class="switch"><input type="checkbox" ${st.autoTick ? 'checked' : ''} data-setting="autoTick"><span class="switch-track"></span></label>
         </div>
         <div class="setting-row">
-          <div class="setting-row-info">
-            <b>Скорость</b>
-            <small>Как быстро идут дни при авто-ходе</small>
-          </div>
+          <div class="setting-row-info"><b>Скорость</b><small>Как быстро идут дни</small></div>
           <div class="sim-speed">
-            ${[
-              { v: 8000, l: '▶ медл' },
-              { v: 3000, l: '▶▶ сред' },
-              { v: 1000, l: '▶▶▶ быстр' }
-            ].map(s => `<button data-action="set-tick" data-ms="${s.v}" class="${st.tickMs === s.v ? 'active' : ''}">${s.l}</button>`).join('')}
+            ${[{v:8000,l:'▶ медл'},{v:3000,l:'▶▶ сред'},{v:1000,l:'▶▶▶ быстр'}].map(s =>
+              `<button data-action="set-tick" data-ms="${s.v}" class="${st.tickMs === s.v ? 'active' : ''}">${s.l}</button>`).join('')}
           </div>
         </div>
       </div>
       <div class="settings-section">
         <h3>События</h3>
-        <p>Что может произойти за день</p>
         <div class="setting-row">
-          <div class="setting-row-info">
-            <b>Новые клиенты</b>
-            <small>Случайные абоненты подключаются с рандомным тарифом</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" ${st.autoNewClients ? 'checked' : ''} data-setting="autoNewClients">
-            <span class="switch-track"></span>
-          </label>
+          <div class="setting-row-info"><b>Новые клиенты</b><small>Подключаются сами</small></div>
+          <label class="switch"><input type="checkbox" ${st.autoNewClients ? 'checked' : ''} data-setting="autoNewClients"><span class="switch-track"></span></label>
         </div>
         <div class="setting-row">
-          <div class="setting-row-info">
-            <b>Автоплатежи</b>
-            <small>Клиенты сами оплачивают счета при достаточном балансе</small>
-          </div>
-          <label class="switch">
-            <input type="checkbox" ${st.autoPayments ? 'checked' : ''} data-setting="autoPayments">
-            <span class="switch-track"></span>
-          </label>
+          <div class="setting-row-info"><b>Автоплатежи</b><small>Клиенты оплачивают сами</small></div>
+          <label class="switch"><input type="checkbox" ${st.autoPayments ? 'checked' : ''} data-setting="autoPayments"><span class="switch-track"></span></label>
         </div>
         <div class="setting-row">
-          <div class="setting-row-info">
-            <b>Вероятность оттока</b>
-            <small>Шанс, что клиент отключится за день</small>
-          </div>
+          <div class="setting-row-info"><b>Отток</b><small>Шанс ухода клиента</small></div>
           <div class="range-row">
             <input type="range" min="0" max="20" value="${Math.round(st.churnChance * 100)}" id="churn-range">
             <span class="range-val" id="churn-val">${Math.round(st.churnChance * 100)}%</span>
@@ -335,10 +372,9 @@ S.settings = function () {
       </div>
       <div class="settings-section">
         <h3>Данные</h3>
-        <p>Экспорт и сброс</p>
         <div class="detail-actions">
           <button class="btn ghost" data-action="export">📥 Экспорт JSON</button>
-          <button class="btn ghost" data-action="reset-data" style="color:var(--danger);border-color:rgba(239,68,68,.3)">🗑 Сбросить всё</button>
+          <button class="btn danger" data-action="reset-data">🗑 Сбросить всё</button>
         </div>
       </div>
     </div>`;

@@ -8,9 +8,7 @@ CL.dashboard = function () {
   const c = NB.client(NB.state.session.id);
   const t = NB.tariff(c.tariffId) || { name: '—', speed: 0, price: 0, color: '#7a7a86' };
   const myInv = NB.state.invoices.filter(i => i.clientId === c.id).sort((a, b) => b.id - a.id);
-  const due = myInv.filter(i => i.status === 'unpaid');
-  const paidCount = myInv.filter(i => i.status === 'paid').length;
-  const totalPaid = myInv.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
+  const stats = NB.computeStats();
 
   return `
     <div class="page-head">
@@ -19,10 +17,10 @@ CL.dashboard = function () {
       <button class="btn primary" data-action="recharge-self">Пополнить баланс</button>
     </div>
     <div class="stats">
-      ${NB.statCard('Баланс', c.balance, c.balance < 0 ? 'задолженность' : 'доступно средств', true, c.balance < 0 ? '#ef4444' : '#22c55e')}
-      ${NB.statCard('Скорость', t.speed, 'Мбит/с · ' + t.name, false, t.color)}
-      ${NB.statCard('К оплате', due.reduce((s, i) => s + i.amount, 0), due.length + ' счетов', true, '#f59e0b')}
-      ${NB.statCard('Оплачено', totalPaid, paidCount + ' счетов всего', true, '#ffb347')}
+      ${NB.statCard('Баланс', stats.balance, stats.balance < 0 ? 'задолженность' : 'доступно', true, stats.balance < 0 ? '#ef4444' : '#22c55e', 'balance')}
+      ${NB.statCard('Скорость', stats.speed, 'Мбит/с · ' + t.name, false, t.color, 'speed')}
+      ${NB.statCard('К оплате', stats.due, myInv.filter(i => i.status === 'unpaid').length + ' счетов', true, '#f59e0b', 'due')}
+      ${NB.statCard('Оплачено', stats.totalPaid, myInv.filter(i => i.status === 'paid').length + ' счетов', true, '#ffb347', 'totalPaid')}
     </div>
     <div class="grid-2">
       <div class="panel">
@@ -51,32 +49,33 @@ CL.tariff = function () {
   const current = NB.tariff(c.tariffId);
   return `
     <div class="page-head">
-      <div><h1>Мой тариф</h1><p class="muted">Текущий план и доступные опции</p></div>
+      <div><h1>Мой тариф</h1><p class="muted">Текущий план и опции</p></div>
     </div>
     ${current ? `
     <div class="panel" style="margin-bottom:16px;border-left:4px solid ${current.color}">
-      <div class="tariff-head" style="margin-bottom:10px">
-        <h3 style="font-size:18px">${NB.esc(current.name)}</h3>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <h3 style="font-size:18px;color:#fff">${NB.esc(current.name)}</h3>
         <span class="tag" style="--c:${current.color}">Текущий</span>
       </div>
-      <p class="tariff-desc">${NB.esc(current.desc || '')}</p>
-      <div class="tariff-speed"><b>${current.speed}</b> Мбит/с</div>
-      <div class="tariff-price">${NB.money(current.price)}<small>/мес</small></div>
+      <p style="color:var(--muted);font-size:12.5px;margin-bottom:14px">${NB.esc(current.desc || '')}</p>
+      <div style="font-size:13px;color:var(--muted)"><b style="font-size:24px;color:var(--primary-3);letter-spacing:-.03em;margin-right:3px">${current.speed}</b> Мбит/с</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;margin:8px 0 0;color:#fff">${NB.money(current.price)}<small style="font-size:12px;color:var(--muted);margin-left:3px">/мес</small></div>
     </div>` : ''}
-    <h2 style="margin:22px 0 14px;font-size:15px">Доступные тарифы</h2>
-    <div class="tariff-grid">
+    <h2 style="margin:22px 0 14px;font-size:15px;color:#fff">Доступные тарифы</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
       ${NB.state.tariffs.map((t, i) => `
-        <article class="tariff-card fade" style="--c:${t.color};animation-delay:${i * 60}ms">
-          <div class="tariff-glow"></div>
-          <div class="tariff-head"><h3>${NB.esc(t.name)}</h3>
-            ${t.id === c.tariffId ? '<span class="tag" style="--c:' + t.color + '">Активен</span>' : ''}</div>
-          <p class="tariff-desc">${NB.esc(t.desc || '')}</p>
-          <div class="tariff-speed"><b>${t.speed}</b> Мбит/с</div>
-          <div class="tariff-price">${NB.money(t.price)}<small>/мес</small></div>
+        <article class="tariff-card fade" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;transition:.3s;animation-delay:${i * 60}ms">
+          <div class="tariff-glow" style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.16;filter:blur(32px);pointer-events:none"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <h3 style="font-size:15.5px;color:#fff">${NB.esc(t.name)}</h3>
+            ${t.id === c.tariffId ? `<span class="tag" style="--c:${t.color}">Активен</span>` : ''}
+          </div>
+          <p style="color:var(--muted);font-size:12.5px;margin-bottom:14px;min-height:16px">${NB.esc(t.desc || '')}</p>
+          <div style="font-size:13px;color:var(--muted)"><b style="font-size:24px;color:var(--primary-3);letter-spacing:-.03em;margin-right:3px">${t.speed}</b> Мбит/с</div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.03em;margin:8px 0 16px;color:#fff">${NB.money(t.price)}<small style="font-size:12px;color:var(--muted);margin-left:3px">/мес</small></div>
           ${t.id !== c.tariffId ? `
-            <button class="btn primary full" style="margin-top:12px" data-action="switch-tariff" data-id="${t.id}">
-              Перейти на этот тариф
-            </button>` : ''}
+            <button class="btn primary full" data-action="switch-tariff" data-id="${t.id}">Перейти</button>
+          ` : ''}
         </article>`).join('')}
     </div>`;
 };
@@ -96,7 +95,7 @@ CL.invoices = function () {
   return `
     <div class="page-head">
       <div><h1>Мои счета</h1><p class="muted">Баланс: ${NB.money(c.balance)}</p></div>
-      <button class="btn primary" data-action="recharge-self">Пополнить баланс</button>
+      <button class="btn primary" data-action="recharge-self">Пополнить</button>
     </div>
     <div class="panel">
       ${myInv.length ? `<div class="table-wrap"><table class="table">
@@ -110,7 +109,7 @@ CL.speed = function () {
   const t = NB.tariff(c.tariffId) || { speed: 100 };
   return `
     <div class="page-head">
-      <div><h1>Скорость</h1><p class="muted">Замер скорости соединения</p></div>
+      <div><h1>Скорость</h1><p class="muted">Замер соединения</p></div>
     </div>
     <div class="speed-wrap">
       <div class="speed-gauge">
@@ -134,8 +133,8 @@ CL.support = function () {
   const my = NB.state.tickets.filter(t => t.clientId === c.id).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   return `
     <div class="page-head">
-      <div><h1>Поддержка</h1><p class="muted">Обращения в техподдержку</p></div>
-      <button class="btn primary" data-action="new-ticket">＋ Создать заявку</button>
+      <div><h1>Поддержка</h1><p class="muted">Обращения</p></div>
+      <button class="btn primary" data-action="new-ticket">＋ Создать</button>
     </div>
     <div class="panel">
       ${my.length ? my.map(t => `<div class="ticket fade">

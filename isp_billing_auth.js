@@ -39,7 +39,6 @@ A._panel = function (tab, mode) {
     ? (mode === 'register' ? A._staffRegister() : A._staffLogin())
     : (mode === 'register' ? A._clientRegister() : A._clientLogin());
 
-  /* привязка быстрых входов */
   panel.querySelectorAll('[data-quick]').forEach(b => {
     b.addEventListener('click', () => A._quickLogin(tab, Number(b.dataset.quick)));
   });
@@ -52,13 +51,9 @@ A._panel = function (tab, mode) {
       A._panel(tab, 'login');
     });
   });
-
-  /* переключение login/register */
   panel.querySelectorAll('[data-switch]').forEach(b => {
     b.addEventListener('click', e => { e.preventDefault(); A._panel(tab, b.dataset.switch); });
   });
-
-  /* выбор тарифа */
   panel.querySelectorAll('.tariff-pick').forEach(el => {
     el.addEventListener('click', () => {
       panel.querySelectorAll('.tariff-pick').forEach(x => x.classList.remove('selected'));
@@ -67,8 +62,6 @@ A._panel = function (tab, mode) {
       if (r) r.checked = true;
     });
   });
-
-  /* submit */
   const form = panel.querySelector('form');
   if (form) {
     form.addEventListener('submit', e => {
@@ -124,10 +117,10 @@ A._clientRegister = function () {
           <input name="address" placeholder="ул. Ленина, 12–45"></label></div>
         <label class="field"><span>Пароль</span>
           <input name="password" type="password" required minlength="1"></label>
-        <label class="field"><span>Повторите пароль</span>
+        <label class="field"><span>Повторите</span>
           <input name="password2" type="password" required></label>
         <div class="full">
-          <span style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px">Выберите тариф</span>
+          <span style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px">Тариф</span>
           <div class="tariff-picker">
             ${NB.state.tariffs.map((t, i) => `
               <label class="tariff-pick ${i === 1 ? 'selected' : ''}">
@@ -153,7 +146,7 @@ A._staffLogin = function () {
       <label class="field"><span>Пароль</span>
         <input name="p" type="password" value="admin" required></label>
       <button class="btn primary full" type="submit">Войти как сотрудник</button>
-      <p class="hint">Демо-доступ: <b>admin</b> / <b>admin</b></p>
+      <p class="hint">Демо: <b>admin</b> / <b>admin</b></p>
       <p class="toggle-link">Нет аккаунта? <a data-switch="register">Создать</a></p>
     </form>`;
 };
@@ -162,12 +155,12 @@ A._staffRegister = function () {
   return `
     <form class="login-form" id="reg-form">
       <label class="field"><span>Логин</span>
-        <input name="username" required autocomplete="off" placeholder="например, ivanov"></label>
+        <input name="username" required autocomplete="off" placeholder="ivanov"></label>
       <label class="field"><span>Отображаемое имя</span>
         <input name="name" placeholder="Иван Иванов (опционально)"></label>
       <label class="field"><span>Пароль</span>
         <input name="password" type="password" required></label>
-      <label class="field"><span>Повторите пароль</span>
+      <label class="field"><span>Повторите</span>
         <input name="password2" type="password" required></label>
       <button class="btn primary full" type="submit">Создать аккаунт</button>
       <p class="toggle-link">Уже есть? <a data-switch="login">Войти</a></p>
@@ -182,13 +175,11 @@ A._handleLogin = function (tab, fd) {
     if (!acc) return NB.toast('Неверный логин или пароль', 'err');
     NB.state.session = { role: 'staff', username: acc.username, displayName: acc.name || acc.username };
     NB.save();
-    NB.addActivity(`Сотрудник ${acc.username} вошёл в систему`, 'sys');
+    NB.addActivity(`Сотрудник ${acc.username} вошёл`, 'sys');
     NB.ui.view = 'dashboard';
     NB.render();
     if (!NB.state.onboarded.staff) {
-      NB.state.onboarded.staff = true;
-      NB.save();
-      setTimeout(() => NB.showOnboarding('staff'), 300);
+      setTimeout(() => NB.game.startTour('staff'), 400);
     }
     return;
   }
@@ -202,9 +193,7 @@ A._handleLogin = function (tab, fd) {
   NB.ui.view = 'dashboard';
   NB.render();
   if (!NB.state.onboarded.clients.includes(c.id)) {
-    NB.state.onboarded.clients.push(c.id);
-    NB.save();
-    setTimeout(() => NB.showOnboarding('client'), 300);
+    setTimeout(() => NB.game.startTour('client'), 400);
   }
 };
 
@@ -220,34 +209,28 @@ A._handleRegister = function (tab, fd) {
     const address = String(fd.get('address') || '').trim() || NB.genAddress();
     const tariffId = Number(fd.get('tariff'));
     if (!name || !phone) return NB.toast('Заполните обязательные поля', 'err');
-    if (NB.state.clients.some(c => c.phone === phone)) return NB.toast('Этот телефон уже зарегистрирован', 'err');
+    if (NB.state.clients.some(c => c.phone === phone)) return NB.toast('Телефон уже зарегистрирован', 'err');
 
     const nc = {
-      id: NB.state.seq.client++,
-      name, phone, address, tariffId,
-      balance: 1000,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      password: pw
+      id: NB.state.seq.client++, name, phone, address, tariffId,
+      balance: 1000, status: 'active',
+      createdAt: new Date().toISOString(), password: pw
     };
     NB.state.clients.push(nc);
-    const p = NB.period();
     NB.state.invoices.push({
-      id: NB.state.seq.invoice++, clientId: nc.id, period: p,
+      id: NB.state.seq.invoice++, clientId: nc.id, period: NB.period(),
       amount: NB.price(tariffId), status: 'unpaid', paidAt: null
     });
     NB.state.favorites.clients.push({ phone, password: pw, name });
     NB.state.session = { role: 'client', id: nc.id };
-    NB.state.onboarded.clients.push(nc.id);
     NB.save();
     NB.addActivity(`Зарегистрирован клиент «${name}»`, 'sys');
     NB.ui.view = 'dashboard';
     NB.render();
-    setTimeout(() => NB.showOnboarding('client'), 300);
+    setTimeout(() => NB.game.startTour('client'), 400);
     return;
   }
 
-  /* staff */
   const username = String(fd.get('username') || '').trim();
   const name = String(fd.get('name') || '').trim() || username;
   if (!username) return NB.toast('Введите логин', 'err');
@@ -255,12 +238,11 @@ A._handleRegister = function (tab, fd) {
   NB.state.staffAccounts.push({ username, password: pw, name });
   NB.state.favorites.staff.push({ username, password: pw, name });
   NB.state.session = { role: 'staff', username, displayName: name };
-  NB.state.onboarded.staff = true;
   NB.save();
   NB.addActivity(`Зарегистрирован сотрудник «${username}»`, 'sys');
   NB.ui.view = 'dashboard';
   NB.render();
-  setTimeout(() => NB.showOnboarding('staff'), 300);
+  setTimeout(() => NB.game.startTour('staff'), 400);
 };
 
 A._quickLogin = function (tab, idx) {

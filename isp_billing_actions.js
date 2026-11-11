@@ -2,9 +2,8 @@
 (function (global) {
 'use strict';
 const NB = global.NB;
-const A = NB.actions;
+const A = NB.actions = NB.actions || {};
 
-/* ---------- глобальные действия ---------- */
 A.genInvoices = function () {
   const p = NB.period();
   let created = 0;
@@ -16,9 +15,9 @@ A.genInvoices = function () {
   });
   NB.save();
   if (created) {
-    NB.notify(`Выставлено ${created} счетов за ${NB.periodLabel(p)}`, 'ok');
-    NB.addActivity(`Выставлено ${created} счетов за ${NB.periodLabel(p)}`, 'sys');
-    NB.render();
+    NB.notify(`Выставлено ${created} счетов`, 'ok');
+    NB.addActivity(`Выставлено ${created} счетов`, 'sys');
+    NB.renderView();
   } else NB.toast('Все счета уже выставлены');
 };
 
@@ -28,26 +27,19 @@ A.exportData = function () {
   a.href = URL.createObjectURL(blob);
   a.download = `netbill-${Date.now()}.json`;
   a.click();
-  NB.toast('Данные экспортированы', 'ok');
-};
-
-A.resetData = function () {
-  if (!confirm('Сбросить все данные? Действие необратимо.')) return;
-  NB.resetState();
+  NB.toast('Экспортировано', 'ok');
 };
 
 A.clearActivity = function () {
-  if (!confirm('Очистить журнал активности?')) return;
+  if (!confirm('Очистить журнал?')) return;
   NB.state.activity = [];
-  NB.save(); NB.render();
-  NB.toast('Журнал очищен');
+  NB.save(); NB.renderView();
+  NB.toast('Очищено');
 };
 
-/* ---------- уведомления ---------- */
 A.showNotifs = function () {
   const existing = document.getElementById('notif-panel');
   if (existing) { existing.classList.remove('show'); setTimeout(() => existing.remove(), 220); return; }
-
   const st = NB.state;
   const unread = st.notifications.filter(n => !n.read).length;
   const panel = document.createElement('div');
@@ -63,10 +55,7 @@ A.showNotifs = function () {
       : st.notifications.slice(0, 20).map(n => `
         <div class="notif-item ${n.read ? '' : 'unread'}">
           <div class="notif-dot" style="background:${n.type === 'ok' ? '#22c55e' : n.type === 'warn' ? '#f59e0b' : '#ff6b00'}"></div>
-          <div class="notif-item-body">
-            <b>${NB.esc(n.text)}</b>
-            <small>${NB.timeAgo(n.at)}</small>
-          </div>
+          <div class="notif-item-body"><b>${NB.esc(n.text)}</b><small>${NB.timeAgo(n.at)}</small></div>
         </div>`).join('')}
   `;
   document.body.appendChild(panel);
@@ -88,10 +77,10 @@ A.markRead = function () {
   NB.save();
   const panel = document.getElementById('notif-panel');
   if (panel) { panel.classList.remove('show'); setTimeout(() => panel.remove(), 200); }
-  NB.render();
+  document.querySelectorAll('.notif-badge').forEach(el => el.style.display = 'none');
 };
 
-/* ---------- клиенты ---------- */
+/* ---------- client detail ---------- */
 A.openClient = function (id) {
   const c = NB.client(Number(id));
   if (!c) return;
@@ -119,7 +108,7 @@ A.openClient = function (id) {
       ${myInv.length ? myInv.map(i => `<div class="detail-row">
         <span>${NB.periodLabel(i.period)}</span>
         <span>${NB.money(i.amount)} · ${i.status === 'paid' ? '✓ оплачен' : '○ ожидает'}</span>
-      </div>`).join('') : '<p class="muted small">Счетов нет</p>'}
+      </div>`).join('') : '<p class="muted small">Нет</p>'}
     </div>
     ${myTickets.length ? `<div class="detail-section">
       <h4>Заявки</h4>
@@ -143,7 +132,7 @@ A.addClient = function () {
     title: 'Новый клиент',
     html: NB.field('ФИО', 'name', 'text', '', 'required') +
       NB.field('Адрес', 'address', 'text', '', 'placeholder="ул. …"') +
-      NB.field('Телефон', 'phone', 'text', '', 'required placeholder="+7 …"') +
+      NB.field('Телефон', 'phone', 'text', '', 'required') +
       NB.selectField('Тариф', 'tariffId', NB.state.tariffs.map(t => ({ v: t.id, l: `${t.name} · ${t.price} ₽` }))),
     onSubmit(fd) {
       const name = String(fd.get('name') || '').trim();
@@ -154,13 +143,12 @@ A.addClient = function () {
         phone: String(fd.get('phone') || '').trim() || NB.genPhone(),
         tariffId: Number(fd.get('tariffId')),
         balance: 0, status: 'active',
-        createdAt: new Date().toISOString(),
-        password: NB.DEFAULT_PASS
+        createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS
       });
       NB.save();
       NB.notify(`Добавлен клиент «${name}»`, 'ok');
       NB.addActivity(`Добавлен клиент «${name}»`, 'sys');
-      NB.closeModal(); NB.render();
+      NB.closeModal(); NB.renderView();
     }
   });
 };
@@ -181,13 +169,10 @@ A.editClient = function (id) {
       c.tariffId = Number(fd.get('tariffId'));
       NB.save();
       NB.notify(`Клиент «${c.name}» обновлён`, 'ok');
-      NB.closeModal(); NB.render();
+      NB.closeModal(); NB.renderView();
     }
   });
-  setTimeout(() => {
-    const sel = document.querySelector('select[name=tariffId]');
-    if (sel) sel.value = c.tariffId;
-  }, 50);
+  setTimeout(() => { const sel = document.querySelector('select[name=tariffId]'); if (sel) sel.value = c.tariffId; }, 50);
 };
 
 A.rechargeClient = function (id) {
@@ -203,9 +188,9 @@ A.rechargeClient = function (id) {
       if (amt <= 0) return NB.toast('Введите положительную сумму', 'err');
       c.balance += amt;
       NB.save();
-      NB.notify(`Баланс «${c.name}» пополнен на ${NB.money(amt)}`, 'ok');
-      NB.addActivity(`Баланс «${c.name}» пополнен на ${NB.money(amt)}`, 'recharge');
-      NB.closeModal(); NB.render();
+      NB.notify(`Баланс «${c.name}» пополнен`, 'ok');
+      NB.addActivity(`Баланс «${c.name}» +${NB.money(amt)}`, 'recharge');
+      NB.closeModal(); NB.renderView();
     }
   });
 };
@@ -215,10 +200,9 @@ A.toggleClient = function (id) {
   if (!c) return;
   c.status = c.status === 'active' ? 'blocked' : 'active';
   NB.save();
-  NB.notify(`${c.status === 'active' ? 'Разблокирован' : 'Заблокирован'} клиент «${c.name}»`, 'ok');
+  NB.notify(`${c.status === 'active' ? 'Разблокирован' : 'Заблокирован'} «${c.name}»`, 'ok');
   NB.addActivity(`${c.status === 'active' ? 'Разблокирован' : 'Заблокирован'} «${c.name}»`, 'block');
-  NB.closeModal();
-  NB.render();
+  NB.closeModal(); NB.renderView();
 };
 
 A.delClient = function (id) {
@@ -231,11 +215,10 @@ A.delClient = function (id) {
   NB.save();
   NB.notify(`Клиент «${c.name}» удалён`, 'warn');
   NB.addActivity(`Клиент «${c.name}» удалён`, 'sys');
-  NB.closeModal();
-  NB.render();
+  NB.closeModal(); NB.renderView();
 };
 
-/* ---------- счета ---------- */
+/* ---------- invoices ---------- */
 A.payInvoiceStaff = function (id) {
   const inv = NB.state.invoices.find(i => i.id === Number(id));
   if (!inv || inv.status === 'paid') return;
@@ -244,26 +227,23 @@ A.payInvoiceStaff = function (id) {
   NB.save();
   const c = NB.client(inv.clientId);
   NB.notify(`Счёт #${inv.id} оплачен (${NB.money(inv.amount)})`, 'ok');
-  NB.addActivity(`Счёт #${inv.id} (${c ? c.name : '—'}) отмечен оплаченным`, 'pay');
-  NB.render();
+  NB.addActivity(`Счёт #${inv.id} (${c ? c.name : '—'}) оплачен`, 'pay');
+  NB.renderView();
 };
 
 A.payInvoiceSelf = function (id) {
   const inv = NB.state.invoices.find(i => i.id === Number(id));
   if (!inv || inv.status === 'paid') return;
   const c = NB.client(NB.state.session.id);
-  if (c.balance < inv.amount) {
-    NB.toast('Недостаточно средств. Пополните баланс', 'err');
-    return;
-  }
+  if (c.balance < inv.amount) return NB.toast('Недостаточно средств. Пополните баланс', 'err');
   c.balance -= inv.amount;
   inv.status = 'paid';
   inv.paidAt = new Date().toISOString();
   NB.save();
   NB.addActivity(`Клиент «${c.name}» оплатил счёт #${inv.id}`, 'pay');
-  NB.render();
+  NB.renderView();
   NB.confetti();
-  NB.toast(`Оплата ${NB.money(inv.amount)} прошла успешно`, 'ok');
+  NB.toast(`Оплата ${NB.money(inv.amount)} прошла`, 'ok');
 };
 
 A.delInvoice = function (id) {
@@ -271,11 +251,11 @@ A.delInvoice = function (id) {
   if (!inv) return;
   if (!confirm(`Удалить счёт #${inv.id}?`)) return;
   NB.state.invoices = NB.state.invoices.filter(x => x.id !== inv.id);
-  NB.save(); NB.render();
+  NB.save(); NB.renderView();
   NB.toast('Счёт удалён');
 };
 
-/* ---------- тарифы ---------- */
+/* ---------- tariffs ---------- */
 A.addTariff = function () {
   NB.openModal({
     title: 'Новый тариф',
@@ -297,7 +277,7 @@ A.addTariff = function () {
       NB.save();
       NB.notify(`Создан тариф «${name}»`, 'ok');
       NB.addActivity(`Создан тариф «${name}»`, 'tariff');
-      NB.closeModal(); NB.render();
+      NB.closeModal(); NB.renderView();
     }
   });
 };
@@ -319,7 +299,7 @@ A.editTariff = function (id) {
       NB.save();
       NB.notify(`Тариф «${t.name}» обновлён`, 'ok');
       NB.addActivity(`Тариф «${t.name}» обновлён`, 'tariff');
-      NB.closeModal(); NB.render();
+      NB.closeModal(); NB.renderView();
     }
   });
 };
@@ -327,14 +307,14 @@ A.editTariff = function (id) {
 A.delTariff = function (id) {
   const t = NB.tariff(Number(id));
   if (!t) return;
-  if (NB.state.tariffs.length === 1) return NB.toast('Нельзя удалить единственный тариф', 'err');
+  if (NB.state.tariffs.length === 1) return NB.toast('Нельзя удалить последний тариф', 'err');
   const affected = NB.state.clients.filter(c => c.tariffId === t.id);
   if (affected.length) {
     const others = NB.state.tariffs.filter(x => x.id !== t.id).sort((a, b) => a.price - b.price);
     const target = others[0];
-    if (!confirm(`Тариф «${t.name}» используется ${affected.length} клиентами.\n\nПеревести их на «${target.name}» (${NB.money(target.price)})?`)) return;
+    if (!confirm(`Тариф «${t.name}» у ${affected.length} клиентов. Перевести на «${target.name}» (${NB.money(target.price)})?`)) return;
     affected.forEach(c => c.tariffId = target.id);
-    NB.notify(`Тариф «${t.name}» удалён, ${affected.length} клиентов переведены на «${target.name}»`, 'warn');
+    NB.notify(`Тариф «${t.name}» удалён, ${affected.length} клиентов → «${target.name}»`, 'warn');
   } else {
     if (!confirm(`Удалить тариф «${t.name}»?`)) return;
     NB.notify(`Тариф «${t.name}» удалён`, 'warn');
@@ -342,22 +322,22 @@ A.delTariff = function (id) {
   NB.state.tariffs = NB.state.tariffs.filter(x => x.id !== t.id);
   NB.save();
   NB.addActivity(`Тариф «${t.name}» удалён`, 'tariff');
-  NB.render();
+  NB.renderView();
 };
 
 A.switchTariff = function (id) {
   const c = NB.client(NB.state.session.id);
   const t = NB.tariff(Number(id));
   if (!c || !t) return;
-  if (!confirm(`Перейти на тариф «${t.name}» (${NB.money(t.price)}/мес)?`)) return;
+  if (!confirm(`Перейти на «${t.name}» (${NB.money(t.price)}/мес)?`)) return;
   c.tariffId = t.id;
   NB.save();
-  NB.notify(`Вы перешли на тариф «${t.name}»`, 'ok');
+  NB.notify(`Вы перешли на «${t.name}»`, 'ok');
   NB.addActivity(`Клиент «${c.name}» перешёл на «${t.name}»`, 'tariff');
-  NB.render();
+  NB.renderView();
 };
 
-/* ---------- клиент-личное ---------- */
+/* ---------- client personal ---------- */
 A.rechargeSelf = function () {
   const c = NB.client(NB.state.session.id);
   if (!c) return;
@@ -371,15 +351,15 @@ A.rechargeSelf = function () {
       if (amt <= 0) return NB.toast('Введите положительную сумму', 'err');
       c.balance += amt;
       NB.save();
-      NB.addActivity(`Клиент «${c.name}» пополнил баланс на ${NB.money(amt)}`, 'recharge');
-      NB.closeModal(); NB.render();
+      NB.addActivity(`Клиент «${c.name}» пополнил баланс`, 'recharge');
+      NB.closeModal(); NB.renderView();
       NB.confetti();
       NB.toast(`+${NB.money(amt)} зачислено`, 'ok');
     }
   });
 };
 
-/* ---------- заявки ---------- */
+/* ---------- tickets ---------- */
 A.resolveTicket = function (id) {
   const t = NB.state.tickets.find(x => x.id === Number(id));
   if (!t) return;
@@ -387,7 +367,7 @@ A.resolveTicket = function (id) {
   NB.save();
   NB.notify(`Заявка «${t.subject}» решена`, 'ok');
   NB.addActivity(`Заявка «${t.subject}» решена`, 'ticket');
-  NB.render();
+  NB.renderView();
 };
 
 A.newTicket = function () {
@@ -396,7 +376,7 @@ A.newTicket = function () {
     title: 'Новая заявка',
     submit: 'Отправить',
     html: NB.textareaField('Опишите проблему', 'subject') +
-      `<p class="muted small" style="margin-top:6px">Обычно отвечаем в течение 24 часов</p>`,
+      `<p class="muted small" style="margin-top:6px">Ответим в течение 24 часов</p>`,
     onSubmit(fd) {
       const subject = String(fd.get('subject') || '').trim();
       if (!subject) return NB.toast('Опишите проблему', 'err');
@@ -407,22 +387,60 @@ A.newTicket = function () {
       NB.save();
       NB.notify(`Клиент «${c.name}» создал заявку`, 'ok');
       NB.addActivity(`Клиент «${c.name}» создал заявку`, 'ticket');
-      NB.closeModal(); NB.render();
+      NB.closeModal(); NB.renderView();
     }
   });
 };
 
-/* ---------- карта действий ---------- */
+/* ---------- game ---------- */
+A.buyUpgrade = function (key) {
+  NB.game.buyUpgrade(key);
+};
+
+A.resolveEventModal = function () {
+  if (NB.state.game.activeEvent) NB.game.showEventModal();
+};
+
+A.startTour = function () {
+  NB.startTour();
+};
+
+A.simSpeed = function (speed) {
+  NB.setSimSpeed(speed);
+};
+
+A.advanceDay = function () {
+  NB.advanceDay(false);
+};
+
+A.advanceWeek = function () {
+  NB.advanceWeek();
+};
+
+A.setTick = function (ms) {
+  const map = { 8000: '1', 3000: '2', 1000: '3' };
+  NB.setSimSpeed(map[Number(ms)] || '2');
+};
+
+A.resetData = function () {
+  NB.resetState();
+};
+
+/* карта действий */
 A.map = {
   'logout': () => NB.auth.logout(),
   'export': A.exportData,
   'reset-data': A.resetData,
   'clear-activity': A.clearActivity,
-  'advance-day': () => NB.advanceDay(false),
-  'advance-week': () => NB.advanceWeek(),
-  'sim-speed': d => NB.setSimSpeed(d.speed),
+  'advance-day': A.advanceDay,
+  'advance-week': A.advanceWeek,
+  'sim-speed': d => A.simSpeed(d.speed),
+  'set-tick': d => A.setTick(d.ms),
   'show-notifs': A.showNotifs,
   'mark-read': A.markRead,
+  'start-tour': A.startTour,
+  'buy-upgrade': d => A.buyUpgrade(d.key),
+  'resolve-event-modal': A.resolveEventModal,
   'open-client': d => A.openClient(d.id),
   'add-client': A.addClient,
   'edit-client': d => A.editClient(d.id),
