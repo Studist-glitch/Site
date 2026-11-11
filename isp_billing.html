@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetBill — биллинг провайдера</title>
+<link rel="stylesheet" href="isp_billing.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">◉</span> NetBill</div>
+  <nav class="tabs" id="tabs">
+    <button data-view="overview" class="active">Обзор</button>
+    <button data-view="clients">Клиенты</button>
+    <button data-view="tariffs">Тарифы</button>
+    <button data-view="invoices">Счета</button>
+  </nav>
+  <div class="live"><i></i> сеть стабильна</div>
+</header>
+
+<main id="app" class="page"></main>
+
+<div id="modal" class="modal hidden"></div>
+<div id="toasts" class="toasts"></div>
+
+<script src="isp_billing.js"></script>
+</body>
+</html>
