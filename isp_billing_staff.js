@@ -24,104 +24,125 @@ S.dashboard = function () {
   const maxCount = Math.max(1, ...dist.map(d => d.count));
 
   const evt = g.activeEvent;
-  const eventBanner = evt ? `<div class="game-panel" style="border-color:rgba(239,68,68,.6);background:linear-gradient(135deg,#1a0808,#1a0f07)">
-    <div class="game-head">
-      <div><div class="game-title" style="color:#f87171">⚠ Требуется решение</div>
-        <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px">${evt.title}</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:4px;max-width:520px">${evt.desc}</div></div>
-      <button class="btn primary" data-action="resolve-event-modal">Решить →</button>
-    </div>
+  const eventBanner = evt ? `<div class="game-panel" style="border-color:rgba(239,68,68,.6)">
+    <div class="game-head"><div>
+      <div class="game-title" style="color:#f87171">⚠ Требуется решение</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px">${evt.title}</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:4px;max-width:520px">${evt.desc}</div>
+    </div><button class="btn primary" data-action="resolve-event-modal">Решить →</button></div>
   </div>` : '';
 
   const status = g.stats.won ? '<span class="game-status win">Победа</span>'
     : g.stats.lost ? '<span class="game-status lose">Провал</span>'
     : '<span class="game-status playing">В игре</span>';
-
   const goalPct = Math.min(100, (g.cash / g.goal) * 100);
+
+  const marketHtml = `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-head"><h2>Доля рынка</h2><span class="muted small">Вы: <b id="market-share-val" style="color:var(--primary-3)">${g.marketShare}%</b></span></div>
+    <div class="market-bar">
+      <i style="width:${g.marketShare}%;background:linear-gradient(90deg,#ff6b00,#ffb347)"></i>
+      ${g.competitors.map(c => `<i style="width:${c.share}%;background:${c.color}"></i>`).join('')}
+    </div>
+    <div class="market-legend">
+      <span><i style="background:linear-gradient(90deg,#ff6b00,#ffb347)"></i>NetBill</span>
+      ${g.competitors.map(c => `<span><i style="background:${c.color}"></i>${c.name} ${c.share}%</span>`).join('')}
+    </div>
+  </div>`;
+
+  const storyHtml = g.sn.discovered && st.story.chapter < NB.story.CHAPTERS.length
+    ? NB.story.renderPanel() : '';
+
+  let cynWarning = '';
+  if (g.cyn.discovered && g.cyn.threat > 0) {
+    const threatLevel = g.cyn.threat >= 5 ? 'КРИТИЧЕСКИЙ' : g.cyn.threat >= 3 ? 'ВЫСОКИЙ' : 'СРЕДНИЙ';
+    cynWarning = `<div class="game-panel cyn-warning" style="border-color:rgba(255,0,0,.6);margin-bottom:16px">
+      <div class="game-head"><div>
+        <div class="game-title" style="color:#f87171">⚠ Обнаружена аномалия</div>
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px">Угроза: ${threatLevel} (${g.cyn.threat})</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:4px;max-width:520px">Синесса / Абсолютный решатель. Купите анти-решатель или firewall.</div>
+      </div></div>
+    </div>`;
+  }
+
+  /* Дневная панель */
+  const dailyHtml = `<div class="game-panel" style="margin-bottom:16px">
+    <div class="game-head">
+      <div>
+        <div class="game-title">День ${g.stats.daysPlayed}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">
+          Выручка за день: <b style="color:var(--primary-3)">${NB.money(g.daily.pendingRevenue)}</b>
+          · Собрано: ${NB.money(g.daily.collectedToday)}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${g.daily.dayCompleted ? '<span class="pill ok">День завершён</span>' :
+          `<button class="btn primary small" data-action="collect-revenue">Собрать выручку</button>
+           <button class="btn ghost small" data-action="finish-day">Завершить день</button>`}
+      </div>
+    </div>
+  </div>`;
 
   return `
     <div class="page-head">
       <div><h1>Дашборд</h1>
-        <p class="muted">День ${g.stats.daysPlayed} · ${openTickets} заявок · уровень «${levelLabel}»</p></div>
+        <p class="muted">День ${g.stats.daysPlayed} · ${openTickets} заявок · «${levelLabel}»</p></div>
       <div class="head-actions">
         <button class="btn ghost" data-action="export">Экспорт</button>
         <button class="btn primary" data-action="gen-invoices">Выставить счета</button>
       </div>
     </div>
-
+    ${cynWarning}
     ${eventBanner}
-
+    ${storyHtml}
+    ${dailyHtml}
     <div class="game-panel">
-      <div class="game-head">
-        <div>
-          <div class="game-title">Касса компании</div>
-          <div class="game-cash" id="game-cash">${NB.money(g.cash)}<small>из ${NB.money(g.goal)}</small></div>
-          <div class="game-goal-wrap">
-            <div class="game-goal-labels"><span>Прогресс к цели</span><b>${Math.round(goalPct)}%</b></div>
-            <div class="game-goal-bar"><i id="game-goal-bar" style="width:${goalPct}%"></i></div>
-          </div>
+      <div class="game-head"><div>
+        <div class="game-title">Касса компании</div>
+        <div class="game-cash" id="game-cash">${NB.money(g.cash)}<small>из ${NB.money(g.goal)}</small></div>
+        <div class="game-goal-wrap">
+          <div class="game-goal-labels"><span>Прогресс к цели</span><b>${Math.round(goalPct)}%</b></div>
+          <div class="game-goal-bar"><i id="game-goal-bar" style="width:${goalPct}%"></i></div>
         </div>
-        <div class="game-stats">
-          <div class="game-stat"><b id="game-level">${g.level}</b><span>уровень</span></div>
-          <div class="game-stat"><b id="game-rep">${g.reputation}</b><span>репутация</span></div>
-          <div class="game-stat"><b>${g.stats.eventsResolved}</b><span>событий</span></div>
-          <div class="game-stat">${status}</div>
-        </div>
-      </div>
+      </div><div class="game-stats">
+        <div class="game-stat"><b id="game-level">${g.level}</b><span>уровень</span></div>
+        <div class="game-stat"><b id="game-rep">${g.reputation}</b><span>репутация</span></div>
+        <div class="game-stat"><b>${g.stats.eventsResolved}</b><span>событий</span></div>
+        <div class="game-stat">${status}</div>
+      </div></div>
     </div>
-
     <div class="stats">
       ${NB.statCard('Абоненты', stats.clients, `${st.clients.filter(c => c.status === 'active').length} активных`, false, '#ff6b00', 'clients')}
       ${NB.statCard('MRR', stats.mrr, 'выручка/мес', true, '#ff9500', 'mrr')}
       ${NB.statCard('Выручка', stats.revenue, 'за 14 дней', true, '#ffb347', 'revenue')}
       ${NB.statCard('К оплате', stats.due, 'неоплачено', true, '#f59e0b', 'due')}
     </div>
-
+    ${marketHtml}
     <div class="panel" style="margin-bottom:16px">
-      <div class="panel-head"><h2>Выручка по дням</h2>
-        <span class="muted small">${st.revenue.length} дней</span></div>
+      <div class="panel-head"><h2>Выручка по дням</h2><span class="muted small">${st.revenue.length} дней</span></div>
       <canvas id="revenue-chart" class="revenue-chart"></canvas>
       <div class="chart-foot">
         <span>Итого: <b>${NB.money(stats.revenue)}</b></span>
         <span class="muted">Расходы: ${NB.money(NB.game.dailyUpkeep() + 3000)}/день</span>
       </div>
     </div>
-
     <div class="grid-2">
-      <div class="panel">
-        <div class="panel-head"><h2>Сетевой трафик</h2><span class="live-badge"><i></i>live</span></div>
+      <div class="panel"><div class="panel-head"><h2>Сетевой трафик</h2><span class="live-badge"><i></i>live</span></div>
         <canvas id="traffic-chart" class="traffic-chart"></canvas>
-        <div class="chart-foot">
-          <span>Сейчас: <b id="traffic-now">—</b> Мбит/с</span>
-          <span class="muted">Пик: <b id="traffic-peak">—</b> Мбит/с</span>
-        </div>
+        <div class="chart-foot"><span>Сейчас: <b id="traffic-now">—</b> Мбит/с</span><span class="muted">Пик: <b id="traffic-peak">—</b> Мбит/с</span></div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Активность</h2><button class="btn tiny" data-view="activity">Все →</button></div>
-        <div class="activity-list" id="activity-list">
-          ${st.activity.slice(-6).reverse().map(S._activityItem).join('')}
-        </div>
+      <div class="panel"><div class="panel-head"><h2>Активность</h2><button class="btn tiny" data-view="activity">Все →</button></div>
+        <div class="activity-list" id="activity-list">${st.activity.slice(-6).reverse().map(S._activityItem).join('')}</div>
       </div>
     </div>
-
     <div class="grid-2">
-      <div class="panel">
-        <div class="panel-head"><h2>Топ клиентов</h2><button class="btn tiny" data-view="clients">Все →</button></div>
-        ${top.length ? `<div class="top-list">
-          ${top.map((t, i) => `<div class="top-item">
-            <div class="top-rank">${i+1}</div>
-            <div class="top-body"><b>${NB.esc(t.client.name)}</b>
-              <small>${NB.esc(t.client.phone)}</small></div>
-            <div class="top-amount">${NB.money(t.sum)}</div>
-          </div>`).join('')}
-        </div>` : '<p class="empty">Нет данных</p>'}
+      <div class="panel"><div class="panel-head"><h2>Топ клиентов</h2><button class="btn tiny" data-view="clients">Все →</button></div>
+        ${top.length ? `<div class="top-list">${top.map((t, i) => `<div class="top-item">
+          <div class="top-rank">${i+1}</div><div class="top-body"><b>${NB.esc(t.client.name)}</b><small>${NB.esc(t.client.phone)}</small></div>
+          <div class="top-amount">${NB.money(t.sum)}</div></div>`).join('')}</div>` : '<p class="empty">Нет данных</p>'}
       </div>
-      <div class="panel">
-        <div class="panel-head"><h2>Тарифы</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
+      <div class="panel"><div class="panel-head"><h2>Тарифы</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
         ${dist.map(d => `<div class="tariff-bar">
-          <div class="tariff-bar-top">
-            <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b>
-          </div>
+          <div class="tariff-bar-top"><span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b></div>
           <div class="bar"><i style="width:${(d.count / maxCount) * 100}%;background:${d.color}"></i></div>
         </div>`).join('')}
       </div>
@@ -275,43 +296,30 @@ S.tickets = function () {
 
 S.upgrades = function () {
   const g = NB.state.game;
+  const allKeys = Object.keys(NB.game.UPGRADES);
   return `
     <div class="page-head">
-      <div><h1>Магазин улучшений</h1>
-        <p class="muted">Касса: <b style="color:var(--primary-3)">${NB.money(g.cash)}</b> · Апгрейды работают постоянно</p></div>
+      <div><h1>Магазин улучшений</h1><p class="muted">Касса: <b style="color:var(--primary-3)">${NB.money(g.cash)}</b></p></div>
     </div>
     <div class="upgrades-grid">
-      ${Object.keys(NB.game.UPGRADES).map((key, i) => {
+      ${allKeys.map((key, i) => {
         const u = NB.game.UPGRADES[key];
-        const lvl = g.upgrades[key];
+        const lvl = g.upgrades[key] || 0;
         const cost = NB.game.upgradeCost(key);
         const maxed = cost === null;
         const canBuy = !maxed && g.cash >= cost;
+        const locked = (key === 'quantum' && !g.unlockedTech.includes('quantum')) || (key === 'solverShield' && !g.cyn.discovered);
         return `<div class="upgrade fade ${maxed ? 'maxed' : ''}" style="animation-delay:${i * 70}ms">
-          <div class="upgrade-head">
-            <div class="upgrade-icon">${u.icon}</div>
-            <div style="flex:1">
-              <h3>${u.name}</h3>
-            </div>
-          </div>
+          <div class="upgrade-head"><div class="upgrade-icon">${u.icon}</div><div style="flex:1"><h3>${u.name}</h3></div></div>
           <div class="upgrade-desc">${u.desc}</div>
-          <div class="upgrade-levels">
-            ${[0,1,2].map(i => `<i class="${i < lvl ? 'filled' : ''}"></i>`).join('')}
-          </div>
-          <div class="upgrade-effect ${lvl === 0 ? 'neutral' : ''}">
-            ${lvl === 0 ? 'Не куплено' : `Ур. ${lvl}: ${u.levels[lvl-1]}`}
-          </div>
+          <div class="upgrade-levels">${(u.costs || [1,2,3]).map((_, j) => `<i class="${j < lvl ? 'filled' : ''}"></i>`).join('')}</div>
+          <div class="upgrade-effect ${lvl === 0 ? 'neutral' : ''}">${lvl === 0 ? (locked ? '🔒 Заблокировано' : 'Не куплено') : `Ур. ${lvl}: ${u.levels[lvl-1]}`}</div>
           <div class="upgrade-foot" style="margin-top:14px">
-            <div class="upgrade-price">${maxed ? '— MAX —' : NB.money(cost)}</div>
-            ${maxed
-              ? '<button class="btn ghost small" disabled>Максимум</button>'
-              : `<button class="btn ${canBuy ? 'primary' : 'ghost'} small" data-action="buy-upgrade" data-key="${key}" ${canBuy ? '' : 'disabled'}>
-                  ${lvl === 0 ? 'Купить' : `Улучшить до ${lvl+1}`}
-                </button>`}
+            <div class="upgrade-price">${maxed ? '— MAX —' : locked ? '🔒' : NB.money(cost)}</div>
+            ${maxed ? '<button class="btn ghost small" disabled>Максимум</button>'
+              : `<button class="btn ${canBuy ? 'primary' : 'ghost'} small" data-action="buy-upgrade" data-key="${key}" ${canBuy ? '' : 'disabled'}>${lvl === 0 ? 'Купить' : `Улучшить`}</button>`}
           </div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:10px">
-            Обслуживание: ${lvl > 0 ? u.upkeep.slice(0, lvl).reduce((a,b) => a+b, 0) : 0} ₽/день
-          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:10px">Обслуживание: ${lvl > 0 ? u.upkeep.slice(0, lvl).reduce((a,b) => a+b, 0) : 0} ₽/день</div>
         </div>`;
       }).join('')}
     </div>`;
@@ -368,6 +376,10 @@ S.settings = function () {
             <input type="range" min="0" max="20" value="${Math.round(st.churnChance * 100)}" id="churn-range">
             <span class="range-val" id="churn-val">${Math.round(st.churnChance * 100)}%</span>
           </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-info"><b>Спам Starve Neon</b><small>Всплывающие сообщения</small></div>
+          <label class="switch"><input type="checkbox" ${st.snSpam ? 'checked' : ''} data-setting="snSpam"><span class="switch-track"></span></label>
         </div>
       </div>
       <div class="settings-section">

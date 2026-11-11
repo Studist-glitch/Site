@@ -80,7 +80,6 @@ A.markRead = function () {
   document.querySelectorAll('.notif-badge').forEach(el => el.style.display = 'none');
 };
 
-/* ---------- client detail ---------- */
 A.openClient = function (id) {
   const c = NB.client(Number(id));
   if (!c) return;
@@ -218,7 +217,6 @@ A.delClient = function (id) {
   NB.closeModal(); NB.renderView();
 };
 
-/* ---------- invoices ---------- */
 A.payInvoiceStaff = function (id) {
   const inv = NB.state.invoices.find(i => i.id === Number(id));
   if (!inv || inv.status === 'paid') return;
@@ -235,7 +233,7 @@ A.payInvoiceSelf = function (id) {
   const inv = NB.state.invoices.find(i => i.id === Number(id));
   if (!inv || inv.status === 'paid') return;
   const c = NB.client(NB.state.session.id);
-  if (c.balance < inv.amount) return NB.toast('Недостаточно средств. Пополните баланс', 'err');
+  if (c.balance < inv.amount) return NB.toast('Недостаточно средств', 'err');
   c.balance -= inv.amount;
   inv.status = 'paid';
   inv.paidAt = new Date().toISOString();
@@ -255,7 +253,6 @@ A.delInvoice = function (id) {
   NB.toast('Счёт удалён');
 };
 
-/* ---------- tariffs ---------- */
 A.addTariff = function () {
   NB.openModal({
     title: 'Новый тариф',
@@ -337,7 +334,6 @@ A.switchTariff = function (id) {
   NB.renderView();
 };
 
-/* ---------- client personal ---------- */
 A.rechargeSelf = function () {
   const c = NB.client(NB.state.session.id);
   if (!c) return;
@@ -359,7 +355,6 @@ A.rechargeSelf = function () {
   });
 };
 
-/* ---------- tickets ---------- */
 A.resolveTicket = function (id) {
   const t = NB.state.tickets.find(x => x.id === Number(id));
   if (!t) return;
@@ -392,7 +387,6 @@ A.newTicket = function () {
   });
 };
 
-/* ---------- game ---------- */
 A.buyUpgrade = function (key) {
   NB.game.buyUpgrade(key);
 };
@@ -426,7 +420,52 @@ A.resetData = function () {
   NB.resetState();
 };
 
-/* карта действий */
+A.cynChoice = function (choice) {
+  const g = NB.state.game;
+  if (choice === 'open') {
+    g.cyn.discovered = true;
+    g.cyn.threat += 2;
+    g.cyn.messages.push('Ты открыл файл. Синесса заметила тебя.');
+    NB.effects.shake(800);
+    NB.effects.redFlash();
+  } else if (choice === 'delete') {
+    g.cyn.threat = Math.max(0, g.cyn.threat - 1);
+  }
+  NB.save();
+  NB.renderView();
+};
+
+/* =========== ДЕЙСТВИЯ ДНЕВНОЙ СИСТЕМЫ =========== */
+A.collectRevenue = function () {
+  const g = NB.state.game;
+  if (g.daily.dayCompleted) return NB.toast('День уже завершён', 'err');
+  if (g.daily.pendingRevenue <= 0) return NB.toast('Нечего собирать', 'err');
+  const amount = g.daily.pendingRevenue;
+  g.cash += amount;
+  g.daily.collectedToday += amount;
+  g.daily.pendingRevenue = 0;
+  g.daily.lastDayRevenue = amount;
+  NB.notify(`Собрано ${NB.money(amount)}`, 'ok');
+  NB.addActivity(`Собрана выручка: ${NB.money(amount)}`, 'pay');
+  NB.checkGameState();
+  NB.save();
+  NB.renderView();
+};
+
+A.finishDay = function () {
+  const g = NB.state.game;
+  if (g.daily.dayCompleted) return NB.toast('День уже завершён', 'err');
+  if (g.daily.pendingRevenue > 0) {
+    if (!confirm(`У вас осталась несобранная выручка (${NB.money(g.daily.pendingRevenue)}). Она сгорит на 20%. Продолжить?`)) return;
+    g.daily.pendingRevenue = Math.round(g.daily.pendingRevenue * 0.8);
+  }
+  g.daily.dayCompleted = true;
+  NB.notify('День завершён', 'ok');
+  NB.addActivity('День завершён', 'sys');
+  NB.save();
+  NB.renderView();
+};
+
 A.map = {
   'logout': () => NB.auth.logout(),
   'export': A.exportData,
@@ -457,7 +496,10 @@ A.map = {
   'del-invoice': d => A.delInvoice(d.id),
   'resolve-ticket': d => A.resolveTicket(d.id),
   'new-ticket': A.newTicket,
-  'gen-invoices': A.genInvoices
+  'gen-invoices': A.genInvoices,
+  'cyn-choice': d => A.cynChoice(d.choice),
+  'collect-revenue': A.collectRevenue,
+  'finish-day': A.finishDay
 };
 
 })(window);

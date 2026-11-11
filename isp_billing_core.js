@@ -1,4 +1,4 @@
-/* isp_billing_core.js — утилиты, состояние, хранилище, UI-кирпичики */
+/* isp_billing_core.js — состояние, утилиты, эффекты, UI-кирпичики */
 (function (global) {
 'use strict';
 const NB = global.NB = global.NB || {};
@@ -7,6 +7,8 @@ NB.charts = NB.charts || {};
 NB.actions = NB.actions || {};
 NB.auth = NB.auth || {};
 NB.game = NB.game || {};
+NB.story = NB.story || {};
+NB.effects = NB.effects || {};
 
 NB.$ = (s, r = document) => r.querySelector(s);
 NB.esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
@@ -35,28 +37,70 @@ NB.timeAgo = iso => {
   return NB.fmtDate(iso);
 };
 
-const FIRST_NAMES = ['Иван','Алексей','Дмитрий','Мария','Анна','Ольга','Павел','Екатерина','Сергей','Наталья','Владимир','Юлия','Андрей','Татьяна','Михаил','Елена'];
-const LAST_NAMES = ['Иванов','Петров','Сидоров','Кузнецов','Смирнов','Волков','Морозов','Новиков','Фёдоров','Соколов','Попов','Лебедев','Козлов','Некрасов','Орлов'];
-const STREETS = ['Ленина','Мира','Гагарина','Садовая','Северная','Речная','Пушкина','Гоголя','Лермонтова','Советская','Молодёжная','Центральная','Школьная','Лесная'];
-const ORGS = ['ООО «Вектор»','ООО «Логистик»','ООО «ТехноПлюс»','ООО «Смарт»','ООО «СтройГрад»','ООО «Оптима»','ИП Соколов','ООО «ДатаЛайн»'];
+const FIRST_NAMES = ['Иван','Алексей','Дмитрий','Мария','Анна','Ольга','Павел','Екатерина','Сергей','Наталья','Владимир','Юлия','Андрей','Татьяна','Михаил','Елена','Артём','Ксения','Максим','Вера'];
+const LAST_NAMES = ['Иванов','Петров','Сидоров','Кузнецов','Смирнов','Волков','Морозов','Новиков','Фёдоров','Соколов','Попов','Лебедев','Козлов','Некрасов','Орлов','Зайцев','Павлов','Семёнов','Голубев','Виноградов'];
+const STREETS = ['Ленина','Мира','Гагарина','Садовая','Северная','Речная','Пушкина','Гоголя','Лермонтова','Советская','Молодёжная','Центральная','Школьная','Лесная','Солнечная','Тихая','Октябрьская','Победы'];
+const ORGS = ['ООО «Вектор»','ООО «Логистик»','ООО «ТехноПлюс»','ООО «Смарт»','ООО «СтройГрад»','ООО «Оптима»','ИП Соколов','ООО «ДатаЛайн»','АО «Северсталь»','ООО «Кибердом»'];
 
 NB.genName = () => Math.random() < 0.15 ? NB.pick(ORGS) : `${NB.pick(LAST_NAMES)} ${NB.pick(FIRST_NAMES)}`;
 NB.genAddress = () => `ул. ${NB.pick(STREETS)}, ${NB.randInt(1, 120)}–${NB.randInt(1, 99)}`;
 NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.randInt(10, 99)}-${NB.randInt(10, 99)}`;
 
-NB.LS_KEY = 'netbill_orange_v4';
+NB.LS_KEY = 'netbill_orange_v8';
 NB.DEFAULT_PASS = '1234';
 
+/* =========== НАЧАЛЬНОЕ СОСТОЯНИЕ =========== */
 function defaultGame() {
   return {
     cash: 50000,
-    goal: 200000,
+    goal: 500000,
     reputation: 100,
     level: 1,
-    upgrades: { ddos: 0, bandwidth: 0, support: 0, marketing: 0 },
+    upgrades: {
+      ddos: 0, bandwidth: 0, support: 0, marketing: 0,
+      fiber: 0, satellite: 0, ai: 0, quantum: 0,
+      firewall: 0, solverShield: 0, microBooster: 0, darkFiber: 0,
+      autoCollect: 0, autoClean: 0, salesBoost: 0
+    },
+    unlockedTech: [],
     activeEvent: null,
     history: [],
-    stats: { totalRevenue: 0, totalExpenses: 0, daysPlayed: 0, eventsResolved: 0, won: false, lost: false }
+    marketShare: 12,
+    competitors: [
+      { name: 'Starlink', share: 34, color: '#3b82f6', desc: 'Спутниковый гигант' },
+      { name: 'МТС', share: 28, color: '#ef4444', desc: 'Мобильный оператор' },
+      { name: 'Ростелеком', share: 18, color: '#22c55e', desc: 'Национальный провайдер' },
+      { name: 'Малые ISP', share: 8, color: '#7a7a86', desc: 'Локальные сети' }
+    ],
+    sn: {
+      discovered: false, ally: false, trust: 0, revenue: 0,
+      questsDone: [], videoShown: 0, spamShown: 0,
+      emergencyAsked: false, coopBonus: 0
+    },
+    cyn: {
+      discovered: false, threat: 0, messages: [],
+      endingSeen: false, corruption: 0, lastMessageDay: 0,
+      finalTriggered: false
+    },
+    staff: {
+      hired: [], morale: 100, autoSupport: 0, autoSales: 0
+    },
+    micro: {
+      speedBoost: 0, customerBonus: 0, discountActive: false
+    },
+    /* Дневная система: ручной сбор выручки */
+    daily: {
+      pendingRevenue: 0,    // накопленная выручка за день (не собрана)
+      pendingClients: 0,   // клиенты, ожидающие подключения
+      pendingInvoices: 0,  // счета, ожидающие оплаты
+      collectedToday: 0,   // сколько собрано в этот день
+      dayCompleted: false, // день завершён
+      lastDayRevenue: 0
+    },
+    stats: {
+      totalRevenue: 0, totalExpenses: 0, daysPlayed: 0,
+      eventsResolved: 0, won: false, lost: false, endings: []
+    }
   };
 }
 
@@ -110,25 +154,48 @@ function seed() {
     activity: [{ id: 1, text: 'Система биллинга запущена', type: 'sys', at: new Date().toISOString() }],
     notifications: [],
     revenue, growth,
-    seq: { tariff: 5, client: clients.length + 1, invoice: invoices.length + 1, ticket: 4, activity: 2, notif: 1 },
+    seq: { tariff: 5, client: clients.length + 1, invoice: invoices.length + 1, ticket: 4, activity: 2, notif: 1, story: 1 },
     session: null,
     simDate: today,
-    settings: { autoTick: false, tickMs: 5000, autoNewClients: true, autoPayments: true, churnChance: 0.06 },
+    settings: { autoTick: false, tickMs: 5000, autoNewClients: true, autoPayments: true, churnChance: 0.06, snSpam: true },
     favorites: { clients: [], staff: [] },
     staffAccounts: [{ username: 'admin', password: 'admin', name: 'Администратор' }],
     onboarded: { staff: false, clients: [] },
-    game: defaultGame()
+    game: defaultGame(),
+    story: { chapter: 0, step: 0, flags: {}, seen: [] }
   };
 }
 
 function migrate(s) {
   if (!s.game) s.game = defaultGame();
-  if (!s.onboarded) s.onboarded = { staff: false, clients: [] };
-  if (!s.favorites) s.favorites = { clients: [], staff: [] };
-  if (!s.staffAccounts) s.staffAccounts = [{ username: 'admin', password: 'admin', name: 'Администратор' }];
-  if (!s.notifications) s.notifications = [];
-  if (!s.seq.notif) s.seq.notif = (s.notifications.length || 0) + 1;
-  if (!s.game.stats) s.game.stats = { totalRevenue: 0, totalExpenses: 0, daysPlayed: 0, eventsResolved: 0, won: false, lost: false };
+  const g = s.game;
+  const upg = g.upgrades;
+  if (!upg.fiber) upg.fiber = 0;
+  if (!upg.satellite) upg.satellite = 0;
+  if (!upg.ai) upg.ai = 0;
+  if (!upg.quantum) upg.quantum = 0;
+  if (!upg.firewall) upg.firewall = 0;
+  if (!upg.solverShield) upg.solverShield = 0;
+  if (!upg.microBooster) upg.microBooster = 0;
+  if (!upg.darkFiber) upg.darkFiber = 0;
+  if (!upg.autoCollect) upg.autoCollect = 0;
+  if (!upg.autoClean) upg.autoClean = 0;
+  if (!upg.salesBoost) upg.salesBoost = 0;
+  if (!g.unlockedTech) g.unlockedTech = [];
+  if (!g.sn) g.sn = { discovered: false, ally: false, trust: 0, revenue: 0, questsDone: [], videoShown: 0, spamShown: 0, emergencyAsked: false, coopBonus: 0 };
+  if (!g.cyn) g.cyn = { discovered: false, threat: 0, messages: [], endingSeen: false, corruption: 0, lastMessageDay: 0, finalTriggered: false };
+  if (!g.staff) g.staff = { hired: [], morale: 100, autoSupport: 0, autoSales: 0 };
+  if (!g.micro) g.micro = { speedBoost: 0, customerBonus: 0, discountActive: false };
+  if (!g.daily) g.daily = { pendingRevenue: 0, pendingClients: 0, pendingInvoices: 0, collectedToday: 0, dayCompleted: false, lastDayRevenue: 0 };
+  if (!g.marketShare) g.marketShare = 12;
+  if (!g.competitors) g.competitors = [
+    { name: 'Starlink', share: 34, color: '#3b82f6', desc: 'Спутниковый гигант' },
+    { name: 'МТС', share: 28, color: '#ef4444', desc: 'Мобильный оператор' },
+    { name: 'Ростелеком', share: 18, color: '#22c55e', desc: 'Национальный провайдер' },
+    { name: 'Малые ISP', share: 8, color: '#7a7a86', desc: 'Локальные сети' }
+  ];
+  if (!s.story) s.story = { chapter: 0, step: 0, flags: {}, seen: [] };
+  if (!s.seq.story) s.seq.story = 1;
   return s;
 }
 
@@ -139,7 +206,7 @@ function load() {
 NB.state = load();
 NB.save = () => localStorage.setItem(NB.LS_KEY, JSON.stringify(NB.state));
 NB.resetState = function () {
-  if (!confirm('Сбросить все данные к началу? Текущий прогресс будет потерян.')) return;
+  if (!confirm('Сбросить все данные к началу? Прогресс потерян.')) return;
   NB.state = seed(); NB.save(); NB.render();
   NB.toast('Данные сброшены', 'ok');
 };
@@ -154,6 +221,63 @@ NB.ui = {
   invoiceFilter: 'all'
 };
 
+/* =========== ЭФФЕКТЫ =========== */
+const effectStyle = document.createElement('style');
+effectStyle.textContent = `
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+@keyframes fadeOutRed { from { opacity: 1; } to { opacity: 0; } }
+.glitch-text { animation: glitch 0.25s infinite; text-shadow: 2px 0 #ff0000, -2px 0 #00ffff; }
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+@keyframes redPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(255,0,0,0); }
+}
+.cyn-warning { animation: redPulse 2s infinite; }
+`;
+document.head.appendChild(effectStyle);
+
+NB.effects.shake = function (duration = 500) {
+  const root = document.getElementById('root');
+  if (!root) return;
+  root.style.animation = 'none';
+  void root.offsetWidth;
+  root.style.animation = `shake ${duration}ms cubic-bezier(.36,.07,.19,.97) both`;
+  setTimeout(() => { root.style.animation = ''; }, duration + 50);
+};
+
+NB.effects.redFlash = function () {
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,0.35);z-index:200;pointer-events:none;animation:fadeOutRed .7s forwards';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 800);
+};
+
+NB.effects.glitch = function (el) {
+  if (!el) return;
+  const original = el.textContent;
+  const chars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+  let iter = 0;
+  const interval = setInterval(() => {
+    el.textContent = original.split('').map(c =>
+      Math.random() < 0.3 ? chars[Math.floor(Math.random() * chars.length)] : c
+    ).join('');
+    iter++;
+    if (iter > 12) { clearInterval(interval); el.textContent = original; }
+  }, 50);
+};
+
 /* =========== TOAST =========== */
 NB.toast = function (msg, type) {
   const wrap = document.getElementById('toasts');
@@ -166,7 +290,7 @@ NB.toast = function (msg, type) {
   setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 320); }, 2600);
 };
 
-/* notify — только state, БЕЗ рендера */
+/* =========== NOTIFY =========== */
 NB.notify = function (text, type, opts) {
   opts = opts || {};
   NB.state.notifications.unshift({
@@ -264,7 +388,7 @@ NB.computeStats = function () {
     const p = NB.period();
     const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
     const rev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
-    return { clients: NB.state.clients.length, mrr, revenue: rev, due };
+    return { clients: NB.state.clients.length, mrr, revenue: rev, due, marketShare: NB.state.game.marketShare };
   } else {
     const c = NB.client(NB.state.session.id);
     if (!c) return {};
@@ -276,9 +400,8 @@ NB.computeStats = function () {
   }
 };
 
-/* =========== LIVE REFRESH — без ре-рендера =========== */
+/* =========== LIVE REFRESH =========== */
 NB.refreshLive = function () {
-  /* stats */
   const stats = NB.computeStats();
   document.querySelectorAll('.stat-value[data-stat]').forEach(el => {
     const key = el.dataset.stat;
@@ -287,7 +410,6 @@ NB.refreshLive = function () {
       el.textContent = el.dataset.money === '1' ? NB.money(v) : Math.round(v);
     }
   });
-  /* sim bar */
   const dateEl = document.querySelector('.sim-date span:last-child');
   if (dateEl) dateEl.textContent = NB.dayLabel(NB.state.simDate);
   const revEl = document.querySelector('.sim-meta span:first-child b');
@@ -297,7 +419,6 @@ NB.refreshLive = function () {
   }
   const cliEl = document.querySelector('.sim-meta span:last-child b');
   if (cliEl) cliEl.textContent = NB.state.clients.length;
-  /* game panel */
   const cashEl = document.getElementById('game-cash');
   if (cashEl) cashEl.textContent = NB.money(NB.state.game.cash);
   const barEl = document.getElementById('game-goal-bar');
@@ -306,10 +427,10 @@ NB.refreshLive = function () {
   if (lvlEl) lvlEl.textContent = NB.state.game.level;
   const repEl = document.getElementById('game-rep');
   if (repEl) repEl.textContent = NB.state.game.reputation;
-  /* revenue chart */
+  const msEl = document.getElementById('market-share-val');
+  if (msEl) msEl.textContent = NB.state.game.marketShare + '%';
   const rv = document.getElementById('revenue-chart');
   if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
-  /* unread notif badge */
   updateNotifBadge();
 };
 
@@ -324,7 +445,7 @@ NB.buildShell = function (navItems, userName, userMeta, content, opts) {
         ${navItems.map(n => `<button class="nav-item ${NB.ui.view === n.id ? 'active' : ''}" data-view="${n.id}">
           <span class="nav-icon">${n.icon}</span><span>${n.label}</span></button>`).join('')}
       </nav>
-      <div class="sponsor" id="sponsor-slot">⭐ Star Neon — реклама от партнёров</div>
+      <div class="sponsor" id="sponsor-slot">⭐ Starve Neon — инди-выживалка</div>
       <div class="sidebar-foot">
         <div class="user-card">
           <div class="user-ava">${NB.esc(NB.initials(userName))}</div>
@@ -368,14 +489,14 @@ NB.simBar = function () {
   </div>`;
 };
 
-/* =========== FLOATING AD — Star Neon =========== */
+/* =========== STARVE NEON РЕКЛАМА =========== */
 const AD_TEXTS = [
-  '⭐ Star Neon — неоновые вывески для бизнеса',
-  '⭐ Star Neon: свети ярче конкурентов',
-  '⭐ Star Neon — реклама, которую видят',
-  '⭐ Star Neon: -20% на первый заказ',
-  '⭐ Star Neon: вывески нового поколения',
-  '⭐ Star Neon — твой неоновый вайб'
+  '⭐ Starve Neon — хардкорная инди-выживалка. Играй с друзьями!',
+  '⭐ Starve Neon: скидка 20% на первый сезон в Steam',
+  '⭐ Starve Neon ищет союзников среди провайдеров',
+  '⭐ Starve Neon: кооп-режим на 4 игрока уже в бете',
+  '⭐ Starve Neon — выживи в неоне. Помоги разработчику!',
+  '⭐ Starve Neon: неон не спит. Ты — тоже?'
 ];
 
 let sponsorTimer = null;
@@ -389,7 +510,6 @@ NB.startSponsor = function () {
     setTimeout(() => el.classList.remove('flash'), 800);
   }, 22000);
 
-  /* всплывающая реклама */
   setInterval(() => {
     if (!NB.state.session || document.querySelector('.floating-ad')) return;
     showFloatingAd();
@@ -401,11 +521,11 @@ function showFloatingAd() {
   ad.className = 'floating-ad';
   ad.innerHTML = `
     <div class="floating-ad-head">
-      <div class="floating-ad-brand">⭐ Star Neon</div>
+      <div class="floating-ad-brand">⭐ Starve Neon</div>
       <button class="floating-ad-close" type="button">×</button>
     </div>
-    <div class="floating-ad-body">${NB.pick(AD_TEXTS).replace('⭐ Star Neon — ', '').replace('⭐ Star Neon: ', '')}</div>
-    <div class="floating-ad-cta">Заказать вывеску →</div>`;
+    <div class="floating-ad-body">${NB.pick(AD_TEXTS).replace('⭐ Starve Neon — ', '').replace('⭐ Starve Neon: ', '')}</div>
+    <div class="floating-ad-cta">Поддержать разработчика →</div>`;
   document.body.appendChild(ad);
   requestAnimationFrame(() => ad.classList.add('show'));
   const close = () => { ad.classList.remove('show'); setTimeout(() => ad.remove(), 400); };

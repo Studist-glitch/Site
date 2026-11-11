@@ -530,3 +530,80 @@ p{margin:0}
   .login-card{padding:26px 20px}
   .game-cash{font-size:26px}
 }
+
+/* ========== STORY PANEL ========== */
+.story-panel{background:linear-gradient(135deg,#0d0d14,#140f0a);border:1px solid rgba(255,107,0,.4);
+  border-radius:var(--r);padding:20px 22px;margin-bottom:16px;position:relative;overflow:hidden}
+.story-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#ff6b00,#ffb347,#ff6b00,transparent);
+  animation:storyGlow 4s linear infinite}
+@keyframes storyGlow{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.story-chapter{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--primary-3);font-weight:700;margin-bottom:6px}
+.story-title{font-size:19px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-.02em}
+.story-text{font-size:13.5px;color:var(--text-2);line-height:1.6;margin-bottom:14px}
+.story-choices{display:flex;flex-direction:column;gap:8px}
+.story-choice{padding:12px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface-2);
+  cursor:pointer;transition:.2s;font-family:inherit;text-align:left;color:var(--text);font-size:13.5px;
+  display:flex;justify-content:space-between;align-items:center;gap:12px}
+.story-choice:hover{border-color:var(--primary);background:rgba(255,107,0,.06);transform:translateX(2px)}
+.story-choice-hint{font-size:11.5px;color:var(--muted);flex-shrink:0}
+.story-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;
+  text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-left:8px}
+.story-badge.neutral{background:rgba(122,122,134,.2);color:var(--muted)}
+.story-badge.risk{background:rgba(239,68,68,.15);color:#f87171}
+.story-badge.reward{background:rgba(34,197,94,.15);color:#4ade80}
+
+/* ========== STARVE NEON SPAM ========== */
+.sn-spam{position:fixed;z-index:44;width:220px;background:linear-gradient(135deg,#0a0a12,#120a18);
+  border:1px solid rgba(180,0,255,.4);border-radius:10px;padding:10px;font-size:11px;
+  color:#e0c0ff;box-shadow:0 0 30px -10px rgba(180,0,255,.6);cursor:pointer;
+  transform:scale(.9);opacity:0;transition:.3s;line-height:1.4}
+.sn-spam.show{transform:scale(1);opacity:1}
+.sn-spam-brand{font-weight:800;color:#d080ff;text-transform:uppercase;letter-spacing:.08em;
+  font-size:10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.sn-spam-brand span{color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.sn-spam-body{color:#b0a0c0}
+
+/* ========== VIDEO AD ========== */
+.video-ad-wrap{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);
+  display:grid;place-items:center;padding:20px;opacity:0;transition:opacity .3s}
+.video-ad-wrap.show{opacity:1}
+.video-ad-box{position:relative;width:min(720px,100%);background:#000;border-radius:16px;
+  overflow:hidden;box-shadow:0 0 80px -20px rgba(180,0,255,.5)}
+.video-ad-box video{width:100%;display:block;max-height:70vh}
+.video-ad-close{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);border:0;
+  color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;z-index:2}
+.video-ad-close:hover{background:var(--primary);color:#0a0a0a}
+.video-ad-label{position:absolute;bottom:10px;left:12px;font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--primary-3);font-weight:700;background:rgba(0,0,0,.6);
+  padding:3px 8px;border-radius:6px}
+
+/* ========== MARKET SHARE ========== */
+.market-bar{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:10px 0;background:var(--surface-3)}
+.market-bar i{display:block;height:100%;transition:width 1s cubic-bezier(.2,.7,.3,1)}
+.market-legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.market-legend span{display:flex;align-items:center;gap:5px}
+.market-legend i{width:8px;height:8px;border-radius:2px}
+
+/* ========== ENDING ========== */
+.ending-screen{position:fixed;inset:0;z-index:90;background:radial-gradient(circle at 50% 30%,#1a1207,#08080a 70%);
+  display:grid;place-items:center;padding:30px;text-align:center;opacity:0;transition:.5s}
+.ending-screen.show{opacity:1}
+.ending-card{max-width:520px}
+.ending-icon{font-size:60px;margin-bottom:20px}
+.ending-title{font-size:28px;font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:12px}
+.ending-desc{font-size:14.5px;color:var(--text-2);line-height:1.6;margin-bottom:24px}
+.ending-stats{display:flex;justify-content:center;gap:30px;margin-bottom:26px;flex-wrap:wrap}
+.ending-stats div{text-align:center}
+.ending-stats b{display:block;font-size:20px;color:var(--primary-3);font-weight:800}
+.ending-stats span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* ========== COMPETITORS ========== */
+.comp-card{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.comp-card:last-child{border-bottom:0}
+.comp-logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  font-size:16px;font-weight:800;color:#0a0a0a;flex-shrink:0}
+.comp-body{flex:1}
+.comp-body b{font-size:14px;color:#fff;display:block}
+.comp-body small{font-size:11.5px;color:var(--muted)}
+.comp-share{font-size:13px;font-weight:700;color:var(--primary-3);font-variant-numeric:tabular-nums}

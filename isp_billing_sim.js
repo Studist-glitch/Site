@@ -1,4 +1,4 @@
-/* isp_billing_sim.js — движок симуляции времени */
+/* isp_billing_sim.js — движок симуляции времени (дневная система) */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -11,37 +11,53 @@ S.start = function () {
   timer = setInterval(() => {
     if (!NB.state.session || NB.state.session.role !== 'staff') { S.stop(); return; }
     if (NB.state.game.activeEvent) return;
+    if (NB.state.game.daily.dayCompleted) return;
     if (!document.getElementById('modal').classList.contains('hidden')) return;
-    const silent = NB.ui.view !== 'dashboard';
-    NB.advanceDay(silent);
+    NB.advanceDay(NB.ui.view !== 'dashboard');
   }, NB.state.settings.tickMs);
 };
 
 S.stop = function () { if (timer) { clearInterval(timer); timer = null; } };
 
 const DAILY_BASE_COST = 3000;
-const EVENT_CHANCE = 0.22;
 
 NB.advanceDay = function (silent) {
   const st = NB.state;
   if (st.game.stats.won || st.game.stats.lost) {
-    if (!silent) NB.toast('Игра окончена. Сбросьте в настройках', 'err');
+    if (!silent) NB.toast('Игра окончена', 'err');
     return;
   }
-  if (st.game.activeEvent) {
-    if (!silent) NB.toast('Сначала решите текущую ситуацию', 'err');
-    return;
+  if (st.game.activeEvent) { if (!silent) NB.toast('Сначала решите событие', 'err'); return; }
+
+  /* Завершаем текущий день: собираем выручку, если автосбор */
+  if (!st.game.daily.dayCompleted) {
+    if (st.game.upgrades.autoCollect > 0) {
+      st.game.cash += st.game.daily.pendingRevenue;
+      st.game.daily.collectedToday += st.game.daily.pendingRevenue;
+      st.game.daily.pendingRevenue = 0;
+    } else {
+      /* Если не собрано — сгорает? Нет, переносится, но игрок теряет бонус. */
+      st.game.daily.pendingRevenue = Math.round(st.game.daily.pendingRevenue * 0.8);
+    }
   }
+
+  /* Новый день */
+  st.game.daily.dayCompleted = false;
+  st.game.daily.pendingRevenue = 0;
+  st.game.daily.pendingClients = 0;
+  st.game.daily.pendingInvoices = 0;
+  st.game.daily.collectedToday = 0;
+  st.game.daily.lastDayRevenue = 0;
 
   st.simDate = NB.addDays(st.simDate, 1);
   const events = [];
   let revenueToday = 0;
   let payments = 0;
 
-  /* 1. автоплатежи клиентов */
+  /* 1. Автоплатежи */
   if (st.settings.autoPayments) {
-    const payChance = 0.35 + st.game.upgrades.support * 0.05;
     st.invoices.filter(i => i.status === 'unpaid').forEach(i => {
+      const payChance = 0.35 + (st.game.upgrades.support || 0) * 0.05;
       if (Math.random() > payChance) return;
       const c = NB.client(i.clientId);
       if (!c || c.status !== 'active' || c.balance < i.amount) return;
@@ -53,9 +69,17 @@ NB.advanceDay = function (silent) {
     });
   }
 
-  /* 2. новые клиенты */
+  /* 2. Starve Neon пассивный доход */
+  if (st.game.sn.ally) {
+    const snRev = Math.round(500 * (1 + st.game.sn.trust / 100) * (1 + st.game.marketShare / 100));
+    revenueToday += snRev;
+    st.game.sn.revenue += snRev;
+    events.push({ text: `Starve Neon принёс ${NB.money(snRev)}`, type: 'ok' });
+  }
+
+  /* 3. Новые клиенты */
   if (st.settings.autoNewClients) {
-    const base = 0.22 + st.game.upgrades.marketing * 0.12;
+    const base = 0.22 + (st.game.upgrades.marketing || 0) * 0.12 + (st.game.sn.ally ? 0.05 : 0) + (st.game.upgrades.salesBoost || 0) * 0.1;
     if (Math.random() < base) {
       const n = NB.randInt(1, 2);
       const curPeriod = st.simDate.slice(0, 7);
@@ -70,12 +94,12 @@ NB.advanceDay = function (silent) {
         st.invoices.push({ id: st.seq.invoice++, clientId: nc.id, period: curPeriod,
           amount: t.price, status: 'unpaid', paidAt: null });
       }
-      events.push({ text: `Подключено ${n} ${n === 1 ? 'клиент' : 'клиента'}`, type: 'ok' });
+      events.push({ text: `+${n} клиентов`, type: 'ok' });
     }
   }
 
-  /* 3. отток */
-  const churn = st.settings.churnChance * (1 - st.game.upgrades.support * 0.15 - st.game.upgrades.bandwidth * 0.1);
+  /* 4. Отток */
+  const churn = st.settings.churnChance * (1 - (st.game.upgrades.support || 0) * 0.15 - (st.game.upgrades.bandwidth || 0) * 0.1);
   if (Math.random() < Math.max(0.01, churn)) {
     const active = st.clients.filter(c => c.status === 'active');
     if (active.length > 3) {
@@ -83,16 +107,11 @@ NB.advanceDay = function (silent) {
       st.clients = st.clients.filter(c => c.id !== victim.id);
       st.invoices = st.invoices.filter(i => i.clientId !== victim.id);
       st.tickets = st.tickets.filter(t => t.clientId !== victim.id);
-      events.push({ text: `«${victim.name}» отключился`, type: 'warn' });
+      events.push({ text: `«${victim.name}» ушёл`, type: 'warn' });
     }
   }
 
-  /* 4. блокировка недобросовестных */
-  st.clients.forEach(c => {
-    if (c.status === 'active' && c.balance < -1000 && Math.random() < 0.3) c.status = 'blocked';
-  });
-
-  /* 5. счета в начале месяца */
+  /* 5. Счета 1-го числа */
   const day = NB.parseDate(st.simDate).getDate();
   if (day === 1) {
     const curPeriod = st.simDate.slice(0, 7);
@@ -103,10 +122,10 @@ NB.advanceDay = function (silent) {
         amount: NB.price(c.tariffId), status: 'unpaid', paidAt: null });
       created++;
     });
-    if (created) events.push({ text: `Новый месяц: выставлено ${created} счетов`, type: 'info' });
+    if (created) events.push({ text: `Выставлено ${created} счетов`, type: 'info' });
   }
 
-  /* 6. финансовый итог дня */
+  /* 6. Финансы */
   const upkeep = NB.game.dailyUpkeep();
   const expenses = DAILY_BASE_COST + upkeep;
   const net = revenueToday - expenses;
@@ -115,21 +134,28 @@ NB.advanceDay = function (silent) {
   st.game.stats.totalExpenses += expenses;
   st.game.stats.daysPlayed++;
 
-  /* 7. история */
+  /* 7. История */
   st.revenue.push({ date: st.simDate, amount: revenueToday });
   if (st.revenue.length > 60) st.revenue.shift();
   st.growth.push({ date: st.simDate, count: st.clients.length });
   if (st.growth.length > 60) st.growth.shift();
 
-  if (payments > 0) {
-    events.push({ text: `Оплачено ${payments} ${payments === 1 ? 'счёт' : 'счетов'} на ${NB.money(revenueToday)}`, type: 'ok' });
-  }
+  /* 8. Рынок */
+  NB.game.updateMarketShare();
 
-  /* 8. событие */
+  /* 9. Событие */
   let eventTriggered = false;
-  if (Math.random() < EVENT_CHANCE) {
+  if (Math.random() < 0.22) {
     NB.game.triggerEvent();
     eventTriggered = true;
+  }
+
+  /* 10. Реклама */
+  if (Math.random() < 0.15 && NB.state.settings.snSpam) {
+    setTimeout(() => NB.story.showSpam(), 500);
+  }
+  if (Math.random() < 0.05 && NB.state.game.sn.videoShown < 3) {
+    setTimeout(() => NB.story.showVideo(), 1000);
   }
 
   NB.checkGameState();
@@ -140,20 +166,13 @@ NB.advanceDay = function (silent) {
       NB.notify(ev.text, ev.type, { noToast: true });
       NB.addActivity(ev.text, ev.type === 'ok' ? 'pay' : ev.type === 'warn' ? 'block' : 'sys');
     });
-    if (NB.ui.view === 'dashboard') {
-      NB.refreshLive();
-    } else {
-      NB.renderView();
-    }
+    if (NB.ui.view === 'dashboard') NB.refreshLive();
+    else NB.renderView();
   } else {
     events.forEach(ev => NB.addActivity(ev.text, ev.type === 'ok' ? 'pay' : 'sys'));
   }
 
-  if (eventTriggered && !silent) {
-    setTimeout(() => NB.game.showEventModal(), 250);
-  } else if (eventTriggered) {
-    /* на неактивной вкладке — только уведомление, показывать будем когда вернётся */
-  }
+  if (eventTriggered && !silent) setTimeout(() => NB.game.showEventModal(), 250);
 };
 
 NB.advanceWeek = function () {
@@ -162,17 +181,14 @@ NB.advanceWeek = function () {
     NB.advanceDay(true);
   }
   NB.renderView();
-  if (NB.state.game.activeEvent) {
-    setTimeout(() => NB.game.showEventModal(), 200);
-  } else {
-    NB.toast('Прошло 7 дней', 'ok');
-  }
+  if (NB.state.game.activeEvent) setTimeout(() => NB.game.showEventModal(), 200);
+  else NB.toast('Прошло 7 дней', 'ok');
 };
 
 NB.setSimSpeed = function (code) {
   const map = { '0': 0, '1': 8000, '2': 3000, '3': 1000 };
   const ms = map[String(code)];
-  if (ms === 0) { NB.state.settings.autoTick = false; }
+  if (ms === 0) NB.state.settings.autoTick = false;
   else { NB.state.settings.autoTick = true; NB.state.settings.tickMs = ms; }
   NB.save();
   if (NB.state.settings.autoTick) S.start(); else S.stop();

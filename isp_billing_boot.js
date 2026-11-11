@@ -3,7 +3,6 @@
 'use strict';
 const NB = global.NB;
 
-/* =========== RENDER =========== */
 NB.render = function () {
   const root = document.getElementById('root');
   if (!NB.state.session) return NB.auth.renderLogin();
@@ -47,7 +46,6 @@ NB.render = function () {
   }
 };
 
-/* Только #view — без пересборки shell */
 NB.renderView = function () {
   const view = document.getElementById('view');
   if (!view) return NB.render();
@@ -63,7 +61,6 @@ NB.renderView = function () {
     content = v[NB.ui.view] ? v[NB.ui.view]() : v.dashboard();
   }
 
-  /* обновляем active nav */
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.view === NB.ui.view);
   });
@@ -85,12 +82,24 @@ function afterRender() {
   }, 50);
 }
 
-/* =========== CLICK DELEGATION =========== */
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-action]');
   if (t) {
     const fn = NB.actions.map[t.dataset.action];
     if (fn) { fn(t.dataset); return; }
+  }
+  const sc = e.target.closest('[data-story-choice]');
+  if (sc) {
+    const idx = Number(sc.dataset.storyChoice);
+    const ch = NB.story.CHAPTERS[NB.state.story.chapter];
+    if (!ch) return;
+    const choice = ch.choices[idx];
+    if (!choice) return;
+    const result = choice.run();
+    NB.addActivity(`Сюжет: ${choice.label} — ${result}`, 'sys');
+    NB.save();
+    NB.renderView();
+    return;
   }
   const v = e.target.closest('[data-view]');
   if (v) {
@@ -116,7 +125,6 @@ document.addEventListener('click', e => {
   if (e.target.id === 'start-speed') NB.charts.runSpeedTest();
 });
 
-/* =========== SEARCH =========== */
 document.addEventListener('input', e => {
   if (e.target.id === 'churn-range') {
     const v = Number(e.target.value);
@@ -134,7 +142,6 @@ document.addEventListener('input', e => {
   if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (err) {} }
 });
 
-/* =========== SETTINGS CHECKBOXES =========== */
 document.addEventListener('change', e => {
   const key = e.target.dataset.setting;
   if (!key) return;
@@ -147,14 +154,13 @@ document.addEventListener('change', e => {
   }
 });
 
-/* =========== MODAL BACKDROP / ESC =========== */
 const modalEl = document.getElementById('modal');
 modalEl.addEventListener('click', e => { if (e.target === modalEl) NB.closeModal(); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !modalEl.classList.contains('hidden')) NB.closeModal();
 });
 
-/* =========== LIVE ACTIVITY (без ре-рендера) =========== */
+/* ----- Живая активность ----- */
 const POOL = [
   () => { const c = NB.pick(NB.state.clients); return c ? { text: `Клиент «${c.name}» проверил баланс`, type: 'sys' } : null; },
   () => ({ text: `Скорость узла №${NB.randInt(1, 8)}: ${NB.randInt(120, 980)} Мбит/с`, type: 'net' }),
@@ -168,7 +174,6 @@ setInterval(() => {
   const evt = NB.pick(POOL)();
   if (!evt) return;
   NB.addActivity(evt.text, evt.type);
-  /* добавить только в UI, без полного рендера */
   const div = document.createElement('div');
   div.className = 'activity-item fade';
   const c = { pay: '#22c55e', ticket: '#f59e0b', net: '#ff9500', sys: '#7a7a86' }[evt.type] || '#7a7a86';
@@ -179,7 +184,14 @@ setInterval(() => {
   while (list.children.length > 12) list.lastChild.remove();
 }, 14000);
 
-/* =========== RESIZE =========== */
+/* ----- Спам Starve Neon ----- */
+setInterval(() => {
+  if (!NB.state.session || NB.state.session.role !== 'staff') return;
+  if (NB.state.settings.snSpam && Math.random() < 0.4) {
+    if (NB.story.showSpam) NB.story.showSpam();
+  }
+}, 30000);
+
 window.addEventListener('resize', () => {
   const c = document.getElementById('traffic-chart');
   if (c) NB.charts.drawLine(c, NB.charts.trafficData);
@@ -187,7 +199,6 @@ window.addEventListener('resize', () => {
   if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
 });
 
-/* =========== START =========== */
 NB.render();
 if (NB.state.session && NB.state.session.role === 'staff' && NB.state.settings.autoTick) {
   NB.sim.start();
