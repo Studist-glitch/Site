@@ -1,4 +1,4 @@
-/* isp_billing_staff.js — вьюхи сотрудника */
+/* isp_billing_staff.js — вьюхи сотрудника, упор на ясность экономики */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -15,6 +15,10 @@ S.dashboard = function () {
   const openTickets = st.tickets.filter(t => t.status === 'open').length;
   const levelLabel = NB.game.LEVELS[g.level - 1] ? NB.game.LEVELS[g.level - 1].label : 'Новичок';
 
+  const income = NB.dailyIncomeEstimate();
+  const cost = NB.dailyCostEstimate();
+  const net = NB.netDailyEstimate();
+
   /* Топ клиентов */
   const paidByClient = {};
   st.invoices.filter(i => i.status === 'paid').forEach(i => {
@@ -24,21 +28,18 @@ S.dashboard = function () {
     .map(([id, sum]) => ({ client: NB.client(Number(id)), sum }))
     .filter(x => x.client).sort((a, b) => b.sum - a.sum).slice(0, 5);
 
-  /* Распределение по тарифам */
+  /* Тарифы */
   const dist = st.tariffs.map(t => ({
     ...t, count: st.clients.filter(c => c.tariffId === t.id).length
   })).sort((a, b) => b.count - a.count);
   const maxCount = Math.max(1, ...dist.map(d => d.count));
 
-  /* Прогресс цели */
   const goalPct = Math.min(100, (g.cash / g.goal) * 100);
-
-  /* Статус игры */
   const status = g.stats.won  ? '<span class="game-status win">Победа</span>'
     : g.stats.lost ? '<span class="game-status lose">Провал</span>'
     : '<span class="game-status playing">В игре</span>';
 
-  /* Активное событие */
+  /* События */
   const eventBanner = g.activeEvent ? `
     <div class="game-panel" style="border-color:rgba(239,68,68,.6)">
       <div class="game-head">
@@ -51,34 +52,26 @@ S.dashboard = function () {
       </div>
     </div>` : '';
 
-  /* Панель угрозы (аномалия) */
+  /* Панель угрозы */
   let threatBar = '';
   if (w.threat > 0 && w.arc !== 'ordinary') {
-    const arcId = w.arc;
     const level = w.threat >= 7 ? 'КРИТИЧЕСКИЙ'
                 : w.threat >= 5 ? 'ВЫСОКИЙ'
                 : w.threat >= 3 ? 'СРЕДНИЙ'
                 : 'НИЗКИЙ';
-    const source = arcId === 'first_signal' ? 'Источник: неизвестен'
-                 : arcId === 'neon_shadow'  ? 'Источник: сетевые помехи'
-                 : arcId === 'whispers'     ? 'Источник: «шёпот в проводах»'
-                 : arcId === 'the_gala'     ? 'Источник: фиолетовое свечение'
-                 : arcId === 'drones'       ? 'Источник: неопознанные сигналы'
-                 : arcId === 'bunker'       ? 'Источник: подземные помехи'
-                 : 'Источник: тишина';
     threatBar = `
       <div class="game-panel cyn-warning" style="border-color:rgba(168,85,247,.6);margin-bottom:12px">
         <div class="game-head">
           <div>
             <div class="game-title" style="color:#c084fc">⚠ Аномалия в сети</div>
             <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px">Угроза: ${level} (${w.threat})</div>
-            <div style="font-size:12.5px;color:var(--muted);margin-top:4px">${source}</div>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:4px">Источник неизвестен. Растёт по мере развития сюжета.</div>
           </div>
         </div>
       </div>`;
   }
 
-  /* Панель бункера */
+  /* Бункер */
   let bunkerBar = '';
   if (w.bunker.built) {
     bunkerBar = `
@@ -87,14 +80,36 @@ S.dashboard = function () {
           <div>
             <div class="game-title" style="color:#94a3b8">🏚 Бункер</div>
             <div style="font-size:14px;color:#fff;margin-top:4px">Уровень ${w.bunker.level}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">Вы в безопасности</div>
           </div>
         </div>
       </div>`;
   }
 
-  /* Сюжетная панель */
-  const storyHtml = NB.story.renderPanel();
+  /* Сюжет */
+  const storyHtml = NB.story.renderPanel ? NB.story.renderPanel() : '';
+
+  /* Экономическая панель — главный UX-элемент */
+  const econClass = net.net >= 0 ? 'positive' : 'negative';
+  const economyPanel = `
+    <div class="economy-panel ${econClass}">
+      <div class="econ-header">
+        <h3>💵 Экономика дня</h3>
+        <span class="econ-net ${econClass}">${net.net >= 0 ? '+' : ''}${NB.money(net.net)}/день</span>
+      </div>
+      <div class="econ-rows">
+        <div class="econ-row">
+          <span>📈 Доход клиентов</span>
+          <b class="positive">+${NB.money(income.base)}</b>
+        </div>
+        ${income.neon > 0 ? `<div class="econ-row"><span>🌟 Neon Shadow</span><b class="positive">+${NB.money(income.neon)}</b></div>` : ''}
+        <div class="econ-row">
+          <span>🏢 Базовые расходы</span>
+          <b class="negative">−${NB.money(cost.base)}</b>
+        </div>
+        ${cost.upkeep > 0 ? `<div class="econ-row"><span>⚙ Обслуживание</span><b class="negative">−${NB.money(cost.upkeep)}</b></div>` : ''}
+      </div>
+      ${net.net < 0 ? `<div class="econ-warning">⚠ Вы в минусе. Купите маркетинг или повысьте тарифы.</div>` : ''}
+    </div>`;
 
   /* Дневная панель */
   const dailyHtml = `
@@ -103,12 +118,14 @@ S.dashboard = function () {
         <div>
           <div class="game-title">День ${g.daily.dayNumber}</div>
           <div style="font-size:13px;color:var(--muted);margin-top:4px">
-            Несобранная выручка: <b style="color:var(--primary-3)" id="pending-revenue">${NB.money(g.daily.pendingRevenue)}</b>
-            · Собрано: ${NB.money(g.daily.collectedToday)}
+            Несобрано: <b style="color:var(--primary-3)" id="pending-revenue">${NB.money(g.daily.pendingRevenue)}</b>
+            ${g.daily.collectedToday > 0 ? ` · Собрано: ${NB.money(g.daily.collectedToday)}` : ''}
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn primary small" data-action="collect-revenue" ${g.daily.pendingRevenue <= 0 ? 'disabled' : ''}>💰 Собрать выручку</button>
+          <button class="btn primary small" data-action="collect-revenue" ${g.daily.pendingRevenue <= 0 ? 'disabled' : ''}>
+            💰 Собрать ${NB.money(g.daily.pendingRevenue)}
+          </button>
         </div>
       </div>
     </div>`;
@@ -128,6 +145,7 @@ S.dashboard = function () {
     ${threatBar}
     ${bunkerBar}
     ${storyHtml}
+    ${economyPanel}
     ${dailyHtml}
     <div class="game-panel">
       <div class="game-head">
@@ -172,7 +190,7 @@ S.dashboard = function () {
       <canvas id="revenue-chart" class="revenue-chart"></canvas>
       <div class="chart-foot">
         <span>Итого за 14 дней: <b>${NB.money(stats.revenue)}</b></span>
-        <span class="muted">Расходы: ${NB.money(NB.game.dailyUpkeep() + 3000)}/день</span>
+        <span class="muted">Расходы: ${NB.money(cost.total)}/день</span>
       </div>
     </div>
     <div class="grid-2">
@@ -412,7 +430,6 @@ S.upgrades = function () {
   const g = NB.state.game;
   const allKeys = Object.keys(NB.game.UPGRADES);
   const visible = allKeys.filter(key => {
-    /* Бункер показываем только когда угроза >= 5 или уже куплен */
     if (key === 'bunker' && g.world.threat < 5 && (g.upgrades.bunker || 0) === 0) return false;
     return true;
   });
@@ -428,6 +445,8 @@ S.upgrades = function () {
         const maxed = cost === null;
         const canBuy = !maxed && g.cash >= cost;
         const locked = key === 'quantum' && !g.unlockedTech.includes('quantum');
+        const upkeepNow = lvl > 0 ? u.upkeep.slice(0, lvl).reduce((a, b) => a + b, 0) : 0;
+        const upkeepNext = !maxed ? (u.upkeep[lvl] || 0) : 0;
         return `<div class="upgrade fade ${maxed ? 'maxed' : ''}" style="animation-delay:${i * 70}ms">
           <div class="upgrade-head">
             <div class="upgrade-icon">${u.icon}</div>
@@ -443,7 +462,7 @@ S.upgrades = function () {
               : `<button class="btn ${canBuy ? 'primary' : 'ghost'} small" data-action="buy-upgrade" data-key="${key}" ${canBuy ? '' : 'disabled'}>${lvl === 0 ? 'Купить' : 'Улучшить'}</button>`}
           </div>
           <div style="font-size:11.5px;color:var(--muted);margin-top:10px">
-            Обслуживание: ${lvl > 0 ? u.upkeep.slice(0, lvl).reduce((a, b) => a + b, 0) : 0} ₽/день
+            Обслуживание: ${upkeepNow}${upkeepNext > 0 ? ` → ${upkeepNow + upkeepNext}` : ''} ₽/день
           </div>
         </div>`;
       }).join('')}
@@ -478,7 +497,7 @@ S.settings = function () {
         <h3>Симуляция</h3>
         <p>Время идёт только по кнопке «Следующий день». Никаких таймеров.</p>
         <div class="setting-row">
-          <div class="setting-row-info"><b>Новые клиенты</b><small>Подключаются сами при смене дня</small></div>
+          <div class="setting-row-info"><b>Новые клиенты</b><small>Подключаются при смене дня</small></div>
           <label class="switch"><input type="checkbox" ${st.autoNewClients ? 'checked' : ''} data-setting="autoNewClients"><span class="switch-track"></span></label>
         </div>
         <div class="setting-row">
@@ -500,9 +519,6 @@ S.settings = function () {
     </div>`;
 };
 
-/* ============================================================
-   ХЕЛПЕР — элемент активности
-   ============================================================ */
 S._activityItem = function (a) {
   const icons = { pay: '₽', recharge: '＋', ticket: '✉', net: '◈', sys: '⚙', block: '❙', tariff: '◆' };
   const colors = { pay: '#22c55e', recharge: '#ff6b00', ticket: '#f59e0b', net: '#ff9500', sys: '#7a7a86', block: '#ef4444', tariff: '#ffb347' };

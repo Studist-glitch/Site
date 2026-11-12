@@ -2,15 +2,14 @@
 (function (global) {
 'use strict';
 const NB = global.NB = global.NB || {};
-NB.views  = NB.views  || { staff: {}, client: {} };
-NB.charts = NB.charts || {};
-NB.actions= NB.actions|| {};
-NB.auth   = NB.auth   || {};
-NB.game   = NB.game   || {};
-NB.story  = NB.story  || {};
-NB.effects= NB.effects|| {};
+NB.views   = NB.views   || { staff: {}, client: {} };
+NB.charts  = NB.charts  || {};
+NB.actions = NB.actions || {};
+NB.auth    = NB.auth    || {};
+NB.game    = NB.game    || {};
+NB.story   = NB.story   || {};
+NB.effects = NB.effects || {};
 
-/* =========== УТИЛИТЫ =========== */
 NB.$ = (s, r = document) => r.querySelector(s);
 NB.esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 NB.money = n => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ₽';
@@ -24,7 +23,7 @@ NB.rand = (a, b) => a + Math.random() * (b - a);
 NB.randInt = (a, b) => Math.floor(NB.rand(a, b + 1));
 NB.pick = arr => arr[Math.floor(Math.random() * arr.length)];
 NB.parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
-NB.toISO  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+NB.toISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 NB.addDays = (iso, n) => { const d = NB.parseDate(iso); d.setDate(d.getDate() + n); return NB.toISO(d); };
 NB.dayLabel = iso => { const d = NB.parseDate(iso);
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' }); };
@@ -49,13 +48,15 @@ NB.genDroneName = () => `${NB.pick(DRONE_NAMES)}-${NB.randInt(100, 9999)} · ${N
 NB.genAddress = () => `ул. ${NB.pick(STREETS)}, ${NB.randInt(1, 120)}–${NB.randInt(1, 99)}`;
 NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.randInt(10, 99)}-${NB.randInt(10, 99)}`;
 
-NB.LS_KEY = 'netbill_neon_v10';
+NB.LS_KEY = 'netbill_neon_v11';
 NB.DEFAULT_PASS = '1234';
 
-/* =========== НАЧАЛЬНОЕ СОСТОЯНИЕ =========== */
+/* ============================================================
+   СОСТОЯНИЕ
+   ============================================================ */
 function defaultGame() {
   return {
-    cash: 50000,
+    cash: 100000,
     goal: 500000,
     reputation: 100,
     level: 1,
@@ -77,8 +78,9 @@ function defaultGame() {
       { name: 'Малые ISP',  share:  8, color: '#7a7a86', desc: 'Локальные сети' }
     ],
     daily: {
-      pendingRevenue: 0, pendingClients: 0, pendingInvoices: 0,
-      collectedToday: 0, dayCompleted: false, lastDayRevenue: 0,
+      pendingRevenue: 0,
+      collectedToday: 0,
+      lastDayRevenue: 0,
       dayNumber: 1
     },
     stats: {
@@ -87,27 +89,21 @@ function defaultGame() {
     },
     world: {
       arc: 'ordinary',
-      arcDay: 0,
       storyQueue: [],
       flags: {},
       news: [],
       threat: 0,
       threatNamed: false,
-      neon: {
-        met: false, trust: 0, helped: 0,
-        state: 'active', lastContactDay: 0
-      },
+      neon: { met: false, trust: 0, helped: 0, state: 'active', lastContactDay: 0 },
       drones: { enabled: false, count: 0, replaced: 0, droneClients: 0 },
       bunker: { built: false, level: 0 },
       equipment: {
-        anomalyScanner: false,
-        resonanceShield: false,
-        quantumKey: false,
-        signalJammer: false
+        anomalyScanner: false, resonanceShield: false,
+        quantumKey: false, signalJammer: false
       },
       lastNewsDay: 0,
       attacksSurvived: 0,
-      family: { wife: null, kids: 0, safe: true }
+      family: { wife: null, kids: 0, safe: true, wifeNamed: false }
     }
   };
 }
@@ -150,12 +146,19 @@ function seed() {
   const today = NB.toISO(new Date());
   const revenue = Array.from({ length: 14 }, (_, i) => ({
     date: NB.addDays(today, -(13 - i)),
-    amount: NB.randInt(800, 3000)
+    amount: NB.randInt(200, 400)
   }));
   const growth = Array.from({ length: 14 }, (_, i) => ({
     date: NB.addDays(today, -(13 - i)),
-    count: 5 + i + NB.randInt(-1, 2)
+    count: 8 + i + NB.randInt(-1, 2)
   }));
+
+  const g = defaultGame();
+  // Дадим стартовую выручку, чтобы день 1 не был пустым
+  const startIncome = Math.round(clients.filter(c => c.status === 'active')
+    .reduce((s, c) => s + NB.price(c.tariffId) / 20, 0));
+  g.daily.pendingRevenue = startIncome;
+
   return {
     tariffs, clients, invoices, tickets,
     activity: [{ id: 1, text: 'Система биллинга запущена', type: 'sys', at: new Date().toISOString() }],
@@ -168,7 +171,7 @@ function seed() {
     favorites: { clients: [], staff: [] },
     staffAccounts: [{ username: 'admin', password: 'admin', name: 'Администратор' }],
     onboarded: { staff: false, clients: [] },
-    game: defaultGame(),
+    game: g,
     story: { seenEvents: [], choices: {} }
   };
 }
@@ -181,7 +184,7 @@ function migrate(s) {
   keys.forEach(k => { if (typeof g.upgrades[k] !== 'number') g.upgrades[k] = 0; });
   delete g.upgrades.solverShield;
   if (!g.world) g.world = defaultGame().world;
-  if (!g.world.family) g.world.family = { wife: null, kids: 0, safe: true };
+  if (!g.world.family) g.world.family = { wife: null, kids: 0, safe: true, wifeNamed: false };
   if (!g.daily) g.daily = defaultGame().daily;
   if (!g.daily.dayNumber) g.daily.dayNumber = 1;
   if (!s.story) s.story = { seenEvents: [], choices: {} };
@@ -221,7 +224,38 @@ NB.ui = {
   newsView: 'all'
 };
 
-/* =========== ЭФФЕКТЫ =========== */
+/* ============================================================
+   ЭКОНОМИЧЕСКИЕ ОЦЕНКИ (общие)
+   ============================================================ */
+NB.dailyIncomeEstimate = function () {
+  const active = NB.state.clients.filter(c => c.status === 'active');
+  let base = 0;
+  active.forEach(c => { base += NB.price(c.tariffId) / 20; });
+  base = Math.round(base);
+  const g = NB.state.game;
+  let neon = 0;
+  if (g.world.neon.state === 'active' && g.world.neon.helped > 0) {
+    neon = Math.round(400 * (1 + g.world.neon.trust / 100) * (1 + g.marketShare / 100));
+  }
+  return { base, neon, total: base + neon };
+};
+
+NB.dailyCostEstimate = function () {
+  const active = NB.state.clients.filter(c => c.status === 'active').length;
+  const base = 30 + 2 * active;
+  const upkeep = NB.game.dailyUpkeep();
+  return { base, upkeep, total: base + upkeep };
+};
+
+NB.netDailyEstimate = function () {
+  const inc = NB.dailyIncomeEstimate();
+  const cost = NB.dailyCostEstimate();
+  return { income: inc.total, cost: cost.total, net: inc.total - cost.total };
+};
+
+/* ============================================================
+   ЭФФЕКТЫ
+   ============================================================ */
 const effectStyle = document.createElement('style');
 effectStyle.textContent = `
 @keyframes shake {
@@ -246,6 +280,8 @@ effectStyle.textContent = `
 .typewriter{overflow:hidden;white-space:nowrap;border-right:2px solid var(--primary);animation:typewriter 2s steps(80) both}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .fade-in{animation:fadein .5s cubic-bezier(.2,.7,.3,1) both}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,107,0,.6)}50%{box-shadow:0 0 0 8px rgba(255,107,0,0)}}
+.tutorial-pulse{animation:pulseGlow 1.5s infinite; border-radius:10px}
 `;
 document.head.appendChild(effectStyle);
 
@@ -279,13 +315,15 @@ NB.effects.typewriter = function (el, text) {
   el.classList.add('typewriter');
   let i = 0;
   const tick = () => {
-    if (i <= text.length) { el.textContent = text.slice(0, i); i++; setTimeout(tick, 28); }
+    if (i <= text.length) { el.textContent = text.slice(0, i); i++; setTimeout(tick, 24); }
     else el.classList.remove('typewriter');
   };
   tick();
 };
 
-/* =========== TOAST =========== */
+/* ============================================================
+   TOAST
+   ============================================================ */
 NB.toast = function (msg, type) {
   const wrap = document.getElementById('toasts');
   if (!wrap) return;
@@ -297,7 +335,9 @@ NB.toast = function (msg, type) {
   setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 320); }, 2600);
 };
 
-/* =========== NOTIFY =========== */
+/* ============================================================
+   NOTIFY
+   ============================================================ */
 NB.notify = function (text, type, opts) {
   opts = opts || {};
   NB.state.notifications.unshift({
@@ -341,7 +381,9 @@ NB.addActivity = function (text, type) {
   NB.save();
 };
 
-/* =========== MODAL =========== */
+/* ============================================================
+   MODAL
+   ============================================================ */
 let modalHandler = null;
 NB.openModal = function ({ title, html, submit = 'Сохранить', onSubmit, wide, boxClass, noSubmit }) {
   const modal = document.getElementById('modal');
@@ -370,7 +412,9 @@ NB.closeModal = function () {
   setTimeout(() => modal.classList.add('hidden'), 220);
 };
 
-/* =========== FORMS =========== */
+/* ============================================================
+   FORMS
+   ============================================================ */
 NB.field = (label, name, type = 'text', value = '', extra = '') =>
   `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${NB.esc(value)}" ${extra}></label>`;
 NB.textareaField = (label, name, value = '') =>
@@ -378,7 +422,9 @@ NB.textareaField = (label, name, value = '') =>
 NB.selectField = (label, name, opts) =>
   `<label class="field"><span>${label}</span><select name="${name}">${opts.map(o => `<option value="${o.v}">${NB.esc(o.l)}</option>`).join('')}</select></label>`;
 
-/* =========== STATS =========== */
+/* ============================================================
+   STATS
+   ============================================================ */
 NB.statCard = function (label, value, sub, moneyFmt, color, key) {
   return `<div class="stat" style="--c:${color}">
     <div class="stat-top"><span>${label}</span><i></i></div>
@@ -407,7 +453,9 @@ NB.computeStats = function () {
   }
 };
 
-/* =========== LIVE REFRESH =========== */
+/* ============================================================
+   LIVE REFRESH
+   ============================================================ */
 NB.refreshLive = function () {
   const stats = NB.computeStats();
   document.querySelectorAll('.stat-value[data-stat]').forEach(el => {
@@ -432,7 +480,9 @@ NB.refreshLive = function () {
   updateNotifBadge();
 };
 
-/* =========== SHELL =========== */
+/* ============================================================
+   SHELL
+   ============================================================ */
 NB.buildShell = function (navItems, userName, userMeta, content, opts) {
   opts = opts || {};
   const unread = NB.unreadNotifs();
@@ -462,20 +512,30 @@ NB.buildShell = function (navItems, userName, userMeta, content, opts) {
   </div>`;
 };
 
-/* Панель дня: только дата + кнопка «+1 день». Никаких скоростей. */
 NB.simBar = function () {
   const st = NB.state;
-  const pending = st.game.daily.pendingRevenue;
-  const eventActive = !!st.game.activeEvent;
-  const storyQueue = st.game.world.storyQueue.length;
+  const g = st.game;
+  const pending = g.daily.pendingRevenue;
+  const net = NB.netDailyEstimate();
+  const eventActive = !!g.activeEvent;
+  const storyQueue = g.world.storyQueue.length;
+
   let note = '';
   if (eventActive) note = '<span class="sim-note warn">⚠ Решите событие</span>';
   else if (storyQueue) note = '<span class="sim-note story">◆ Сюжетное событие</span>';
-  else if (pending > 0) note = `<span class="sim-note">Несобранная выручка: <b>${NB.money(pending)}</b></span>`;
+  else if (pending > 0) note = `<span class="sim-note">Несобрано: <b>${NB.money(pending)}</b></span>`;
   else note = '<span class="sim-note muted">Готовы к новому дню</span>';
 
+  const netClass = net.net >= 0 ? 'positive' : 'negative';
+  const netStr = (net.net >= 0 ? '+' : '') + NB.money(net.net);
+
   return `<div class="sim-bar">
-    <div class="sim-date"><span>📅</span><span>${NB.dayLabel(st.simDate)}</span><span class="sim-day">· День ${st.game.daily.dayNumber}</span></div>
+    <div class="sim-date"><span>📅</span><span>${NB.dayLabel(st.simDate)}</span><span class="sim-day">· День ${g.daily.dayNumber}</span></div>
+    <div class="sim-econ-mini">
+      <span class="econ-mini-item positive">+${NB.money(net.income)}</span>
+      <span class="econ-mini-item negative">−${NB.money(net.cost)}</span>
+      <span class="econ-mini-net ${netClass}">${netStr}/день</span>
+    </div>
     <div class="spacer"></div>
     ${note}
     <button class="btn primary small" data-action="advance-day">Следующий день →</button>

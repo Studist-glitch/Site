@@ -1,27 +1,29 @@
-/* isp_billing_game.js — апгрейды, события, уровни */
+/* isp_billing_game.js — апгрейды, события, уровни, интерактивный туториал */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const G = NB.game = NB.game || {};
 
-/* =========== АПГРЕЙДЫ =========== */
+/* ============================================================
+   АПГРЕЙДЫ — маленький upkeep, понятные эффекты
+   ============================================================ */
 G.UPGRADES = {
-  ddos:           { icon: '🛡',  name: 'DDoS-защита',           desc: 'Отбивает атаки.', costs: [10000, 25000, 50000], upkeep: [500, 1200, 2500], levels: ['Базовая фильтрация', 'Продвинутая + CDN', 'Максимальная + автоблок'] },
-  bandwidth:      { icon: '⚡',  name: 'Пропускная способность', desc: 'Больше клиентов без просадок.', costs: [15000, 30000, 60000], upkeep: [600, 1500, 3000], levels: ['+30% ёмкость', 'Резервный канал', 'Гигабитные магистрали'] },
-  support:        { icon: '💬',  name: 'Служба поддержки',       desc: 'Быстрее решает заявки.', costs: [8000, 20000, 40000], upkeep: [400, 1000, 2000], levels: ['Два оператора', 'Круглосуточно', 'Персональные менеджеры'] },
-  marketing:      { icon: '📢',  name: 'Маркетинг',              desc: 'Больше новых клиентов.', costs: [12000, 28000, 55000], upkeep: [800, 2000, 4000], levels: ['Таргет', 'Наружная реклама', 'Национальная кампания'] },
-  fiber:          { icon: '🕸',  name: 'Оптиковолокно',          desc: 'Собственные магистрали.', costs: [40000, 90000], upkeep: [1500, 3500], levels: ['Городская оптика', 'Магистральная оптика'] },
-  satellite:      { icon: '🛰',  name: 'Спутниковый канал',      desc: 'Резерв и покрытие.', costs: [60000], upkeep: [2500], levels: ['Спутниковый резерв'] },
-  ai:             { icon: '🤖',  name: 'AI-автоматизация',       desc: 'Автоподдержка и продажи.', costs: [80000], upkeep: [3000], levels: ['AI-оператор + AI-продавец'] },
-  quantum:        { icon: '⚛',  name: 'Квантовый шифр',          desc: 'Только после особой концовки.', costs: [200000], upkeep: [5000], levels: ['Квантовая сеть'] },
-  firewall:       { icon: '🧱',  name: 'Межсетевой экран',        desc: 'Блокирует странный трафик.', costs: [15000, 35000, 70000], upkeep: [700, 1600, 3200], levels: ['Базовый firewall', 'Глубокий анализ пакетов', 'ИИ-файрвол'] },
-  microBooster:   { icon: '🔧',  name: 'Микроускоритель',         desc: 'Небольшой буст скорости.', costs: [5000, 15000], upkeep: [200, 500], levels: ['+5% скорость', '+10% скорость'] },
-  darkFiber:      { icon: '🌑',  name: 'Тёмное волокно',          desc: 'Секретный канал.', costs: [100000], upkeep: [4000], levels: ['Скрытая магистраль'] },
-  autoCollect:    { icon: '💰',  name: 'Автосбор выручки',        desc: 'Автоматически собирает выручку.', costs: [8000, 20000], upkeep: [300, 800], levels: ['Базовый автосбор', 'Продвинутый автосбор'] },
-  autoClean:      { icon: '🧹',  name: 'Автоочистка спама',       desc: 'Убирает рекламный спам.', costs: [5000], upkeep: [200], levels: ['Скрипт-блокировщик'] },
-  salesBoost:     { icon: '📈',  name: 'Буст продаж',             desc: 'Повышает шанс подключения.', costs: [10000, 25000], upkeep: [500, 1200], levels: ['+10% продаж', '+20% продаж'] },
-  bunker:         { icon: '🏚',  name: 'Бункер',                  desc: 'Укрытие от глобальной угрозы.', costs: [80000, 150000], upkeep: [1500, 3000], levels: ['Базовый бункер', 'Укреплённый бункер'] },
-  anomalyScanner: { icon: '📡',  name: 'Аномальный сканер',       desc: 'Рано предупреждает об атаках.', costs: [25000, 50000], upkeep: [500, 1200], levels: ['Первый сканер', 'Полный охват'] }
+  ddos:           { icon: '🛡',  name: 'DDoS-защита',           desc: 'Отбивает атаки на сеть.', costs: [8000, 18000, 35000], upkeep: [15, 40, 80], levels: ['Базовая фильтрация', 'CDN + защита', 'Автоблок'] },
+  bandwidth:      { icon: '⚡',  name: 'Пропускная способность', desc: 'Больше клиентов без просадок.', costs: [12000, 25000, 50000], upkeep: [20, 50, 100], levels: ['+30% ёмкость', 'Резервный канал', 'Гигабит'] },
+  support:        { icon: '💬',  name: 'Поддержка',              desc: 'Меньше оттока, быстрее оплата.', costs: [6000, 15000, 30000], upkeep: [15, 40, 80], levels: ['2 оператора', '24/7', 'Персональные менеджеры'] },
+  marketing:      { icon: '📢',  name: 'Маркетинг',              desc: 'Больше новых клиентов.', costs: [10000, 22000, 45000], upkeep: [20, 50, 100], levels: ['+15% клиентов', '+30% клиентов', '+45% клиентов'] },
+  fiber:          { icon: '🕸',  name: 'Оптиковолокно',          desc: 'Собственные магистрали.', costs: [30000, 70000], upkeep: [60, 150], levels: ['Городская оптика', 'Магистральная'] },
+  satellite:      { icon: '🛰',  name: 'Спутниковый канал',      desc: 'Резерв и покрытие.', costs: [50000], upkeep: [80], levels: ['Спутниковый резерв'] },
+  ai:             { icon: '🤖',  name: 'AI-автоматизация',       desc: 'Автоподдержка и продажи.', costs: [70000], upkeep: [120], levels: ['AI-оператор'] },
+  quantum:        { icon: '⚛',  name: 'Квантовый шифр',          desc: 'Только после особой концовки.', costs: [180000], upkeep: [200], levels: ['Квантовая сеть'] },
+  firewall:       { icon: '🧱',  name: 'Firewall',               desc: 'Снижает аномальный трафик.', costs: [12000, 30000, 60000], upkeep: [20, 50, 100], levels: ['Базовый', 'Глубокий анализ', 'ИИ-файрвол'] },
+  microBooster:   { icon: '🔧',  name: 'Микроускоритель',        desc: 'Буст скорости для клиентов.', costs: [4000, 12000], upkeep: [10, 25], levels: ['+5% скорость', '+10% скорость'] },
+  darkFiber:      { icon: '🌑',  name: 'Тёмное волокно',          desc: 'Секретный канал.', costs: [80000], upkeep: [150], levels: ['Скрытая магистраль'] },
+  autoCollect:    { icon: '💰',  name: 'Автосбор выручки',        desc: 'Собирает выручку без потерь.', costs: [6000, 15000], upkeep: [10, 25], levels: ['Автосбор 100%', 'Бонус +5% к сбору'] },
+  autoClean:      { icon: '🧹',  name: 'Автоочистка спама',       desc: 'Убирает рекламный спам.', costs: [4000], upkeep: [8], levels: ['Скрипт-блокировщик'] },
+  salesBoost:     { icon: '📈',  name: 'Буст продаж',             desc: 'Повышает шанс подключения.', costs: [8000, 20000], upkeep: [15, 40], levels: ['+10% продаж', '+20% продаж'] },
+  bunker:         { icon: '🏚',  name: 'Бункер',                  desc: 'Укрытие от глобальной угрозы.', costs: [70000, 130000], upkeep: [80, 200], levels: ['Базовый бункер', 'Укреплённый'] },
+  anomalyScanner: { icon: '📡',  name: 'Аномальный сканер',       desc: 'Рано предупреждает об атаках.', costs: [20000, 45000], upkeep: [20, 50], levels: ['Первый сканер', 'Полный охват'] }
 };
 
 G.upgradeCost = function (key) {
@@ -56,15 +58,17 @@ G.buyUpgrade = function (key) {
   NB.renderView();
 };
 
-/* =========== ОБЫЧНЫЕ СОБЫТИЯ (не сюжетные) =========== */
+/* ============================================================
+   СОБЫТИЯ ДНЯ
+   ============================================================ */
 G.EVENTS = [
   { id: 'micro_coffee', title: '☕ Кофе для команды', desc: 'Сотрудники просят кофе. Мелочь, а приятно.', weight: 1.5, opts: [
     { label: 'Купить кофе', hint: '-500 ₽', run: () => { NB.state.game.cash -= 500; NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 1); return 'Команда довольна'; }},
     { label: 'Отказать', hint: '', run: () => { NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 1); return 'Недовольство'; }}
   ]},
   { id: 'micro_bug', title: '🐛 Баг в биллинге', desc: 'Мелкий баг. Можно исправить или оставить.', weight: 1.4, opts: [
-    { label: 'Исправить', hint: '-2 000 ₽', run: () => { NB.state.game.cash -= 2000; return 'Исправлено'; }},
-    { label: 'Оставить', hint: '', run: () => { for (let i=0;i<3 && i<NB.state.clients.length;i++) { const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Клиенты ушли'; }}
+    { label: 'Исправить', hint: '-2000 ₽', run: () => { NB.state.game.cash -= 2000; return 'Исправлено'; }},
+    { label: 'Оставить', hint: 'Риск клиентов', run: () => { for (let i=0;i<3 && i<NB.state.clients.length;i++) { const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Клиенты ушли'; }}
   ]},
   { id: 'micro_office', title: '🪴 Растение в офис', desc: 'Уют повышает настроение.', weight: 1.2, opts: [
     { label: 'Купить', hint: '-300 ₽', run: () => { NB.state.game.cash -= 300; return 'Уютно'; }},
@@ -75,41 +79,58 @@ G.EVENTS = [
     { label: 'Игнорировать', hint: '', run: () => 'Проигнорировано' }
   ]},
   { id: 'ddos', title: '💀 DDoS-атака', desc: 'Сеть под атакой.', weight: 1.4, opts: [
-    { label: 'Заплатить за защиту', hint: '-5 000 ₽', run: () => { NB.state.game.cash -= 5000; return 'Атака отбита'; }},
-    { label: 'Терпеть', hint: '', run: () => { for (let i=0;i<2 && i<NB.state.clients.length;i++) { const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Потери'; }}
+    { label: 'Заплатить за защиту', hint: '-5000 ₽', run: () => { NB.state.game.cash -= 5000; return 'Атака отбита'; }},
+    { label: 'Терпеть', hint: 'Потери', run: () => { for (let i=0;i<2 && i<NB.state.clients.length;i++) { const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Потери'; }}
   ]},
   { id: 'equipment', title: '🔧 Отказ оборудования', desc: 'Коммутатор сломался.', weight: 1.2, opts: [
-    { label: 'Купить новый', hint: '-3 000 ₽', run: () => { NB.state.game.cash -= 3000; return 'Заменено'; }},
-    { label: 'Починить', hint: '', run: () => { if (NB.state.clients.length) { const v=NB.state.clients[0]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Потеря'; }}
+    { label: 'Купить новый', hint: '-3000 ₽', run: () => { NB.state.game.cash -= 3000; return 'Заменено'; }},
+    { label: 'Починить', hint: 'Потеря клиента', run: () => { if (NB.state.clients.length) { const v=NB.state.clients[0]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id); } return 'Потеря'; }}
   ]},
   { id: 'bigclient', title: '💼 Крупный клиент', desc: 'ООО «Ромашка» хочет подключиться.', weight: 1.0, opts: [
-    { label: 'Согласиться', hint: '', run: () => { const t = NB.state.tariffs[NB.state.tariffs.length-1]; const nc={id:NB.state.seq.client++, name:'ООО «Ромашка»', address:NB.genAddress(), phone:NB.genPhone(), tariffId:t.id, balance:0, status:'active', createdAt:new Date().toISOString(), password:NB.DEFAULT_PASS, isDrone:false}; NB.state.clients.push(nc); return 'Подключён'; }},
+    { label: 'Согласиться', hint: '+1 клиент', run: () => { const t = NB.state.tariffs[NB.state.tariffs.length-1]; const nc={id:NB.state.seq.client++, name:'ООО «Ромашка»', address:NB.genAddress(), phone:NB.genPhone(), tariffId:t.id, balance:0, status:'active', createdAt:new Date().toISOString(), password:NB.DEFAULT_PASS, isDrone:false}; NB.state.clients.push(nc); return 'Подключён'; }},
     { label: 'Отказать', hint: '', run: () => 'Отказ' }
   ]},
   { id: 'viral', title: '📈 Вирусный эффект', desc: 'Пост стал популярным.', weight: 0.9, opts: [
-    { label: 'Вложить', hint: '-8 000 ₽', run: () => { if (NB.state.game.cash<8000) return 'Не хватило'; NB.state.game.cash-=8000; for(let i=0;i<5;i++){ const t=NB.pick(NB.state.tariffs); const nc={id:NB.state.seq.client++, name:NB.genName(), address:NB.genAddress(), phone:NB.genPhone(), tariffId:t.id, balance:0, status:'active', createdAt:new Date().toISOString(), password:NB.DEFAULT_PASS, isDrone:false}; NB.state.clients.push(nc);} return '+5 клиентов'; }},
+    { label: 'Вложить', hint: '-8000 ₽, +5 клиентов', run: () => { if (NB.state.game.cash<8000) return 'Не хватило'; NB.state.game.cash-=8000; for(let i=0;i<5;i++){ const t=NB.pick(NB.state.tariffs); const nc={id:NB.state.seq.client++, name:NB.genName(), address:NB.genAddress(), phone:NB.genPhone(), tariffId:t.id, balance:0, status:'active', createdAt:new Date().toISOString(), password:NB.DEFAULT_PASS, isDrone:false}; NB.state.clients.push(nc);} return '+5 клиентов'; }},
     { label: 'Пропустить', hint: '', run: () => 'Пропущено' }
   ]},
   { id: 'competitor', title: '🎯 Конкурент давит', desc: 'Starlink запустил акцию.', weight: 1.0, opts: [
-    { label: 'Ответить акцией', hint: '', run: () => { if (NB.state.game.cash<10000) return 'Не хватило'; NB.state.game.cash-=10000; for(let i=0;i<5 && i<NB.state.clients.length;i++){ const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return 'Потери'; }},
-    { label: 'Ничего не делать', hint: '', run: () => { for(let i=0;i<8 && i<NB.state.clients.length;i++){ const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return 'Потери'; }}
+    { label: 'Ответить акцией', hint: '-10000 ₽', run: () => { if (NB.state.game.cash<10000) return 'Не хватило'; NB.state.game.cash-=10000; for(let i=0;i<5 && i<NB.state.clients.length;i++){ const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return 'Потери'; }},
+    { label: 'Ничего не делать', hint: 'Больше потерь', run: () => { for(let i=0;i<8 && i<NB.state.clients.length;i++){ const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return 'Потери'; }}
   ]},
   { id: 'inspection', title: '📋 Проверка', desc: 'Найдены нарушения.', weight: 0.7, opts: [
-    { label: 'Оплатить штраф', hint: '-4 000 ₽', run: () => { NB.state.game.cash -= 4000; return 'Оплачено'; }},
-    { label: 'Оспорить', hint: '', run: () => { NB.state.game.reputation = Math.max(0, NB.state.game.reputation-10); return 'Оспорено'; }}
+    { label: 'Оплатить штраф', hint: '-4000 ₽', run: () => { NB.state.game.cash -= 4000; return 'Оплачено'; }},
+    { label: 'Оспорить', hint: '-репутация', run: () => { NB.state.game.reputation = Math.max(0, NB.state.game.reputation-10); return 'Оспорено'; }}
   ]},
   { id: 'discount', title: '🏷 Распродажа', desc: 'Скидка на оборудование.', weight: 0.6, opts: [
-    { label: 'Купить', hint: '', run: () => { const lvl=NB.state.game.upgrades.bandwidth; if(lvl>=G.UPGRADES.bandwidth.costs.length) return 'Максимум'; const cost=Math.round(G.UPGRADES.bandwidth.costs[lvl]/2); if(NB.state.game.cash<cost) return 'Не хватило'; NB.state.game.cash-=cost; NB.state.game.upgrades.bandwidth++; return 'Куплено'; }},
+    { label: 'Купить', hint: 'Скидка 50%', run: () => { const lvl=NB.state.game.upgrades.bandwidth; if(lvl>=G.UPGRADES.bandwidth.costs.length) return 'Максимум'; const cost=Math.round(G.UPGRADES.bandwidth.costs[lvl]/2); if(NB.state.game.cash<cost) return 'Не хватило'; NB.state.game.cash-=cost; NB.state.game.upgrades.bandwidth++; return 'Куплено'; }},
     { label: 'Пропустить', hint: '', run: () => 'Пропущено' }
   ]},
   { id: 'staff-poach', title: '🚪 Переманили сотрудника', desc: 'Инженер получил оффер.', weight: 0.8, opts: [
-    { label: 'Поднять зарплату', hint: '-5 000 ₽', run: () => { NB.state.game.cash -= 5000; return 'Остался'; }},
-    { label: 'Отпустить', hint: '', run: () => { if(NB.state.game.upgrades.support>0) NB.state.game.upgrades.support--; return 'Ушёл'; }}
+    { label: 'Поднять зарплату', hint: '-5000 ₽', run: () => { NB.state.game.cash -= 5000; return 'Остался'; }},
+    { label: 'Отпустить', hint: '-уровень support', run: () => { if(NB.state.game.upgrades.support>0) NB.state.game.upgrades.support--; return 'Ушёл'; }}
   ]},
-  { id: 'anomaly_signal', title: '📡 Странный сигнал', desc: 'Сканер фиксирует помехи в сети.', weight: 0.9, condition: () => NB.state.game.daily.dayNumber >= 10 && NB.state.game.world.threat > 0, opts: [
-    { label: 'Игнорировать', hint: '', run: () => { return 'Сигнал исчез'; }},
-    { label: 'Проверить', hint: '-1000 ₽', run: () => { NB.state.game.cash -= 1000; NB.state.game.world.threat = Math.min(10, NB.state.game.world.threat + 1); return 'Что-то нашлось'; }}
-  ]}
+  { id: 'anomaly_signal', title: '📡 Странный сигнал', desc: 'Сканер фиксирует помехи в сети.', weight: 0.9,
+    condition: () => NB.state.game.daily.dayNumber >= 10 && NB.state.game.world.threat > 0,
+    opts: [
+      { label: 'Игнорировать', hint: '', run: () => 'Сигнал исчез' },
+      { label: 'Проверить', hint: '-1000 ₽, +угроза', run: () => { NB.state.game.cash -= 1000; NB.state.game.world.threat = Math.min(10, NB.state.game.world.threat + 1); return 'Что-то нашлось'; }}
+    ]
+  },
+  { id: 'family_1', title: '👨‍👩‍👧 Личное время', desc: 'Жена просит провести вечер с семьёй. У вас много работы.', weight: 0.7,
+    condition: () => NB.state.game.daily.dayNumber > 15 && !NB.state.game.world.family.wife,
+    opts: [
+      { label: 'Провести вечер', hint: '+репутация', run: () => { NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 3); NB.state.game.world.family.wife = 'Анна'; NB.state.game.world.family.wifeNamed = true; return 'Анна улыбается. Хороший вечер.'; }},
+      { label: 'Отложить', hint: '', run: () => 'Вы работали допоздна.' }
+    ]
+  },
+  { id: 'family_2', title: '👶 Ребёнок', desc: 'Анна говорит, что беременна. Что делать?', weight: 0.5,
+    condition: () => NB.state.game.world.family.wife === 'Анна' && NB.state.game.world.family.kids === 0,
+    opts: [
+      { label: 'Рады', hint: '+репутация', run: () => { NB.state.game.world.family.kids = 1; NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 5); return 'Вы стали родителями.'; }},
+      { label: 'Обсудить', hint: '', run: () => 'Долгий разговор.' }
+    ]
+  }
 ];
 
 G.rollEvent = function () {
@@ -161,7 +182,9 @@ G.resolveEvent = function (idx) {
   NB.renderView();
 };
 
-/* =========== УРОВНИ =========== */
+/* ============================================================
+   УРОВНИ
+   ============================================================ */
 G.LEVELS = [
   { at: 0,      label: 'Новичок' },
   { at: 50000,  label: 'Стартап' },
@@ -197,7 +220,9 @@ NB.checkGameState = function () {
   }
 };
 
-/* =========== РЫНОК =========== */
+/* ============================================================
+   РЫНОК
+   ============================================================ */
 G.updateMarketShare = function () {
   const g = NB.state.game;
   const totalClients = NB.state.clients.filter(c => c.status === 'active').length;
@@ -209,25 +234,111 @@ G.updateMarketShare = function () {
   });
 };
 
-/* =========== ТУР =========== */
+/* ============================================================
+   ТУТОРИАЛ — с подсветкой конкретных элементов
+   ============================================================ */
 G.TOUR = {
   staff: [
-    { view: 'dashboard', icon: '◧', title: 'Дашборд', text: 'Касса, выручка, активность. Всё главное здесь.' },
-    { view: 'dashboard', icon: '📅', title: 'Как играть', text: 'Соберите выручку кнопкой «Собрать», затем нажмите «Следующий день». Если не собрать — сгорит 20%.' },
-    { view: 'clients',   icon: '◔', title: 'Клиенты', text: 'База абонентов. Клик — карточка с оплатой и заявками.' },
-    { view: 'tariffs',   icon: '◆', title: 'Тарифы',   text: 'Управляйте планами. Клиенты переносятся автоматически.' },
-    { view: 'invoices',  icon: '▤', title: 'Счета',    text: 'Выставляйте и оплачивайте. Фильтры сверху.' },
-    { view: 'tickets',   icon: '✉', title: 'Заявки',   text: 'Обращения от клиентов.' },
-    { view: 'upgrades',  icon: '⚙', title: 'Магазин',  text: 'Апгрейды. Автосбор — очень полезен.' },
-    { view: 'activity',  icon: '◷', title: 'Активность', text: 'Журнал всех событий.' },
-    { view: 'settings',  icon: '🛠', title: 'Настройки', text: 'Экспорт и сброс. Никаких скоростей — только ручное управление днём.' }
+    {
+      view: 'dashboard',
+      icon: '◧',
+      title: 'Добро пожаловать!',
+      text: 'Вы — оператор биллинга. Задача: накопить 500 000 ₽ и пройти сюжет. Гид покажет, куда нажимать.',
+      highlightSelector: null
+    },
+    {
+      view: 'dashboard',
+      icon: '📊',
+      title: 'Экономика',
+      text: 'Доход: тарифы клиентов / 20. Расход: 30 ₽ + 2 ₽ на клиента + обслуживание апгрейдов. Стартовый net: +274 ₽/день.',
+      highlightSelector: '.economy-panel'
+    },
+    {
+      view: 'dashboard',
+      icon: '💰',
+      title: 'Шаг 1: Собирайте выручку',
+      text: 'Каждый день клиенты приносят деньги. Нажмите «Собрать выручку», чтобы забрать их в кассу. Без этого 20% сгорит.',
+      highlightSelector: '[data-action="collect-revenue"]'
+    },
+    {
+      view: 'dashboard',
+      icon: '📅',
+      title: 'Шаг 2: Завершайте день',
+      text: 'Нажмите «Следующий день» — расходы вычтутся, придёт новая выручка. Событие или сюжет откроются сами.',
+      highlightSelector: '[data-action="advance-day"]'
+    },
+    {
+      view: 'clients',
+      icon: '◔',
+      title: 'Клиенты',
+      text: 'База абонентов. Клик по строке — карточка с оплатой и заявками. Пополняйте баланс — иначе клиенты уходят.',
+      highlightSelector: '.table'
+    },
+    {
+      view: 'upgrades',
+      icon: '⚙',
+      title: 'Магазин улучшений',
+      text: 'Покупайте маркетинг (больше клиентов) и автосбор (нет потерь). Улучшения повышают доход.',
+      highlightSelector: '.upgrades-grid'
+    },
+    {
+      view: 'invoices',
+      icon: '▤',
+      title: 'Счета',
+      text: 'Выставляйте счета клиентам. Кто оплатит — тот останется.',
+      highlightSelector: '.table-wrap'
+    },
+    {
+      view: 'activity',
+      icon: '◷',
+      title: 'Активность',
+      text: 'Журнал всех событий. Тут видно, почему касса изменилась.',
+      highlightSelector: '.activity-list'
+    },
+    {
+      view: 'dashboard',
+      icon: '🌟',
+      title: 'Готовы!',
+      text: 'Собирайте выручку, завершайте день, покупайте улучшения. Сюжет начнётся на 5-й день — следите за письмами.',
+      highlightSelector: null
+    }
   ],
   client: [
-    { view: 'dashboard', icon: '◧', title: 'Обзор',    text: 'Баланс, тариф, трафик и последние счета.' },
-    { view: 'tariff',    icon: '◆', title: 'Мой тариф',text: 'Поменять тариф в один клик.' },
-    { view: 'invoices',  icon: '▤', title: 'Счета',    text: 'Все ваши счета. Оплата — с баланса.' },
-    { view: 'speed',     icon: '⚡', title: 'Скорость',text: 'Замер соединения.' },
-    { view: 'support',   icon: '✉', title: 'Поддержка',text: 'Создайте заявку — ответим в течение дня.' }
+    {
+      view: 'dashboard',
+      icon: '◧',
+      title: 'Личный кабинет',
+      text: 'Здесь баланс, тариф, трафик и счета. Давайте покажу, что к чему.',
+      highlightSelector: null
+    },
+    {
+      view: 'dashboard',
+      icon: '💳',
+      title: 'Баланс и счета',
+      text: 'Пополняйте баланс и оплачивайте счета — иначе интернет отключат.',
+      highlightSelector: '.stats'
+    },
+    {
+      view: 'tariff',
+      icon: '◆',
+      title: 'Тариф',
+      text: 'Можно сменить в один клик — выберите подходящий план.',
+      highlightSelector: '.tariff-card'
+    },
+    {
+      view: 'speed',
+      icon: '⚡',
+      title: 'Скорость',
+      text: 'Запустите тест — покажет реальную скорость соединения.',
+      highlightSelector: '#start-speed'
+    },
+    {
+      view: 'support',
+      icon: '✉',
+      title: 'Поддержка',
+      text: 'Создайте заявку — мы ответим в течение дня.',
+      highlightSelector: '[data-action="new-ticket"]'
+    }
   ]
 };
 
@@ -236,6 +347,7 @@ G.startTour = function (role) {
   if (!steps || !steps.length) return;
   if (document.querySelector('.tour-overlay')) return;
   let idx = 0;
+
   const overlay = document.createElement('div');
   overlay.className = 'tour-overlay';
   overlay.innerHTML = `<div class="tour-highlight" id="tour-hl"></div>
@@ -253,30 +365,62 @@ G.startTour = function (role) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
+
   const hl = overlay.querySelector('#tour-hl');
   const bubble = overlay.querySelector('#tour-bubble');
 
   const step = () => {
     const s = steps[idx];
-    const navItem = document.querySelector(`[data-view="${s.view}"]`);
-    if (!navItem) { finish(); return; }
-    const rect = navItem.getBoundingClientRect();
-    hl.style.left = (rect.left - 4) + 'px';
-    hl.style.top  = (rect.top  - 4) + 'px';
-    hl.style.width  = (rect.width + 8) + 'px';
-    hl.style.height = (rect.height + 8) + 'px';
-    const isMobile = window.innerWidth <= 760;
-    if (isMobile) {
-      bubble.className = 'tour-bubble below';
-      bubble.style.left = '12px'; bubble.style.right = '12px';
-      bubble.style.width = 'auto';
-      bubble.style.top = (rect.bottom + 18) + 'px';
-    } else {
-      bubble.className = 'tour-bubble left';
-      bubble.style.width = '320px';
-      bubble.style.left = (rect.right + 16) + 'px';
-      bubble.style.top  = Math.max(12, rect.top - 22) + 'px';
+    /* Сначала переключаемся на нужную вьюху, если её нет */
+    if (s.view && NB.ui.view !== s.view) {
+      NB.ui.view = s.view;
+      NB.renderView();
+      setTimeout(() => step(), 150);
+      return;
     }
+    let targetEl = null;
+    if (s.highlightSelector) {
+      targetEl = document.querySelector(s.highlightSelector);
+    } else if (s.view) {
+      targetEl = document.querySelector(`[data-view="${s.view}"]`);
+    }
+
+    /* Убираем предыдущую подсветку */
+    document.querySelectorAll('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
+
+    if (targetEl) {
+      targetEl.classList.add('tutorial-pulse');
+      const rect = targetEl.getBoundingClientRect();
+      hl.style.left = (rect.left - 6) + 'px';
+      hl.style.top = (rect.top - 6) + 'px';
+      hl.style.width = (rect.width + 12) + 'px';
+      hl.style.height = (rect.height + 12) + 'px';
+      hl.style.display = 'block';
+
+      const isMobile = window.innerWidth <= 760;
+      if (isMobile) {
+        bubble.className = 'tour-bubble below';
+        bubble.style.left = '12px';
+        bubble.style.right = '12px';
+        bubble.style.width = 'auto';
+        bubble.style.top = (rect.bottom + 18) + 'px';
+      } else {
+        const bubbleLeft = rect.right + 20;
+        const bubbleTop = Math.max(12, rect.top - 22);
+        bubble.className = 'tour-bubble left';
+        bubble.style.width = '320px';
+        bubble.style.left = Math.min(bubbleLeft, window.innerWidth - 340) + 'px';
+        bubble.style.top = bubbleTop + 'px';
+      }
+    } else {
+      hl.style.display = 'none';
+      bubble.className = 'tour-bubble left';
+      bubble.style.left = '50%';
+      bubble.style.transform = 'translateX(-50%)';
+      bubble.style.top = '200px';
+      bubble.style.width = '360px';
+    }
+
     overlay.querySelector('#tour-icon').textContent  = s.icon;
     overlay.querySelector('#tour-title').textContent = s.title;
     overlay.querySelector('#tour-text').textContent  = s.text;
@@ -285,7 +429,9 @@ G.startTour = function (role) {
     overlay.querySelector('#tour-next').textContent = idx === steps.length - 1 ? 'Начать работу' : 'Далее';
     overlay.querySelector('#tour-back').style.display = idx > 0 ? '' : 'none';
   };
+
   const finish = () => {
+    document.querySelectorAll('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 300);
     if (role === 'staff') NB.state.onboarded.staff = true;
@@ -295,11 +441,13 @@ G.startTour = function (role) {
     }
     NB.save();
   };
+
   overlay.querySelector('#tour-next').addEventListener('click', () => {
     if (idx === steps.length - 1) finish(); else { idx++; step(); }
   });
   overlay.querySelector('#tour-back').addEventListener('click', () => { if (idx > 0) { idx--; step(); } });
   overlay.querySelector('#tour-skip').addEventListener('click', finish);
+
   overlay.style.pointerEvents = 'auto';
   requestAnimationFrame(step);
 };
