@@ -1,4 +1,4 @@
-/* isp_billing_boot.js — рендер, делегирование, старт. Без интервалов. */
+/* isp_billing_boot.js — рендер, делегирование, старт */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -13,12 +13,12 @@ NB.render = function () {
     const name = NB.state.session.displayName || NB.state.session.username || 'Администратор';
     root.innerHTML = NB.buildShell(
       [
-        { id: 'dashboard', label: 'Дашборд', icon: '◧' },
-        { id: 'clients',   label: 'Клиенты', icon: '◔' },
-        { id: 'tariffs',   label: 'Тарифы',  icon: '◆' },
-        { id: 'invoices',  label: 'Счета',   icon: '▤' },
-        { id: 'tickets',   label: 'Заявки',  icon: '✉' },
-        { id: 'upgrades',  label: 'Магазин', icon: '⚙' },
+        { id: 'dashboard', label: 'Дашборд',   icon: '◧' },
+        { id: 'clients',   label: 'Клиенты',   icon: '◔' },
+        { id: 'tariffs',   label: 'Тарифы',    icon: '◆' },
+        { id: 'invoices',  label: 'Счета',     icon: '▤' },
+        { id: 'tickets',   label: 'Заявки',    icon: '✉' },
+        { id: 'upgrades',  label: 'Магазин',   icon: '⚙' },
         { id: 'activity',  label: 'Активность', icon: '◷' },
         { id: 'settings',  label: 'Настройки', icon: '🛠' }
       ],
@@ -45,7 +45,7 @@ NB.render = function () {
     setTimeout(() => NB.game.showEventModal(), 300);
   }
   if (NB.state.game.world.storyQueue.length && NB.state.session.role === 'staff') {
-    setTimeout(() => NB.story.showNextInQueue(), 500);
+    setTimeout(() => NB.story.showNextInQueue(), 600);
   }
 };
 
@@ -70,12 +70,11 @@ NB.renderView = function () {
   void view.offsetWidth;
   view.classList.add('fade');
   afterRender();
-  /* Обновляем панель дня */
   const bar = document.querySelector('.sim-bar');
   if (bar && NB.state.session.role === 'staff') {
     bar.outerHTML = NB.simBar();
   }
-  NB.story.applyTheme();
+  if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 };
 
 function afterRender() {
@@ -94,30 +93,16 @@ document.addEventListener('click', e => {
     const fn = NB.actions.map[t.dataset.action];
     if (fn) { fn(t.dataset); return; }
   }
-  const sc = e.target.closest('[data-story-choice]');
-  if (sc) {
-    /* старая система выбора из story.CHAPTERS — не используется */
-  }
   const v = e.target.closest('[data-view]');
-  if (v) {
-    NB.ui.view = v.dataset.view;
-    NB.ui.query = '';
-    NB.renderView();
-    return;
-  }
+  if (v) { NB.ui.view = v.dataset.view; NB.ui.query = ''; NB.renderView(); return; }
   const f = e.target.closest('[data-filter]');
-  if (f) {
-    NB.ui.invoiceFilter = f.dataset.filter;
-    NB.renderView();
-    return;
-  }
+  if (f) { NB.ui.invoiceFilter = f.dataset.filter; NB.renderView(); return; }
   const s = e.target.closest('[data-sort]');
   if (s) {
     const key = s.dataset.sort;
     if (NB.ui.clientSort.key === key) NB.ui.clientSort.dir = NB.ui.clientSort.dir === 'asc' ? 'desc' : 'asc';
     else { NB.ui.clientSort.key = key; NB.ui.clientSort.dir = 'asc'; }
-    NB.renderView();
-    return;
+    NB.renderView(); return;
   }
   if (e.target.id === 'start-speed') NB.charts.runSpeedTest();
 });
@@ -154,9 +139,8 @@ window.addEventListener('resize', () => {
 });
 
 NB.render();
-NB.story.applyTheme();
+if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-/* Сюжетный тик на случай, если накопились сцены — разово */
 setTimeout(() => {
   if (NB.state.session && NB.state.session.role === 'staff' && NB.state.game.world.storyQueue.length) {
     NB.story.showNextInQueue();
