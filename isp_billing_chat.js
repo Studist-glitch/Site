@@ -1,4 +1,4 @@
-/* isp_billing_chat.js — поддержка: 30 уникальных шаблонов, микро-сюжеты, мини-игры */
+/* isp_billing_chat.js — поддержка: уникальные обращения, микро-сюжеты, мини-игры */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -6,13 +6,11 @@ const C = NB.chat = NB.chat || {};
 
 /* ============================================================
    ШАБЛОНЫ
-   Reply: label, apCost, cost, employeeSkill, minigame, chance, failsTo, leadsTo, reward, penalty
-   Stage: waitDays, messages, replies
-   Tpl:   subject, intro, stages, repeatable, condition
+   intro: массив { from, text } ИЛИ функция (g) => массив
    ============================================================ */
 C.TEMPLATES = {
 
-  /* ---------- БАЗОВЫЕ, ПОВТОРЯЕМЫЕ ---------- */
+  /* ---------- БАЗОВЫЕ ---------- */
   slow_speed: {
     subject: 'Медленная скорость', repeatable: true,
     intro: [
@@ -240,7 +238,7 @@ C.TEMPLATES = {
     }
   },
 
-  /* ---------- МИКРО-СЮЖЕТЫ (много дней) ---------- */
+  /* ---------- МИКРО-СЮЖЕТЫ ---------- */
   neighbor_stealing: {
     subject: 'Сосед крадёт интернет',
     intro: [
@@ -514,7 +512,7 @@ C.TEMPLATES = {
     }
   },
 
-  /* ---------- ТРЕБУЮТ СЮЖЕТНЫХ ФЛАГОВ ---------- */
+  /* ---------- С УСЛОВИЯМИ ---------- */
   mysterious_caller: {
     subject: 'Звонок в 3:33',
     condition: g => g.world.threat >= 3,
@@ -607,6 +605,7 @@ C.TEMPLATES = {
     }
   },
 
+  /* Сообщение от Neon — только после личного знакомства */
   neon_message: {
     subject: 'Сообщение через клиента',
     condition: g => g.world.neon.met && g.world.neon.state === 'active',
@@ -681,10 +680,17 @@ C.TEMPLATES = {
     }
   },
 
+  /* ВАЖНО: intro — функция, подставляет реальное имя сотрудника */
   employee_defection: {
     subject: 'Ваш сотрудник',
     condition: g => g.employees.length > 0,
-    intro: [{ from: 'client', text: 'У вас работает [имя]. Хочу переманить.' }],
+    intro: (g) => {
+      const emp = NB.pick(g.employees);
+      return [
+        { from: 'client', text: `У вас работает ${emp.name}. Хочу переманить.` },
+        { from: 'client', text: `Предлагаю ему больше. Что скажете?` }
+      ];
+    },
     stages: {
       initial: {
         replies: [
@@ -750,7 +756,6 @@ C.createTicket = function (clientId, forcedKey) {
   });
   if (!available.length) return null;
 
-  /* Редкие (с условиями) — с приоритетом */
   const rare = available.filter(k => C.TEMPLATES[k].condition);
   const tplKey = forcedKey ||
     (rare.length && Math.random() < 0.4 ? NB.pick(rare) : NB.pick(available));
@@ -759,6 +764,10 @@ C.createTicket = function (clientId, forcedKey) {
 
   if (!tpl.repeatable) used.push(tplKey);
 
+  /* intro может быть функцией — вызываем с game */
+  const introArr = typeof tpl.intro === 'function' ? tpl.intro(g) : tpl.intro;
+  if (!introArr || !introArr.length) return null;
+
   const id = st.seq.ticket++;
   st.tickets.push({
     id, clientId, subject: tpl.subject,
@@ -766,13 +775,13 @@ C.createTicket = function (clientId, forcedKey) {
     createdAt: new Date().toISOString(),
     templateId: tplKey,
     stage: 'initial',
-    chat: tpl.intro.map(m => ({ from: m.from, text: m.text, at: Date.now() }))
+    chat: introArr.map(m => ({ from: m.from, text: m.text, at: Date.now() }))
   });
   return id;
 };
 
 /* ============================================================
-   ТИК: ОТЛОЖЕННЫЕ ЭТАПЫ
+   ТИК — отложенные этапы
    ============================================================ */
 C.tickTickets = function () {
   const currentDay = NB.state.game.daily.dayNumber;
@@ -795,7 +804,6 @@ C.tickTickets = function () {
   if (changed) NB.save();
 };
 
-/* Хук в advanceDay */
 if (NB.daily && NB.daily.advanceDay && !NB.daily.advanceDay.__chatWrapped) {
   const orig = NB.daily.advanceDay;
   NB.daily.advanceDay = function () {
@@ -806,7 +814,6 @@ if (NB.daily && NB.daily.advanceDay && !NB.daily.advanceDay.__chatWrapped) {
   NB.daily.advanceDay.__chatWrapped = true;
 }
 
-/* Сброс */
 C.reset = function () {
   if (NB.state && NB.state.story) NB.state.story.usedTickets = [];
 };
@@ -820,10 +827,7 @@ C.renderView = function () {
   const tickets = st.tickets.filter(t => t.status === 'open');
 
   if (!NB.ui.chatThreadId && tickets[0]) NB.ui.chatThreadId = tickets[0].id;
-
-  let selected = NB.ui.chatThreadId
-    ? tickets.find(t => t.id === NB.ui.chatThreadId)
-    : null;
+  let selected = NB.ui.chatThreadId ? tickets.find(t => t.id === NB.ui.chatThreadId) : null;
   if (!selected && tickets[0]) {
     selected = tickets[0];
     NB.ui.chatThreadId = selected.id;

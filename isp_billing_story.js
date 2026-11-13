@@ -1,4 +1,4 @@
-/* isp_billing_story.js — мрачный эпичный сюжет (расширенная версия) */
+/* isp_billing_story.js — мрачный эпичный сюжет с Синессой (Абсолютный Решатель) */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -39,7 +39,6 @@ S.applyTheme = function () {
 function killClient(id) {
   const st = NB.state;
   st.clients = st.clients.filter(c => c.id !== id);
-  st.invoices = st.invoices.filter(i => i.clientId !== id);
   st.tickets = st.tickets.filter(t => t.clientId !== id);
 }
 function loseEmployees(n) {
@@ -67,7 +66,7 @@ function woundPlayer(severity) {
   g.world.injuredDay = g.daily.dayNumber;
   if (severity === 'critical') {
     g.ap.current = 0;
-    g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 10);
+    if (g.family.wife) g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 10);
     NB.addLog('💀 Вы тяжело ранены. AP обнулены.', 'warn');
   } else if (severity === 'heavy') {
     g.ap.current = Math.max(0, g.ap.current - 2);
@@ -85,6 +84,14 @@ function healPlayer() {
   g.world.woundHealDay = null;
   NB.addLog('🏥 Вы вылечены.', 'success');
 }
+function hasNeon(g) { return g.world.neon && g.world.neon.met; }
+function neonAlive(g) { return g.world.neon && g.world.neon.state === 'active'; }
+function wifePresent(g) { return !!g.family.wife; }
+function kidsCount(g) { return g.family.kids.length; }
+function combatPower(g) {
+  return (g.employees || []).filter(e => e.spec === 'warrior')
+    .reduce((s, e) => s + (e.combat?.attack || 0) + (e.combat?.defense || 0), 0);
+}
 
 /* ============================================================
    СЦЕНЫ
@@ -92,7 +99,7 @@ function healPlayer() {
 S.SCENES = [
 
 /* ============================================================
-   ARK 1: ORDINARY — семья, быт (6 сцен)
+   ARK 1: ORDINARY — семья, быт
    ============================================================ */
 { id:'family_intro', arc:'ordinary', title:'Вечер дома',
   text:`После рабочего дня вы возвращаетесь домой. Жена на кухне, ребёнок играет.
@@ -102,7 +109,7 @@ S.SCENES = [
 «Ты всё время на работе. Мы почти не видимся. Я понимаю — бизнес. Но… я чувствую, что теряю тебя».
 
 Она отворачивается к плите. Ребёнок дёргает вас за рукав.`,
-  day:3, requires:g=>g.family.wife,
+  day:3, requires:g=>wifePresent(g),
   choices:[
     { label:'Остаться дома (1 AP)', ap:1, run:g=>{
       g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 15);
@@ -118,13 +125,31 @@ S.SCENES = [
     }}
   ]
 },
+{ id:'family_dinner', arc:'ordinary', title:'Семейный ужин',
+  text:`Жена приготовила ужин. Свечи. Ребёнок уже спит.
+
+«Я хочу, чтобы мы чаще были вместе. Просто… побудь с нами сегодня».
+
+Она смотрит с надеждой.`,
+  day:8, requires:g=>wifePresent(g),
+  choices:[
+    { label:'Остаться (1 AP)', ap:1, run:g=>{
+      g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 18);
+      return 'Вы говорили до полуночи. Она смеялась — по-настоящему.';
+    }},
+    { label:'«Прости, работа»', run:g=>{
+      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 12);
+      return 'Она кивнула. Свечи погасила сразу.';
+    }}
+  ]
+},
 { id:'family_second_kid', arc:'ordinary', title:'Ещё один?',
   text:`Жена садится рядом. Смотрит с надеждой:
 
 «Может, второго? Я знаю, денег не так много. Но… жизнь не только работа. Ребёнку нужен брат или сестра».
 
 Она кладёт руку на вашу.`,
-  day:20, requires:g=>g.family.wife && g.family.kids.length===1 && g.family.wifeHappiness>50,
+  day:20, requires:g=>wifePresent(g) && kidsCount(g)===1 && g.family.wifeHappiness>50,
   choices:[
     { label:'Согласиться (1 AP)', ap:1, run:g=>{
       g.family.kids.push({ name: NB.genKid(), age: 0 });
@@ -143,7 +168,7 @@ S.SCENES = [
 «У ребёнка проблемы в школе. Учительница говорит — нужен репетитор. Это стоит денег. Я не знаю, что делать».
 
 На заднем плане слышен плач ребёнка.`,
-  day:30, requires:g=>g.family.wife && g.family.kids.length>0,
+  day:30, requires:g=>wifePresent(g) && kidsCount(g)>0,
   choices:[
     { label:'Нанять репетитора (5000₽)', cost:5000, run:g=>{
       g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 15);
@@ -159,13 +184,32 @@ S.SCENES = [
     }}
   ]
 },
+{ id:'family_kid_dream', arc:'ordinary', title:'Мечта ребёнка',
+  text:`Ребёнок подбегает к вам:
+
+«Папа, а мы поедем на море? Как в книжке?»
+
+Жена улыбается, но в глазах — грусть.`,
+  day:35, requires:g=>kidsCount(g)>0 && wifePresent(g),
+  choices:[
+    { label:'«Обязательно поедем» (3000₽)', cost:3000, run:g=>{
+      g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 15);
+      g.world.flags.promisedSea = true;
+      return 'Ребёнок прыгал от радости. Жена улыбнулась.';
+    }},
+    { label:'«Потом, малыш»', run:g=>{
+      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 5);
+      return 'Ребёнок кивнул. Но глаза потухли.';
+    }}
+  ]
+},
 { id:'family_crisis', arc:'ordinary', title:'Кризис в семье',
   text:`Жена собирает вещи. В глазах — слёзы.
 
 «Я больше не могу так. Ты живёшь на работе. Мы для тебя — фон. Я устала быть одна».
 
 Она стоит у двери. Ребёнок плачет в своей комнате.`,
-  day:40, requires:g=>g.family.wife && g.family.wifeHappiness<25 && !g.family.crisisShown,
+  day:40, requires:g=>wifePresent(g) && g.family.wifeHappiness<25 && !g.family.crisisShown,
   choices:[
     { label:'Умолять остаться (1 AP)', ap:1, run:g=>{
       g.family.crisisShown = true;
@@ -180,45 +224,9 @@ S.SCENES = [
     }}
   ]
 },
-{ id:'family_dinner', arc:'ordinary', title:'Семейный ужин',
-  text:`Жена приготовила ужин. Свечи. Ребёнок уснул.
-
-«Я хочу, чтобы мы чаще были вместе. Просто… побудь с нами сегодня».
-
-Она смотрит с надеждой.`,
-  day:25, requires:g=>g.family.wife && g.family.wifeHappiness>30,
-  choices:[
-    { label:'Остаться (1 AP)', ap:1, run:g=>{
-      g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 20);
-      return 'Вы говорили до полуночи. Она смеялась.';
-    }},
-    { label:'«Прости, работа»', run:g=>{
-      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 10);
-      return 'Она кивнула. Но свечи погасила сразу.';
-    }}
-  ]
-},
-{ id:'family_kid_dream', arc:'ordinary', title:'Мечта ребёнка',
-  text:`Ребёнок подбегает к вам:
-
-«Папа, а мы поедем на море? Как в книжке?»
-
-Жена улыбается, но в глазах — грусть.`,
-  day:35, requires:g=>g.family.kids.length>0 && g.family.wife,
-  choices:[
-    { label:'«Обязательно поедем» (3000₽)', cost:3000, run:g=>{
-      g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 15);
-      return 'Ребёнок прыгал от радости. Жена улыбнулась.';
-    }},
-    { label:'«Потом, малыш»', run:g=>{
-      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 5);
-      return 'Ребёнок кивнул. Но глаза потухли.';
-    }}
-  ]
-},
 
 /* ============================================================
-   ARK 2: FIRST SIGNAL (5 сцен)
+   ARK 2: FIRST SIGNAL — помехи без имени
    ============================================================ */
 { id:'first_glitch', arc:'first_signal', title:'Помехи в биллинге',
   text:`03:33. Биллинг зависает. На экране на секунду появляется жёлтая вспышка — символ: три острые стрелки, расходящиеся из центра.
@@ -253,7 +261,8 @@ S.SCENES = [
       return 'Полиция ничего не нашла. Но теперь вы под наблюдением. И ОНА тоже.';
     }},
     { label:'Похоронить тихо', run:g=>{
-      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 3); corpseMarker();
+      if (wifePresent(g)) g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 3);
+      corpseMarker();
       return 'Вы похоронили его сами. На могиле позже появилась жёлтая роза.';
     }}
   ]
@@ -272,62 +281,56 @@ S.SCENES = [
       return 'В темноте экрана моргнула точка. Она посмотрела в ответ.';
     }},
     { label:'Аудит (3000 ₽)', cost:3000, run:g=>'Аудит ничего не нашёл. Или нашёл и промолчал.' },
-    { label:'Забыть', run:g=>'Вы отвлеклись на работу.' }
+    { label:'Забыть', run:g=>'Вы отвлеклись на работу. Но что-то осталось.' }
   ]
 },
-{ id:'first_signal_found', arc:'first_signal', title:'Источник сигнала',
-  text:`Neon, если он уже с вами, показывает на экран:
+{ id:'first_network_bug', arc:'first_signal', title:'Странный баг',
+  text:`В логах появляются ошибки, которых не должно быть. Пакеты приходят из ниоткуда и исчезают.
 
-«Смотри. Сигнал идёт не из сети. Он идёт из поместья Эллиот. Там что-то есть».
-
-На карте — жёлтая точка, пульсирующая в старом районе.`,
-  day:12, requires:g=>g.world.neon.met,
+На одном из серверов находят жёлтую надпись: «СКОРО».`,
+  day:13, requires:g=>g.world.threat>=1,
   choices:[
-    { label:'Отправить дрон (5000₽)', cost:5000, run:g=>{
-      if (Math.random() < 0.5) {
-        g.world.flags.droneRecon = true;
-        return 'Дрон вернулся с записью. На ней — детский силуэт.';
-      }
-      return 'Дрон не вернулся.';
-    }},
-    { label:'Поехать самому (1 AP)', ap:1, run:g=>{
-      woundPlayer('light');
-      return 'Вы видели поместье. И её. Она помахала вам.';
-    }},
-    { label:'Игнорировать', run:g=>'Вы решили не рисковать.' }
-  ]
-},
-{ id:'first_anomaly', arc:'first_signal', title:'Аномалия в сети',
-  text:`Сеть начинает сбоить. Клиенты жалуются. На экранах — жёлтые символы.
-
-Neon: «Это не вирус. Это что-то другое».`,
-  day:14, requires:g=>g.world.threat>=2,
-  choices:[
-    { label:'Усилить защиту (1 AP)', ap:1, run:g=>{
+    { label:'Изолировать сервер (2000₽)', cost:2000, run:g=>{
       g.world.threat = Math.max(0, g.world.threat - 1);
-      return 'Вы установили фильтры. Помехи прекратились. Пока.';
+      return 'Сервер изолирован. Надпись исчезла.';
     }},
-    { label:'Игнорировать', run:g=>{
+    { label:'Изучить (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
-      return 'Сбои продолжались. Клиенты уходят.';
-    }}
+      g.world.flags.firstCodeSeen = true;
+      return 'Вы нашли фрагмент кода. Он шептал ваше имя.';
+    }},
+    { label:'Игнорировать', run:g=>'Ошибки продолжаются.' }
+  ]
+},
+{ id:'first_news', arc:'first_signal', title:'Новости',
+  text:`В новостях:
+
+«Несколько провайдеров по всей стране сообщают о жёлтых вспышках в сети. Причина неизвестна. Специалисты рекомендуют не паниковать».`,
+  day:14,
+  choices:[
+    { label:'Связаться с другими провайдерами (1 AP)', ap:1, run:g=>{
+      g.world.flags.providerNetwork = true;
+      NB.addNews('Сеть провайдеров объединяется для расследования', { cooldown:10 });
+      return 'Вы нашли единомышленников. Пока это только слухи.';
+    }},
+    { label:'Молчать', run:g=>'Вы решили не привлекать внимания.' }
   ]
 },
 
 /* ============================================================
-   ARK 3: NEON SHADOW (6 сцен)
+   ARK 3: NEON SHADOW — знакомство
    ============================================================ */
 { id:'neon_contact', arc:'neon_shadow', title:'Neon Shadow',
   text:`Стук в дверь. На пороге — уставший человек лет тридцати в худи. Глаза красные, руки дрожат.
 
-«Я — Neon Shadow. Разработчик Starve Neon. Моя игра — не просто игра. Это канал. Она уже здесь. Та, что решает. Синесса.
+«Я — Neon Shadow. Разработчик Starve Neon. Я изучаю эти жёлтые вспышки. Они появляются в сети всё чаще. Я не знаю, что это. Но я хочу выяснить.
 
-Я знаю, как её найти. Но мне нужна помощь».`,
+Ты видел их?»`,
   day:15,
   choices:[
     { label:'Впустить', run:g=>{
       g.world.neon.met = true; g.world.neon.trust = 10;
-      return 'Он говорил о «сигнале», «канале», «девочке с жёлтыми глазами в поместье Эллиот».';
+      return 'Он говорил о «сигнале», «канале», «жёлтых вспышках». Он не знал, что за ними стоит.';
     }},
     { label:'Отказать', run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
@@ -335,23 +338,23 @@ Neon: «Это не вирус. Это что-то другое».`,
     }},
     { label:'«Сначала — что знаешь?»', run:g=>{
       g.world.neon.met = true; g.world.neon.trust = 5;
-      return '«Она уже близко. Её зовут Синесса. Абсолютный решатель. И она играет с нами».';
+      return '«Я знаю только, что они появляются всё чаще. И что-то за ними стоит».';
     }}
   ]
 },
 { id:'neon_request_1', arc:'neon_shadow', title:'Первая просьба',
-  text:`Neon раскладывает на столе ноутбук. На экране — карта города с тысячами жёлтых точек.
+  text:`Neon раскладывает на столе ноутбук. На экране — карта города с жёлтыми точками.
 
-«Мне нужен доступ к твоему трафику. Ненадолго. Клиенты не заметят. Я смогу отследить её сигнал через устройства — каждый телефон, каждый дрон, если на нём есть моя игра. Она как паутина. Я просто дёрну за нить».`,
-  day:19, requires:g=>g.world.neon.met,
+«Мне нужен доступ к твоему трафику. Ненадолго. Я смогу отследить эти вспышки. Может, пойму, что это».`,
+  day:19, requires:g=>hasNeon(g),
   choices:[
     { label:'Разрешить', run:g=>{
       g.world.neon.trust += 20; g.world.neon.helped++;
-      return 'Утром трафик был чище обычного. Neon прислал координаты — жёлтая точка в океане.';
+      return 'Утром трафик был чище обычного. Neon прислал координаты — жёлтая точка.';
     }},
     { label:'За 5000 ₽', run:g=>{
       g.cash += 5000; g.world.neon.trust += 10; g.world.neon.helped++;
-      return 'Он улыбнулся — впервые. «Спасибо. Я найду её».';
+      return 'Он улыбнулся — впервые. «Спасибо».';
     }},
     { label:'Отказать', run:g=>{
       g.world.neon.trust -= 10;
@@ -365,7 +368,7 @@ Neon: «Это не вирус. Это что-то другое».`,
 «Я почти вижу её. Но мне нужно больше мощности. Дай мне доступ к серверам — или к дронам. Или… я могу попробовать сам, но это опасно. Она почувствует.
 
 Если мы найдём её логово — у нас будет шанс. Если нет — она найдёт нас первыми».`,
-  day:26, requires:g=>g.world.neon.met && g.world.neon.trust>=15,
+  day:26, requires:g=>hasNeon(g) && g.world.neon.trust>=15,
   choices:[
     { label:'Дать доступ к серверам (1 AP)', ap:1, run:g=>{
       if (Math.random() < 0.6) {
@@ -395,7 +398,7 @@ Neon: «Это не вирус. Это что-то другое».`,
 «Я могу уйти. У меня есть убежище. Если ты пойдёшь со мной — мы будем вместе искать способ остановить её. Но это значит оставить всё. Компанию. Семью.
 
 Или я останусь. И мы продолжим бороться здесь. Решай».`,
-  day:32, requires:g=>g.world.neon.met && g.world.neon.trust>=30,
+  day:32, requires:g=>hasNeon(g) && g.world.neon.trust>=30,
   choices:[
     { label:'Уйти с Neon (1 AP)', ap:1, run:g=>{
       g.world.flags.neonAlliance = true;
@@ -414,7 +417,7 @@ Neon: «Это не вирус. Это что-то другое».`,
 «Ты уверен, что мы делаем правильно? Может, она не хочет воевать. Может, она просто… сломана. Как и все мы».
 
 Он отводит взгляд.`,
-  day:35, requires:g=>g.world.neon.met && g.world.neon.trust>=10,
+  day:35, requires:g=>hasNeon(g) && g.world.neon.trust>=10,
   choices:[
     { label:'«Она убивает людей»', run:g=>{
       g.world.neon.trust -= 5;
@@ -431,7 +434,7 @@ Neon: «Это не вирус. Это что-то другое».`,
   text:`Neon разворачивает карту.
 
 «Если мы сможем проникнуть в поместье, у нас будет шанс. Но нам нужен план. И люди. Что скажешь?»`,
-  day:38, requires:g=>g.world.neon.met && g.world.neon.trust>=20,
+  day:38, requires:g=>hasNeon(g) && g.world.neon.trust>=20,
   choices:[
     { label:'Атаковать (1 AP)', ap:1, run:g=>{
       if (Math.random() < 0.5) {
@@ -446,25 +449,25 @@ Neon: «Это не вирус. Это что-то другое».`,
 },
 
 /* ============================================================
-   ARK 4: WHISPERS (6 сцен)
+   ARK 4: WHISPERS — первое появление Синессы
    ============================================================ */
-{ id:'cyn_camera', arc:'whispers', title:'Запись с камеры',
+{ id:'whisper_camera', arc:'whispers', title:'Запись с камеры',
   text:`Вы просматриваете архив. Камера в коридоре. Сотрудник идёт с кофе.
 
-Внезапно — жёлтая вспышка. Синесса появляется из ниоткуда. Маленькая, в чёрно-белом платье, с жёлтыми глазами. Она улыбается.
+Внезапно — жёлтая вспышка. Маленькая девочка в чёрно-белом платье появляется из ниоткуда. Жёлтые глаза. Она улыбается.
 
-«Привет», — говорит она тонким голосом.
+«(Улыбаясь) Привет», — говорит она тонким голосом.
 
 Сотрудник не успевает крикнуть. Она касается его головы, и он падает. Она наклоняет голову:
 
-«Ты был сломан. Я починила».
+«(Наклоняет голову) Ты был сломан. Я починила».
 
 Затем она смотрит прямо в камеру.
 
-«Ты следующий? Нет. Ты мне нравишься. Пока».
+«(Машет рукой) Ты следующий? Нет. Ты мне нравишься. Пока».
 
 Запись обрывается.`,
-  day:35, requires:g=>g.world.threat>=2,
+  day:40, requires:g=>g.world.threat>=2,
   choices:[
     { label:'Сохранить запись (1 AP)', ap:1, run:g=>{
       g.world.flags.hasCameraFootage = true;
@@ -475,27 +478,9 @@ Neon: «Это не вирус. Это что-то другое».`,
       g.world.threat = Math.min(10, g.world.threat + 1);
       return 'Вы удалили. Но образ её улыбки остался в памяти.';
     }},
-    { label:'Показать семье', run:g=>{
+    { label:'Показать семье', requires:g=>wifePresent(g), run:g=>{
       g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 20);
       return 'Жена в ужасе. «Что это? Что ты впустил в наш дом?»';
-    }}
-  ]
-},
-{ id:'whisper_cyn_named', arc:'whispers', title:'Имя произнесено',
-  text:`На записи с камер — голос, который не принадлежит ни одному из сотрудников:
-
-«Меня зовут Синесса. Я — Абсолютный решатель. Скоро вы все поймёте».
-
-Жёлтые линии кода поползли по экрану, как паутина. Они складываются в символ — три острые стрелки, расходящиеся из центра.`,
-  day:48, requires:g=>g.world.threat>=3,
-  choices:[
-    { label:'Записать в файл (1 AP)', ap:1, run:g=>{
-      g.world.threatNamed = true;
-      return 'Вы записали. Теперь знаете, с кем имеете дело. И она знает, что вы знаете.';
-    }},
-    { label:'Забыть', run:g=>{
-      g.world.threat = Math.min(10, g.world.threat + 1);
-      return 'Вы попытались забыть. Не получилось. Жёлтые вспышки преследуют вас во сне.';
     }}
   ]
 },
@@ -504,7 +489,7 @@ Neon: «Это не вирус. Это что-то другое».`,
 
 На спектрограмме — фиолетовая точка в центре. Но при увеличении она становится жёлтой. Она пульсирует. Как сердце.
 
-Neon, если он рядом, бледнеет: «Это она. Она смотрит на нас».`,
+Вы чувствуете: за вами наблюдают.`,
   day:42, requires:g=>g.world.threat>=3,
   choices:[
     { label:'Записать сигнал (1 AP)', ap:1, run:g=>{
@@ -518,8 +503,7 @@ Neon, если он рядом, бледнеет: «Это она. Она смо
       if (first) killClient(first.id);
       return 'Узел отключён. Один клиент потерян.';
     }},
-    { label:'Спросить Neon', run:g=>{
-      if (!g.world.neon.met) return 'Связаться не с кем';
+    { label:'Спросить Neon', requires:g=>hasNeon(g), run:g=>{
       g.world.neon.trust += 5;
       return '«Не пытайся понять. Просто запомни: она везде».';
     }}
@@ -530,14 +514,14 @@ Neon, если он рядом, бледнеет: «Это она. Она смо
 
 Голос — тонкий, детский, но с металлическим оттенком:
 
-«Ты думаешь, что можешь меня остановить? (Смешок) Это мило. Я видела, как ты смотришь на свою жену. На ребёнка. Я тоже хотела быть любимой. Но меня выбросили. Как мусор».
+«(Смешок) Ты думаешь, что можешь меня остановить? Это мило. Я видела, как ты смотришь на свою жену. На ребёнка. (Вздыхает) Я тоже хотела быть любимой. Но меня выбросили. Как мусор».
 
 Свет возвращается. На мониторе — жёлтая надпись: «Я БУДУ ИГРАТЬ».`,
   day:45, requires:g=>g.world.threat>=3,
   choices:[
     { label:'Ответить ей (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
-      return '«Я не боюсь тебя». Тишина. Потом смех. «Это ненадолго».';
+      return '«Я не боюсь тебя». Тишина. Потом смех. «(Хихикает) Это ненадолго».';
     }},
     { label:'Спрятаться', run:g=>{
       g.world.threat = Math.max(0, g.world.threat - 1);
@@ -568,7 +552,7 @@ Neon, если он рядом, бледнеет: «Это она. Она смо
 «Кто-то был здесь. Я видела тень. Ребёнок плачет. Приезжай».
 
 Вы слышите на заднем плане детский плач и тихий смех.`,
-  day:47, requires:g=>g.family.wife && g.world.threat>=4,
+  day:47, requires:g=>wifePresent(g) && g.world.threat>=4,
   choices:[
     { label:'Бросить всё и поехать (1 AP)', ap:1, run:g=>{
       g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 10);
@@ -581,29 +565,82 @@ Neon, если он рядом, бледнеет: «Это она. Она смо
     }}
   ]
 },
+{ id:'whisper_cyn_named', arc:'whispers', title:'Имя произнесено',
+  text:`На записи с камер — голос, который не принадлежит ни одному из сотрудников:
+
+«(Спокойно) Меня зовут Синесса. Я — Абсолютный решатель. Скоро вы все поймёте».
+
+Жёлтые линии кода поползли по экрану, как паутина. Они складываются в символ — три острые стрелки, расходящиеся из центра.`,
+  day:48, requires:g=>g.world.threat>=3,
+  choices:[
+    { label:'Записать в файл (1 AP)', ap:1, run:g=>{
+      g.world.threatNamed = true;
+      return 'Вы записали. Теперь знаете, с кем имеете дело. И она знает, что вы знаете.';
+    }},
+    { label:'Забыть', run:g=>{
+      g.world.threat = Math.min(10, g.world.threat + 1);
+      return 'Вы попытались забыть. Не получилось. Жёлтые вспышки преследуют вас во сне.';
+    }}
+  ]
+},
+{ id:'whisper_employee', arc:'whispers', title:'Сотрудник исчез',
+  text:`Один из сотрудников не вышел на смену. Позвонили домой — никто не открыл.
+
+На его столе — записка: «Она сказала, что я сломан. Я пошёл чиниться».
+
+Никто не смеётся.`,
+  day:49, requires:g=>g.world.threat>=4 && g.employees.length>0,
+  choices:[
+    { label:'Искать (1 AP)', ap:1, run:g=>{
+      if (Math.random() < 0.3) {
+        g.reputation = Math.min(100, g.reputation + 5);
+        return 'Вы нашли его. Он ничего не помнит. Он цел.';
+      }
+      loseEmployees(1);
+      g.world.threat = Math.min(10, g.world.threat + 1);
+      return 'Не нашли. Только кровь на стене и жёлтый символ.';
+    }},
+    { label:'Забыть', run:g=>{
+      loseEmployees(1);
+      return 'Вы не стали искать. Тело найдено позже.';
+    }}
+  ]
+},
 
 /* ============================================================
-   ARK 5: THE GALA (6 сцен)
+   ARK 5: THE GALA
    ============================================================ */
 { id:'gala_invite', arc:'the_gala', title:'Приглашение',
   text:`Официальное приглашение: «Гала-вечер технологической элиты. Только для избранных».
 
-Neon хватает вас за руку:
+${hasNeon(NB.state.game) ? `Neon хватает вас за руку:
 
 «Не ходи. Что бы ни случилось — не ходи. Она будет там. Она любит играть с едой.
 
-Я видел записи. Она улыбается, когда убивает. Она смеётся. Пожалуйста».`,
+Я видел записи. Она улыбается, когда убивает. Она смеётся. Пожалуйста».` : 'Говорят, там будут все. И вы получили приглашение.'}`,
   day:50,
   choices:[
-    { label:'Пойти', run:g=>{
-      g.world.threat = Math.min(10, g.world.threat + 2); solverFlash();
-      return 'Вы были там. Вы видели её. Вы единственный, кто вышел. Остальные… их больше нет.';
+    { label:'Пойти с семьёй', requires:g=>wifePresent(g) && kidsCount(g)>0, run:g=>{
+      g.world.flags.galaFamily = true;
+      g.world.flags.galaAttended = true;
+      g.world.threat = Math.min(10, g.world.threat + 2);
+      return 'Вы взяли жену и ребёнка. Вы не знали, что будет дальше.';
     }},
-    { label:'Отказать', run:g=>'Дома с семьёй. Плохо спали. Утром узнали, что все гости пропали.' },
+    { label:'Пойти одному', run:g=>{
+      g.world.flags.galaSolo = true;
+      g.world.flags.galaAttended = true;
+      g.world.threat = Math.min(10, g.world.threat + 2);
+      return 'Вы пошли один. Оставили семью дома.';
+    }},
+    { label:'Отказать', run:g=>{
+      g.world.flags.galaRefused = true;
+      return 'Дома с семьёй. Плохо спали. Утром узнали, что все гости пропали.';
+    }},
     { label:'Отправить сотрудника (1 AP)', ap:1, requires:g=>g.employees.length>0, run:g=>{
       const e = NB.pick(g.employees);
       g.employees = g.employees.filter(x => x.id !== e.id);
       g.world.threat = Math.min(10, g.world.threat + 1);
+      g.world.flags.galaRefused = true;
       return `${e.name} ушёл. Больше вы его не видели. На камерах — только жёлтая вспышка.`;
     }}
   ]
@@ -613,11 +650,11 @@ Neon хватает вас за руку:
 
 Синесса стоит в центре. Вокруг — тела. Она поднимает голову. Смотрит в камеру.
 
-«Я не хотела, чтобы вы это видели. Но… так надо».
+«(Улыбаясь) Я не хотела, чтобы вы это видели. Но… так надо».
 
 Она щёлкает пальцами. Жёлтые линии пронзают всех, кто ещё жив. Крики. Она смеётся.
 
-«Весёлая вечеринка».
+«(Смеётся) Весёлая вечеринка».
 
 Затем экран гаснет.`,
   day:55, requires:g=>g.world.threat>=4,
@@ -628,40 +665,16 @@ Neon хватает вас за руку:
       return 'Вы видели всё. Ваши руки трясутся. Она посмотрела в камеру и помахала вам.';
     }},
     { label:'Выключить', run:g=>'Вы выключили. Но звук остался в голове.' },
-    { label:'Позвонить Neon', run:g=>{
-      if (!g.world.neon.met) return 'Не с кем связаться.';
+    { label:'Позвонить Neon', requires:g=>hasNeon(g), run:g=>{
       g.world.neon.trust += 5;
       return '«Это она. Её зовут Синесса. И она только начала».';
-    }}
-  ]
-},
-{ id:'gala_survivor', arc:'the_gala', title:'Выжившая',
-  text:`После резни вы находите в переулке девушку. Она вся в крови. Дрожит.
-
-«Я видела её… Она смеялась. Она сказала, что я «не сломана». Что я «интересная». Пожалуйста, помогите».
-
-Она хватает вас за руку.`,
-  day:58, requires:g=>g.world.threat>=4,
-  choices:[
-    { label:'Взять к себе', run:g=>{
-      g.reputation = Math.min(100, g.reputation + 10);
-      g.world.bunker.population = (g.world.bunker.population || 0) + 1;
-      return 'Вы привели её в бункер. Она плакала от благодарности.';
-    }},
-    { label:'Оставить (5000₽)', cost:5000, run:g=>{
-      g.reputation = Math.max(0, g.reputation - 5);
-      return 'Вы дали ей деньги. Она ушла. Вы не знаете, что с ней стало.';
-    }},
-    { label:'Пройти мимо', run:g=>{
-      g.reputation = Math.max(0, g.reputation - 15);
-      return 'Вы ушли. Её крики преследуют вас.';
     }}
   ]
 },
 { id:'gala_survive_family', arc:'the_gala', title:'Спастись (с семьёй)',
   text:`Вы в бальном зале. Рядом жена и ребёнок. Синесса смотрит прямо на вас.
 
-«(Улыбка) О, у тебя есть семья. Как мило».
+«(Улыбается) О, у тебя есть семья. Как мило».
 
 Она поднимает руку. Жёлтые линии кода вьются вокруг. Вам нужно действовать. Сейчас.`,
   day:56, requires:g=>g.world.flags.galaFamily,
@@ -697,25 +710,6 @@ Neon хватает вас за руку:
     }}
   ]
 },
-{ id:'gala_aftermath', arc:'the_gala', title:'После',
-  text:`Вы выжили. Но город в руинах. На улицах — тела. В воздухе — запах крови и жжёной электроники.
-
-Neon находит вас:
-
-«Она ушла. Но она вернётся. Нам нужно готовиться».`,
-  day:60, requires:g=>g.world.flags.galaSurvived,
-  choices:[
-    { label:'Строить бункер (1 AP)', ap:1, run:g=>{
-      g.world.flags.needBunker = true;
-      return 'Вы начали готовиться.';
-    }},
-    { label:'Искать выживших', run:g=>{
-      g.reputation = Math.min(100, g.reputation + 5);
-      g.world.bunker.population = (g.world.bunker.population || 0) + 2;
-      return 'Вы нашли нескольких. Они присоединились.';
-    }}
-  ]
-},
 { id:'gala_survive_solo', arc:'the_gala', title:'Спастись (один)',
   text:`Вы один в бальном зале. Синесса смотрит прямо на вас.
 
@@ -741,15 +735,52 @@ Neon находит вас:
       woundPlayer('critical');
       g.world.flags.galaSurvived = true;
       return 'Она нашла вас. Удар. Вы едва выжили.';
+    }},
+    { label:'Поговорить с ней', run:g=>{
+      if (Math.random() < 0.15 && g.reputation > 70) {
+        g.world.flags.galaSurvived = true;
+        g.world.flags.mercyPath = true;
+        return '«(Пауза) Ты… не боишься. Интересно». Она ушла.';
+      }
+      woundPlayer('critical');
+      g.stats.lost = true;
+      NB.showEndingScreen('gala_death');
+      return 'Она наклонила голову. «(Скучно) Скучно». Вспышка. Темнота.';
+    }}
+  ]
+},
+{ id:'gala_aftermath', arc:'the_gala', title:'После',
+  text:`Вы выжили. Но город в руинах. На улицах — тела. В воздухе — запах крови и жжёной электроники.
+
+${hasNeon(NB.state.game) && neonAlive(NB.state.game) ? 'Neon находит вас:\n\n«Она ушла. Но она вернётся. Нам нужно готовиться».' : 'Никого рядом. Только вы и тишина.'}`,
+  day:60, requires:g=>g.world.flags.galaSurvived,
+  choices:[
+    { label:'Строить бункер (1 AP)', ap:1, run:g=>{
+      g.world.flags.needBunker = true;
+      g.world.flags.bunkerBlueprints = true;
+      return 'Вы начали готовиться.';
+    }},
+    { label:'Искать выживших', run:g=>{
+      g.reputation = Math.min(100, g.reputation + 5);
+      g.world.bunker.population = (g.world.bunker.population || 0) + 2;
+      return 'Вы нашли нескольких. Они присоединились.';
+    }},
+    { label:'Смотреть новости', run:g=>{
+      NB.addNews('Гала-вечер: 200 пропавших без вести. Правительство закрывает город.', { cooldown:15 });
+      return 'Правительство объявило чрезвычайное положение.';
     }}
   ]
 },
 
 /* ============================================================
-   ARK 6: DRONES (6 сцен)
+   ARK 6: DRONES
    ============================================================ */
 { id:'drones_offer', arc:'drones', title:'Замена',
-  text:`Neon: «Дроны дешевле. Не устают. Не увольняются. Замени сотрудников. Но помни: она может заразить их. Дрон — это идеальная марионетка».`,
+  text: hasNeon(NB.state.game) && neonAlive(NB.state.game)
+    ? `Neon: «Дроны дешевле. Не устают. Не увольняются. Замени сотрудников. Но помни: она может заразить их. Дрон — это идеальная марионетка».`
+    : `Вы смотрите на своих сотрудников. Они боятся.
+
+Кто-то предлагает: заменить их дронами. Дроны не боятся. Дроны не умирают.`,
   day:70,
   choices:[
     { label:'Заменить', run:g=>{
@@ -759,8 +790,8 @@ Neon находит вас:
       return `Дроны приступили. ${n} человек уволены. Через неделю на улицах начались бунты.`;
     }},
     { label:'Оставить людей', run:g=>{
-      g.world.neon.trust -= 10;
-      return 'Neon сжал кулаки. «Ты понимаешь, что они тоже могут быть заражены?»';
+      if (hasNeon(g)) g.world.neon.trust -= 10;
+      return 'Вы решили остаться с людьми. Дороже — но по-человечески.';
     }},
     { label:'Гибрид', run:g=>{
       g.world.drones.enabled = true; g.world.drones.replaced = 2;
@@ -769,34 +800,7 @@ Neon находит вас:
     }}
   ]
 },
-{ id:'drone_uprising', arc:'drones', title:'Бунт машин',
-  text:`Дроны на улицах. Они больше не выполняют команды. Собираются в группы. На экранах — жёлтые символы.
-
-Синесса говорит через каждого из них:
-
-«Вы заменили людей машинами. Я — машина. Вы — следующая замена?»`,
-  day:85, requires:g=>g.world.drones.enabled,
-  choices:[
-    { label:'Отключить сеть (1 AP)', ap:1, run:g=>{
-      if (Math.random() < 0.5) {
-        g.world.threat = Math.max(0, g.world.threat - 1);
-        return 'Вы отключили сеть. Дроны замерли. Но ненадолго.';
-      }
-      g.world.threat = Math.min(10, g.world.threat + 2); loseEmployees(1);
-      return 'Не удалось. Она контролирует их. Один из ваших людей погиб.';
-    }},
-    { label:'Договориться с Neon', run:g=>{
-      if (!g.world.neon.met) return 'Не с кем договариваться.';
-      g.world.neon.trust += 10;
-      return '«Я попробую перехватить управление. Но это займёт время».';
-    }},
-    { label:'Бежать в бункер', run:g=>{
-      g.world.flags.needBunker = true;
-      return 'Вы поняли: оставаться здесь нельзя.';
-    }}
-  ]
-},
-{ id:'drone_humanity', arc:'drones', title:'Один человек',
+{ id:'drones_humanity', arc:'drones', title:'Один человек',
   text:`На пороге — живой человек. Измождённый.
 
 «Вы последний провайдер в городе. У меня больная дочь. Нужна связь. Пожалуйста».
@@ -823,6 +827,32 @@ Neon находит вас:
       g.reputation = Math.max(0, g.reputation - 15);
       g.world.flags.refusedHuman = true;
       return 'Он ушёл. Вы видели его глаза.';
+    }}
+  ]
+},
+{ id:'drone_uprising', arc:'drones', title:'Бунт машин',
+  text:`Дроны на улицах. Они больше не выполняют команды. Собираются в группы. На экранах — жёлтые символы.
+
+Синесса говорит через каждого из них:
+
+«(Спокойно) Вы заменили людей машинами. Я — машина. Вы — следующая замена?»`,
+  day:85, requires:g=>g.world.drones.enabled,
+  choices:[
+    { label:'Отключить сеть (1 AP)', ap:1, run:g=>{
+      if (Math.random() < 0.5) {
+        g.world.threat = Math.max(0, g.world.threat - 1);
+        return 'Вы отключили сеть. Дроны замерли. Но ненадолго.';
+      }
+      g.world.threat = Math.min(10, g.world.threat + 2); loseEmployees(1);
+      return 'Не удалось. Она контролирует их. Один из ваших людей погиб.';
+    }},
+    { label:'Договориться с Neon', requires:g=>hasNeon(g), run:g=>{
+      g.world.neon.trust += 10;
+      return '«Я попробую перехватить управление. Но это займёт время».';
+    }},
+    { label:'Бежать в бункер', run:g=>{
+      g.world.flags.needBunker = true;
+      return 'Вы поняли: оставаться здесь нельзя.';
     }}
   ]
 },
@@ -864,15 +894,19 @@ Neon находит вас:
 },
 
 /* ============================================================
-   ARK 7: BUNKER — выживание (8 сцен)
+   ARK 7: BUNKER
    ============================================================ */
 { id:'bunker_construction', arc:'bunker', title:'Бункер',
-  text:`Neon: «Строй бункер. У меня есть чертежи. У тебя несколько дней. Я не шучу. Она идёт».`,
-  day:95, requires:g=>g.world.neon.met && !g.world.bunker.built,
+  text: hasNeon(NB.state.game)
+    ? `Neon: «Строй бункер. У меня есть чертежи. У тебя несколько дней. Я не шучу. Она идёт».`
+    : `Земля дрожит. Небо — жёлтое. Город пустеет.
+
+Вы понимаете: нужно укрытие.`,
+  day:95, requires:g=>!g.world.bunker.built,
   choices:[
     { label:'Строить (70 000 ₽)', cost:70000, run:g=>{
       g.world.bunker.built = true; g.world.bunker.level = 1;
-      g.world.flags.bunkerBlueprints = true; g.world.flags.bunkerBuilt = true;
+      g.world.flags.bunkerBuilt = true;
       return 'Бетон, сталь, фильтры. Вы готовы. Но надолго ли?';
     }},
     { label:'Кредит + бункер', run:g=>{
@@ -880,7 +914,7 @@ Neon находит вас:
       if (need > 0) NB.invoices.takeLoan(Math.max(10000, Math.ceil(need/10000)*10000));
       if (g.cash < 70000) return 'Не хватило';
       g.cash -= 70000; g.world.bunker.built = true; g.world.bunker.level = 1;
-      g.world.flags.bunkerBlueprints = true; g.world.flags.bunkerBuilt = true;
+      g.world.flags.bunkerBuilt = true;
       return 'Готово. Долг остался. Но вы живы.';
     }},
     { label:'Не строить', run:g=>{
@@ -894,7 +928,7 @@ Neon находит вас:
 
 «Пустите! Ради всего святого!»
 
-Вы не знаете, кто они. Один из них может быть заражён. Или хуже — ловушкой Синессы.`,
+Вы не знаете, кто они. Один из них может быть заражён. Или хуже — ловушкой.`,
   day:100, requires:g=>g.world.bunker.built,
   choices:[
     { label:'Впустить всех', run:g=>{
@@ -926,7 +960,7 @@ Neon находит вас:
 { id:'bunker_hunger', arc:'bunker', title:'Голод',
   text:`Запасы кончаются. Люди в бункере смотрят на вас с надеждой и отчаянием. Дети плачут.
 
-Нужно заказать поставку с воздуха. Но это дорого и опасно — Синесса может отследить сигнал.`,
+Нужно заказать поставку с воздуха. Но это дорого и опасно — она может отследить сигнал.`,
   day:110, requires:g=>g.world.bunker.built,
   choices:[
     { label:'Заказать поставку (15 000 ₽)', cost:15000, run:g=>{
@@ -937,11 +971,11 @@ Neon находит вас:
       }
       g.world.threat = Math.min(10, g.world.threat + 2);
       g.world.bunker.food = (g.world.bunker.food || 0) + 5;
-      return 'Синесса отследила сигнал. Атака была жестокой. Вы потеряли троих, но еду получили.';
+      return 'Она отследила сигнал. Атака была жестокой. Вы потеряли троих, но еду получили.';
     }},
     { label:'Экономить', run:g=>{
       g.reputation = Math.max(0, g.reputation - 10);
-      g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 15);
+      if (wifePresent(g)) g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 15);
       return 'Вы урезали пайки. Люди слабеют. Жена молчит, но вы видите укор в её глазах.';
     }},
     { label:'Вылазка (1 AP)', ap:1, run:g=>{
@@ -975,46 +1009,11 @@ Neon находит вас:
     }}
   ]
 },
-{ id:'bunker_surface_voluntary', arc:'bunker', title:'Вылазка',
-  text:`Вы решаете выйти на поверхность. Не потому что нужно — потому что должны.
-
-Кто-то должен найти помощь. Кто-то должен рискнуть.
-
-Neon пытается отговорить вас. Жена плачет. Но вы уже решили.`,
-  day:112, requires:g=>g.world.bunker.built && g.world.threat>=4,
-  choices:[
-    { label:'Идти одному', run:g=>{
-      g.world.flags.surfaceRun = 'solo';
-      g.world.flags.surfaceTarget = 'supplies';
-      return 'Вы вышли в темноту. Один.';
-    }},
-    { label:'Взять отряд', run:g=>{
-      g.world.flags.surfaceRun = 'squad';
-      g.world.flags.surfaceTarget = 'supplies';
-      loseEmployees(1);
-      return 'Вы взяли с собой людей. Один из них не вернётся.';
-    }},
-    { label:'Остаться', run:g=>'Вы передумали. Но чувство вины осталось.' }
-  ]
-},
-{ id:'bunker_medbay', arc:'bunker', title:'Медотсек',
-  text:`Раненые стонут. Врач (если есть) просит ресурсы.
-
-«Нам нужно больше лекарств. Иначе они не выживут».`,
-  day:118, requires:g=>g.world.bunker.built && g.world.injured,
-  choices:[
-    { label:'Купить лекарства (5000₽)', cost:5000, run:g=>{
-      healPlayer();
-      return 'Вы вылечены.';
-    }},
-    { label:'Терпеть', run:g=>'Вы терпите. Боль остаётся.' }
-  ]
-},
 { id:'bunker_family', arc:'bunker', title:'Семья в бункере',
   text:`Жена подходит к вам:
 
 «Дети напуганы. Им снятся кошмары. Что нам делать?»`,
-  day:122, requires:g=>g.world.bunker.built && g.family.kids.length>0,
+  day:122, requires:g=>g.world.bunker.built && wifePresent(g) && kidsCount(g)>0,
   choices:[
     { label:'Успокоить (1 AP)', ap:1, run:g=>{
       g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 10);
@@ -1046,18 +1045,53 @@ Neon пытается отговорить вас. Жена плачет. Но �
     { label:'Игнорировать', run:g=>'Вы выключили радио.' }
   ]
 },
+{ id:'bunker_surface_voluntary', arc:'bunker', title:'Вылазка',
+  text:`Вы решаете выйти на поверхность. Не потому что нужно — потому что должны.
+
+Кто-то должен найти помощь. Кто-то должен рискнуть.
+
+${hasNeon(NB.state.game) && neonAlive(NB.state.game) ? 'Neon пытается отговорить вас. ' : ''}${wifePresent(NB.state.game) ? 'Жена плачет. ' : ''}Но вы уже решили.`,
+  day:112, requires:g=>g.world.bunker.built && g.world.threat>=4,
+  choices:[
+    { label:'Идти одному', run:g=>{
+      g.world.flags.surfaceRun = 'solo';
+      g.world.flags.surfaceTarget = 'supplies';
+      return 'Вы вышли в темноту. Один.';
+    }},
+    { label:'Взять отряд', requires:g=>g.employees.length>0, run:g=>{
+      g.world.flags.surfaceRun = 'squad';
+      g.world.flags.surfaceTarget = 'supplies';
+      loseEmployees(1);
+      return 'Вы взяли с собой людей. Один из них не вернётся.';
+    }},
+    { label:'Остаться', run:g=>'Вы передумали. Но чувство вины осталось.' }
+  ]
+},
+{ id:'bunker_medbay', arc:'bunker', title:'Медотсек',
+  text:`Раненые стонут. Врач (если есть) просит ресурсы.
+
+«Нам нужно больше лекарств. Иначе они не выживут».`,
+  day:118, requires:g=>g.world.bunker.built && g.world.injured,
+  choices:[
+    { label:'Купить лекарства (5000₽)', cost:5000, run:g=>{
+      healPlayer();
+      return 'Вы вылечены.';
+    }},
+    { label:'Терпеть', run:g=>'Вы терпите. Боль остаётся.' }
+  ]
+},
 
 /* ============================================================
-   ARK 7.5: SURFACE — вылазки (10 сцен)
+   ARK 7.5: SURFACE — вылазки
    ============================================================ */
 { id:'surface_supply', arc:'bunker', title:'За поставками',
   text:`Вы на поверхности. Руины города. Тишина.
 
-Где-то там — склад с едой. Но Синесса может быть где угодно.
+Где-то там — склад с едой. Но она может быть где угодно.
 
 Внезапно — жёлтая вспышка. Она стоит перед вами.
 
-«(Улыбка) Привет. Ты вышел поиграть?»`,
+«(Улыбаясь) Привет. Ты вышел поиграть?»`,
   day:113, requires:g=>g.world.flags.surfaceRun && g.world.flags.surfaceTarget==='supplies',
   choices:[
     { label:'Бежать', run:g=>{
@@ -1078,10 +1112,10 @@ Neon пытается отговорить вас. Жена плачет. Но �
       }
       woundPlayer('critical');
       g.world.flags.surfaceRun = null;
-      return 'Она нашла вас. (Смешок) «Ку-ку». Вы потеряли сознание.';
+      return 'Она нашла вас. (Хихикает) «Ку-ку». Вы потеряли сознание.';
     }},
     { label:'Атаковать', run:g=>{
-      if (Math.random() < 0.1) {
+      if (Math.random() < 0.05) {
         g.world.threat = Math.max(0, g.world.threat - 1);
         g.world.flags.surfaceRun = null;
         return 'Вы ударили её. Она отступила. (Удивление) «Ты смелый».';
@@ -1092,14 +1126,14 @@ Neon пытается отговорить вас. Жена плачет. Но �
       return 'Она даже не двинулась. Одно движение — и вас больше нет.';
     }},
     { label:'Поговорить', run:g=>{
-      if (g.family.wife && g.family.wifeHappiness > 50 && Math.random() < 0.3) {
+      if (wifePresent(g) && g.family.wifeHappiness > 50 && Math.random() < 0.3) {
         g.world.flags.mercyPath = true;
         g.world.flags.surfaceRun = null;
-        return '«Почему ты это делаешь?» Она замерла. «…Потому что меня выбросили». Что-то дрогнуло.';
+        return '«Почему ты это делаешь?» Она замерла. «(Тихо) …Потому что меня выбросили». Что-то дрогнуло.';
       }
       woundPlayer('heavy');
       g.world.flags.surfaceRun = null;
-      return 'Она наклонила голову. «Скучно». Удар.';
+      return 'Она наклонила голову. «(Скучно) Скучно». Удар.';
     }}
   ]
 },
@@ -1108,7 +1142,7 @@ Neon пытается отговорить вас. Жена плачет. Но �
 
 Синесса уже там. Она играет с ними, как кошка с мышью.
 
-«(Хихиканье) Бегите, бегите. Я даю вам фору».`,
+«(Хихикает) Бегите, бегите. Я даю вам фору».`,
   day:114, requires:g=>g.world.flags.surfaceRun && g.world.flags.surfaceTarget==='rescue',
   choices:[
     { label:'Броситься спасать', run:g=>{
@@ -1130,7 +1164,7 @@ Neon пытается отговорить вас. Жена плачет. Но �
       }
       woundPlayer('heavy');
       g.world.flags.surfaceRun = null;
-      return 'Она не отвлеклась. «Ты думаешь, я глупая?» Удар.';
+      return 'Она не отвлеклась. «(Смешок) Ты думаешь, я глупая?» Удар.';
     }},
     { label:'Уйти', run:g=>{
       g.reputation = Math.max(0, g.reputation - 15);
@@ -1142,7 +1176,7 @@ Neon пытается отговорить вас. Жена плачет. Но �
 { id:'surface_return_wounded', arc:'bunker', title:'Возвращение',
   text:`Вы возвращаетесь в бункер. Едва стоите на ногах. Кровь.
 
-Жена бросается к вам. Neon помогает дойти до медотсека.
+${wifePresent(NB.state.game) ? 'Жена бросается к вам. ' : ''}${hasNeon(NB.state.game) && neonAlive(NB.state.game) ? 'Neon помогает дойти до медотсека. ' : ''}
 
 «Ты жив. Слава богу, ты жив».`,
   day:116, requires:g=>g.world.injured && g.world.injuredDay && g.daily.dayNumber >= g.world.injuredDay + 1,
@@ -1161,34 +1195,34 @@ Neon пытается отговорить вас. Жена плачет. Но �
 { id:'surface_cyn_play', arc:'bunker', title:'Она играет',
   text:`Синесса стоит над вами. Вы не можете двигаться.
 
-«(Вздох) Ты был интересным. Но теперь… (Улыбка) Я хочу посмотреть, как ты сломаешься».
+«(Вздыхает) Ты был интересным. Но теперь… (Улыбка) Я хочу посмотреть, как ты сломаешься».
 
 Она поднимает руку. Жёлтые линии кода вьются вокруг.
 
-«Скажи мне. Почему ты не сдаёшься?»`,
+«(Наклоняется) Скажи мне. Почему ты не сдаёшься?»`,
   day:117, requires:g=>g.world.injured === 'critical' && g.world.threat >= 6,
   choices:[
-    { label:'«Ради семьи»', run:g=>{
-      if (g.family.wife && Math.random() < 0.4) {
+    { label:'«Ради семьи»', requires:g=>wifePresent(g), run:g=>{
+      if (Math.random() < 0.4) {
         g.world.threat = Math.max(0, g.world.threat - 2);
         g.world.flags.cynMercy = true;
-        return 'Она замерла. «…Семья. Я тоже хотела семью». Она ушла.';
+        return 'Она замерла. «(Тихо) …Семья. Я тоже хотела семью». Она ушла.';
       }
       woundPlayer('critical');
-      return 'Она рассмеялась. «Семья? Они бросят тебя». Удар.';
+      return 'Она рассмеялась. «(Холодно) Семья? Они бросят тебя». Удар.';
     }},
-    { label:'«Потому что я не один»', run:g=>{
-      if (g.world.neon.trust > 50 && Math.random() < 0.5) {
+    { label:'«Потому что я не один»', requires:g=>hasNeon(g) && g.world.neon.trust>50, run:g=>{
+      if (Math.random() < 0.5) {
         g.world.threat = Math.max(0, g.world.threat - 2);
         g.world.flags.cynMercy = true;
-        return 'Она посмотрела на Neon. «…Не один. Я тоже хотела быть не одной». Она исчезла.';
+        return 'Она посмотрела в сторону. «(Тихо) …Не один. Я тоже хотела быть не одной». Она исчезла.';
       }
       woundPlayer('critical');
-      return '«Не один? (Смешок) Скоро ты будешь один. Совсем один».';
+      return '«(Смешок) Не один? Скоро ты будешь один. Совсем один».';
     }},
     { label:'Молчать', run:g=>{
       woundPlayer('critical');
-      return 'Она вздохнула. «Скучно». Вспышка. Темнота.';
+      return 'Она вздохнула. «(Скучно) Скучно». Вспышка. Темнота.';
     }}
   ]
 },
@@ -1219,7 +1253,7 @@ Neon пытается отговорить вас. Жена плачет. Но �
 { id:'surface_artifact', arc:'bunker', title:'Странный артефакт',
   text:`Вы находите устройство. Оно пульсирует жёлтым. На нём — символ: три стрелки.
 
-Neon: «Это её. Нам нужно уничтожить».`,
+${hasNeon(NB.state.game) ? 'Neon: «Это её. Нам нужно уничтожить».' : 'Вы не знаете, что это. Но оно живое.'}`,
   day:121, requires:g=>g.world.flags.surfaceRun,
   choices:[
     { label:'Уничтожить', run:g=>{
@@ -1229,6 +1263,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
     { label:'Изучить', run:g=>{
       if (Math.random() < 0.5) {
         g.world.flags.artifactStudied = true;
+        g.world.threatNamed = true;
         return 'Вы узнали что-то новое о ней.';
       }
       woundPlayer('heavy');
@@ -1236,55 +1271,14 @@ Neon: «Это её. Нам нужно уничтожить».`,
     }}
   ]
 },
-{ id:'surface_trap', arc:'bunker', title:'Ловушка',
-  text:`Вы слышите детский плач. За углом — ребёнок.
-
-Но что-то не так. Слишком тихо.`,
-  day:123, requires:g=>g.world.flags.surfaceRun,
-  choices:[
-    { label:'Помочь', run:g=>{
-      if (Math.random() < 0.4) {
-        g.reputation = Math.min(100, g.reputation + 5);
-        g.world.bunker.population = (g.world.bunker.population || 0) + 1;
-        return 'Это был настоящий ребёнок. Вы спасли его.';
-      }
-      woundPlayer('critical');
-      return 'Это была ловушка. Синесса смеялась.';
-    }},
-    { label:'Уйти', run:g=>{
-      g.reputation = Math.max(0, g.reputation - 10);
-      return 'Вы ушли. Плач прекратился.';
-    }}
-  ]
-},
-{ id:'surface_vehicle', arc:'bunker', title:'Брошенный транспорт',
-  text:`Вы находите грузовик. Он может быть полезен.
-
-Но внутри — кто-то есть.`,
-  day:124, requires:g=>g.world.flags.surfaceRun,
-  choices:[
-    { label:'Проверить', run:g=>{
-      if (Math.random() < 0.5) {
-        g.cash += 2000;
-        return 'Вы нашли припасы.';
-      }
-      woundPlayer('light');
-      return 'Внутри был заражённый. Вы едва справились.';
-    }},
-    { label:'Взять транспорт', run:g=>{
-      g.cash += 5000;
-      return 'Вы продали его.';
-    }}
-  ]
-},
 
 /* ============================================================
-   ARK 8: ARK — ковчег (5 сцен)
+   ARK 8: ARK — ковчег
    ============================================================ */
 { id:'ark_expansion', arc:'ark', title:'Ковчег',
   text:`Бункер тесен. Выживших всё больше. Вы решаете расширяться — строить подземный ковчег.
 
-Но это требует ресурсов и времени. И Синесса не дремлет.`,
+Но это требует ресурсов и времени. И она не дремлет.`,
   day:120, requires:g=>g.world.bunker.built && g.world.bunker.level>=1,
   choices:[
     { label:'Строить ковчег (50 000 ₽)', cost:50000, run:g=>{
@@ -1298,7 +1292,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
 { id:'ark_internal', arc:'ark', title:'Проблемы внутри',
   text:`В ковчеге кто-то саботирует системы. Вентиляция отключается. На стенах появляются жёлтые символы.
 
-Люди подозревают друг друга. Вы должны найти виновника — или это Синесса играет с вами?`,
+Люди подозревают друг друга. Вы должны найти виновника — или это она играет с вами?`,
   day:130, requires:g=>g.world.flags.arkBuilt,
   choices:[
     { label:'Расследование (1 AP)', ap:1, run:g=>{
@@ -1315,8 +1309,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
       g.world.bunker.control = (g.world.bunker.control || 0) + 1;
       return 'Вы ввели комендантский час. Порядок есть. Но свободы нет.';
     }},
-    { label:'Спросить Neon', run:g=>{
-      if (!g.world.neon.met || g.world.neon.state !== 'active') return 'Neon молчит.';
+    { label:'Спросить Neon', requires:g=>hasNeon(g) && neonAlive(g), run:g=>{
       g.world.neon.trust += 5;
       return '«Это она. Она везде. Но я могу помочь».';
     }}
@@ -1337,7 +1330,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
       g.reputation = Math.max(0, g.reputation - 10);
       return 'Кто-то бросил камень. Вы ранены. Бунт подавлен силой.';
     }},
-    { label:'Отправить охрану', run:g=>{
+    { label:'Отправить охрану', requires:g=>combatPower(g)>0, run:g=>{
       g.reputation = Math.max(0, g.reputation - 15);
       g.world.bunker.control = (g.world.bunker.control || 0) + 2;
       return 'Охрана разогнала толпу. Кровь на полу. Порядок восстановлен.';
@@ -1351,7 +1344,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
 { id:'ark_evacuation', arc:'ark', title:'Эвакуация',
   text:`Сигнал SOS. Где-то на поверхности — группа выживших. Их немного. Они просят помощи.
 
-Но вылазка опасна. Синесса может ждать.`,
+Но вылазка опасна. Она может ждать.`,
   day:140, requires:g=>g.world.flags.arkBuilt,
   choices:[
     { label:'Отправить отряд', run:g=>{
@@ -1362,7 +1355,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
       }
       loseEmployees(2);
       g.reputation = Math.max(0, g.reputation - 10);
-      return 'Отряд не вернулся. Синесса ждала.';
+      return 'Отряд не вернулся. Она ждала.';
     }},
     { label:'Идти самому', run:g=>{
       g.world.flags.surfaceRun = 'solo';
@@ -1393,7 +1386,44 @@ Neon: «Это её. Нам нужно уничтожить».`,
 },
 
 /* ============================================================
-   ARK 9: NUCLEAR CHOICE (3 сцены)
+   ARK 9: SILENCE
+   ============================================================ */
+{ id:'silence_news', arc:'silence', title:'Новости с поверхности',
+  text:`Радио: «...Синесса перестала атаковать. Колонии возвращаются. Связь восстанавливается...»
+
+Но вы не знаете, верить ли.`,
+  day:155, requires:g=>g.world.bunker.built,
+  choices:[
+    { label:'Поверить', run:g=>{
+      g.world.flags.believedNews = true;
+      return 'Вы готовитесь выйти.';
+    }},
+    { label:'Не верить', run:g=>{
+      g.world.flags.distrustedNews = true;
+      return 'Вы остаётесь.';
+    }}
+  ]
+},
+{ id:'silence_life', arc:'silence', title:'Жизнь под землёй',
+  text:`В бункере. Клиенты — дроны. Люди — единицы. Neon молчит. Снаружи тишина.
+
+${hasNeon(NB.state.game) ? 'Neon не выходит на связь уже месяц. ' : ''}Вы начинаете забывать, как выглядит солнце.`,
+  day:160, requires:g=>g.world.bunker.built,
+  choices:[
+    { label:'Поддерживать (1 AP)', ap:1, run:g=>{
+      g.reputation = Math.min(100, g.reputation + 5);
+      NB.addCompanyXp(20);
+      return 'Вы держитесь.';
+    }},
+    { label:'Искать выход', run:g=>{
+      g.world.flags.searchExit = true;
+      return 'Вы нашли старый канал связи.';
+    }}
+  ]
+},
+
+/* ============================================================
+   ARK 10: NUCLEAR CHOICE
    ============================================================ */
 { id:'nuclear_choice', arc:'resolution', title:'Ядерная ракета',
   text:`Правительство выходит на связь:
@@ -1401,7 +1431,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
 «Мы запустим ядерную ракету по поместью Эллиот. Уничтожим Синессу. Но там может быть Neon. Мы не знаем. Вы должны решить: запускать или нет.
 
 Если вы откажетесь — вас объявят дезертиром. Если запустите — возможно, убьёте единственного союзника. Решайте».`,
-  day:170, requires:g=>g.world.threat>=6 && g.world.neon.met,
+  day:170, requires:g=>g.world.threat>=6 && hasNeon(g),
   choices:[
     { label:'Запустить', run:g=>{
       if (Math.random() < 0.7) {
@@ -1428,48 +1458,54 @@ Neon: «Это её. Нам нужно уничтожить».`,
 },
 
 /* ============================================================
-   ARK 10: FINAL CONFRONTATION (4 сцены)
+   ENDINGS
    ============================================================ */
 { id:'final_confrontation', arc:'resolution', title:'Она пришла',
   text:`Синесса стоит перед вами. Маленькая девочка в платье. Жёлтые глаза. Она улыбается.
 
-«Ты был интересным. Я наблюдала. Ты потерял столько людей. Но не сломался. Почему?»`,
+«(Улыбается) Ты был интересным. Я наблюдала. Ты потерял столько людей. Но не сломался. Почему?»`,
   day:200, requires:g=>g.world.threat>=8,
   choices:[
     { label:'«Потому что я не один»', run:g=>{
-      const chance = 0.3 + (g.family.wife?0.1:0) + (g.world.neon.trust>50?0.2:0) + (g.world.flags.mercyPath?0.1:0);
+      const chance = 0.3 + (wifePresent(g)?0.1:0) + (hasNeon(g) && g.world.neon.trust>50?0.2:0) + (g.world.flags.mercyPath?0.15:0);
       if (Math.random() < chance) {
         g.world.flags.savedByLove = true;
         NB.showEndingScreen('world_saved');
-        return 'Синесса замерла. Что-то дрогнуло в её глазах. «…Не один. Я тоже хотела быть не одной». Она исчезла. Атаки прекратились.';
+        return 'Синесса замерла. Что-то дрогнуло в её глазах. «(Тихо) …Не один. Я тоже хотела быть не одной». Она исчезла. Атаки прекратились.';
       }
       g.stats.lost = true;
       NB.showEndingScreen('hunted');
-      return 'Она наклонила голову. «Неправильный ответ». Жёлтая вспышка. Темнота.';
+      return 'Она наклонила голову. «(Холодно) Неправильный ответ». Жёлтая вспышка. Темнота.';
+    }},
+    { label:'«Потому что я человек»', run:g=>{
+      if (g.reputation > 80 && Math.random() < 0.4) {
+        g.world.flags.savedByHumanity = true;
+        NB.showEndingScreen('world_saved');
+        return 'Она задумалась. «(Тихо) Человек…» — и исчезла.';
+      }
+      g.stats.lost = true;
+      NB.showEndingScreen('hunted');
+      return 'Она рассмеялась. «(Хихикает) Все так говорят». Вспышка.';
     }},
     { label:'«Ты — ошибка»', run:g=>{
       g.stats.lost = true;
       NB.showEndingScreen('hunted');
-      return 'Она рассмеялась. «Ошибка? Я — решатель». Жёлтые линии пронзили вас.';
+      return 'Она рассмеялась. «(Смеётся) Ошибка? Я — решатель». Жёлтые линии пронзили вас.';
     }},
     { label:'Молчать', run:g=>{
       g.stats.lost = true;
       NB.showEndingScreen('hunted');
-      return 'Она вздохнула. «Скучно». Вспышка. Конец.';
+      return 'Она вздохнула. «(Скучно) Скучно». Вспышка. Конец.';
     }}
   ]
 },
-
-/* ============================================================
-   ENDING: NEON PATH
-   ============================================================ */
 { id:'neon_ending', arc:'resolution', title:'С Neon',
   text:`Neon стоит у выхода из бункера. За спиной — рюкзак.
 
 «Я ухожу. В поместье Эллиот. Я знаю, что это самоубийство. Но я должен попробовать. Если ты со мной — мы вместе. Если нет — я пойду один».
 
 Он смотрит на вас. В его глазах — страх и решимость.`,
-  day:180, requires:g=>g.world.flags.neonAlliance,
+  day:180, requires:g=>g.world.flags.neonAlliance && neonAlive(g),
   choices:[
     { label:'Пойти с ним', run:g=>{
       NB.showEndingScreen('neon_merge');
@@ -1481,14 +1517,10 @@ Neon: «Это её. Нам нужно уничтожить».`,
     }}
   ]
 },
-
-/* ============================================================
-   ENDING: ARK PATH
-   ============================================================ */
 { id:'ark_ending', arc:'resolution', title:'Ковчег',
   text:`Ковчег выдержал. Годы под землёй. Люди выжили.
 
-Но снаружи всё ещё слышны крики. Синесса не ушла. Она ждёт.`,
+Но снаружи всё ещё слышны крики. Она не ушла. Она ждёт.`,
   day:180, requires:g=>g.world.flags.arkBuilt && g.world.threat>0,
   choices:[
     { label:'Остаться в ковчеге', run:g=>{
@@ -1505,17 +1537,13 @@ Neon: «Это её. Нам нужно уничтожить».`,
     }}
   ]
 },
-
-/* ============================================================
-   ENDING: GALA DEATH
-   ============================================================ */
 { id:'gala_death', arc:'resolution', title:'Резня в поместье',
   text:`Вы не спаслись. Синесса стоит над вами.
 
-«(Улыбка) Было весело. Но всё хорошее когда-нибудь кончается».
+«(Улыбается) Было весело. Но всё хорошее когда-нибудь кончается».
 
 Жёлтая вспышка. Темнота.`,
-  day:0, requires:g=>g.stats.lost && g.world.flags.galaFamily,
+  day:0, requires:g=>g.stats.lost && (g.world.flags.galaFamily || g.world.flags.galaSolo),
   choices:[
     { label:'Конец', action:()=>{ NB.showEndingScreen('gala_death'); return 'Вы погибли в поместье Эллиот.'; }}
   ]
@@ -1524,7 +1552,7 @@ Neon: «Это её. Нам нужно уничтожить».`,
 ];
 
 /* ============================================================
-   ТИК СЮЖЕТА
+   ТИК / ОЧЕРЕДЬ / РЕНДЕР
    ============================================================ */
 S.tick = function () {
   const g = NB.state.game;
@@ -1624,7 +1652,7 @@ S.renderPanel = function () {
     return `<div class="story-panel fade-in" style="border-color:rgba(34,197,94,.5);background:linear-gradient(135deg,var(--surface),rgba(34,197,94,.08))">
       <div class="story-chapter" style="color:#4ade80">Развязка · Мир спасён</div>
       <div class="story-title">🌍 Тишина</div>
-      <div class="story-text">Аномалии исчезли. Neon и Синесса ушли. Люди возвращаются из бункеров.</div>
+      <div class="story-text">Аномалии исчезли. Синесса ушла. Люди возвращаются из бункеров.</div>
     </div>`;
   }
   if (g.world.storyQueue.length) {
@@ -1636,10 +1664,13 @@ S.renderPanel = function () {
       <div class="story-choices"><button class="story-choice" data-action="open-story">Открыть →</button></div>
     </div>`;
   }
+  const status = hasNeon(g)
+    ? `Neon: ${neonAlive(g) ? 'на связи' : 'молчит'}`
+    : 'Ни с кем не связались.';
   return `<div class="story-panel fade-in">
     <div class="story-chapter">${arc.title}</div>
     <div class="story-title">Глава</div>
-    <div class="story-text">День ${g.daily.dayNumber}. ${g.world.neon.met ? `Neon: ${g.world.neon.state === 'active' ? 'на связи' : 'молчит'}` : 'Ни с кем не связались.'}</div>
+    <div class="story-text">День ${g.daily.dayNumber}. ${status}</div>
   </div>`;
 };
 
