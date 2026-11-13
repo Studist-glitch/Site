@@ -1,3 +1,4 @@
+/* isp_billing_actions.js — действия (без клиентских счетов и добавления клиентов) */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -36,10 +37,7 @@ A.openClient = function (id) {
   const c = NB.client(Number(id));
   if (!c) return;
   const t = NB.tariff(c.tariffId) || { name:'—', price:0, speed:0, color:'#7a7a86' };
-  const myInv = NB.state.invoices.filter(i => i.clientId === c.id).sort((a,b) => b.id - a.id).slice(0,5);
-  const myTickets = NB.state.tickets.filter(x => x.clientId === c.id).slice(0,3);
-  const totalPaid = NB.state.invoices.filter(i => i.clientId === c.id && i.status === 'paid')
-    .reduce((s,i) => s + i.amount, 0);
+  const myTickets = NB.state.tickets.filter(x => x.clientId === c.id).slice(0, 3);
   const riskLabels = {
     good:'✓ Надёжный', normal:'— Обычный', risky:'⚠ Рискованный',
     hacker:'⚠ Возможен взлом', spammer:'⚠ Возможен спам', unknown:'❓ Нет данных'
@@ -54,17 +52,10 @@ A.openClient = function (id) {
       <div class="detail-row"><span>Статус</span><span>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</span></div>
     </div>
     <div class="detail-section">
-      <h4>Финансы</h4>
-      <div class="detail-row"><span>Баланс</span><span style="font-weight:700;color:${c.balance < 0 ? 'var(--danger)' : 'var(--success)'}">${NB.money(c.balance)}</span></div>
-      <div class="detail-row"><span>Всего оплачено</span><span>${NB.money(totalPaid)}</span></div>
-      <div class="detail-row"><span>Тариф</span><span><span class="tag" style="--c:${t.color}">${NB.esc(t.name)}</span> · ${t.speed} Мбит/с</span></div>
-    </div>
-    <div class="detail-section">
-      <h4>Последние счета</h4>
-      ${myInv.length ? myInv.map(i => `<div class="detail-row">
-        <span>${NB.periodLabel(i.period)}</span>
-        <span>${NB.money(i.amount)} · ${i.status === 'paid' ? '✓' : '○'}</span>
-      </div>`).join('') : '<p class="muted small">Нет</p>'}
+      <h4>Тариф</h4>
+      <div class="detail-row"><span>План</span><span><span class="tag" style="--c:${t.color}">${NB.esc(t.name)}</span> · ${t.speed} Мбит/с</span></div>
+      <div class="detail-row"><span>Абонплата</span><span>${NB.money(t.price)}/мес</span></div>
+      <div class="detail-row"><span>Ежедневный доход</span><span>${NB.money(Math.round(t.price / NB.INCOME_DIVISOR))}/день</span></div>
     </div>
     ${myTickets.length ? `<div class="detail-section">
       <h4>Заявки</h4>
@@ -74,37 +65,11 @@ A.openClient = function (id) {
       </div>`).join('')}
     </div>` : ''}
     <div class="detail-actions">
-      <button class="btn primary small" data-action="recharge" data-id="${c.id}">Пополнить</button>
       <button class="btn ghost small" data-action="edit-client" data-id="${c.id}">Изменить</button>
       <button class="btn ghost small" data-action="toggle" data-id="${c.id}">${c.status === 'active' ? 'Блок' : 'Разблок'}</button>
       <button class="btn ghost small" data-action="del-client" data-id="${c.id}" style="color:var(--danger)">Удалить</button>
     </div>`;
   NB.openModal({ title: c.name, html, noSubmit: true, wide: true });
-};
-
-A.addClient = function () {
-  NB.openModal({
-    title: 'Новый клиент',
-    html: NB.field('ФИО', 'name', 'text', '', 'required') +
-      NB.field('Адрес', 'address', 'text', '') +
-      NB.field('Телефон', 'phone', 'text', '', 'required') +
-      NB.selectField('Тариф', 'tariffId', NB.state.tariffs.map(t => ({ v: t.id, l: `${t.name} · ${t.price} ₽` }))),
-    onSubmit(fd) {
-      const name = String(fd.get('name') || '').trim();
-      if (!name) return NB.toast('Укажите имя', 'err');
-      NB.state.clients.push({
-        id: NB.state.seq.client++, name,
-        address: String(fd.get('address') || '').trim() || NB.genAddress(),
-        phone: String(fd.get('phone') || '').trim() || NB.genPhone(),
-        tariffId: Number(fd.get('tariffId')),
-        balance: 0, status: 'active',
-        createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
-        isDrone: false, risk: 'normal', revealed: true
-      });
-      NB.save(); NB.closeModal(); NB.render();
-      NB.notify(`Добавлен «${name}»`, 'ok');
-    }
-  });
 };
 
 A.editClient = function (id) {
@@ -127,23 +92,6 @@ A.editClient = function (id) {
   setTimeout(() => { const s = document.querySelector('select[name=tariffId]'); if (s) s.value = c.tariffId; }, 50);
 };
 
-A.rechargeClient = function (id) {
-  const c = NB.client(Number(id));
-  if (!c) return;
-  NB.openModal({
-    title: 'Пополнить баланс',
-    submit: 'Пополнить',
-    html: `<p class="muted" style="margin-bottom:14px">${NB.esc(c.name)} · баланс ${NB.money(c.balance)}</p>` +
-      NB.field('Сумма, ₽', 'amount', 'number', '500', 'min="1" step="50" required'),
-    onSubmit(fd) {
-      const amt = Number(fd.get('amount')) || 0;
-      if (amt <= 0) return NB.toast('Введите сумму', 'err');
-      c.balance += amt;
-      NB.save(); NB.closeModal(); NB.render();
-    }
-  });
-};
-
 A.toggleClient = function (id) {
   const c = NB.client(Number(id));
   if (!c) return;
@@ -156,44 +104,11 @@ A.delClient = function (id) {
   if (!c) return;
   if (!confirm(`Удалить «${c.name}»?`)) return;
   NB.state.clients = NB.state.clients.filter(x => x.id !== c.id);
-  NB.state.invoices = NB.state.invoices.filter(i => i.clientId !== c.id);
   NB.state.tickets = NB.state.tickets.filter(t => t.clientId !== c.id);
   NB.save(); NB.closeModal(); NB.render();
 };
 
-/* ============ СЧЕТА ============ */
-A.genInvoices = function () {
-  const p = NB.period();
-  let created = 0;
-  NB.state.clients.forEach(c => {
-    if (NB.state.invoices.some(i => i.clientId === c.id && i.period === p)) return;
-    NB.state.invoices.push({ id: NB.state.seq.invoice++, clientId: c.id, period: p,
-      amount: NB.price(c.tariffId), status: 'unpaid', paidAt: null });
-    created++;
-  });
-  NB.save();
-  if (created) { NB.notify(`Выставлено ${created}`, 'ok'); NB.render(); }
-  else NB.toast('Все выставлены');
-};
-
-A.payInvoiceStaff = function (id) {
-  const inv = NB.state.invoices.find(i => i.id === Number(id));
-  if (!inv || inv.status === 'paid') return;
-  inv.status = 'paid';
-  inv.paidAt = new Date().toISOString();
-  NB.state.game.cash += inv.amount;
-  NB.save(); NB.render();
-  NB.notify(`Счёт #${inv.id} оплачен`, 'ok');
-};
-
-A.delInvoice = function (id) {
-  const inv = NB.state.invoices.find(i => i.id === Number(id));
-  if (!inv) return;
-  if (!confirm(`Удалить?`)) return;
-  NB.state.invoices = NB.state.invoices.filter(x => x.id !== inv.id);
-  NB.save(); NB.render();
-};
-
+/* ============ СЧЕТА КОМПАНИИ ============ */
 A.payBill = function (id) { NB.invoices.payBill(Number(id)); };
 
 A.takeLoan = function () {
@@ -278,9 +193,7 @@ A.resolveTicket = function (id) {
   NB.save(); NB.render();
 };
 
-A.newTicket = function () {
-  NB.toast('Заявки создаются клиентами автоматически', 'info');
-};
+A.newTicket = function () { NB.toast('Заявки создаются клиентами автоматически', 'info'); };
 
 /* ============ СОТРУДНИКИ ============ */
 A.hireEmployee = function (id) { NB.employees.hire(Number(id)); };
@@ -297,6 +210,7 @@ A.sabotage = function (id) { NB.competitors.sabotage(id); };
 
 /* ============ СЮЖЕТ ============ */
 A.openStory = function () { NB.story.showNextInQueue(); };
+
 A.buildBunker = function () {
   const g = NB.state.game;
   if (g.world.bunker.built) return NB.toast('Уже построен', 'err');
@@ -309,8 +223,38 @@ A.buildBunker = function () {
   g.cash -= 70000;
   g.world.bunker.built = true;
   g.world.bunker.level = 1;
+  g.world.flags.bunkerBlueprints = true;
+  g.world.flags.bunkerBuilt = true;
   NB.notify('🏚 Бункер готов', 'ok');
   NB.addLog('Построен бункер', 'success');
+  NB.save(); NB.render();
+};
+
+/* ============ БУНКЕР ============ */
+A.bunkerOrderFood = function () {
+  const g = NB.state.game;
+  if (g.cash < 15000) return NB.toast('Нужно 15 000 ₽', 'err');
+  g.cash -= 15000;
+  g.world.bunker.food = (g.world.bunker.food || 0) + 10;
+  NB.notify('🍖 +10 еды', 'ok');
+  NB.addLog('Заказана еда в бункер', 'success');
+  NB.save(); NB.render();
+};
+
+A.bunkerRecruit = function () {
+  const g = NB.state.game;
+  g.world.bunker.population = (g.world.bunker.population || 0) + 2;
+  g.reputation = Math.min(100, g.reputation + 3);
+  NB.notify('Приняты выжившие (+2)', 'ok');
+  NB.save(); NB.render();
+};
+
+A.bunkerFortify = function () {
+  const g = NB.state.game;
+  if (g.cash < 20000) return NB.toast('Нужно 20 000 ₽', 'err');
+  g.cash -= 20000;
+  g.upgrades.bunkerDefense = (g.upgrades.bunkerDefense || 0) + 1;
+  NB.notify('🔫 Укрепление', 'ok');
   NB.save(); NB.render();
 };
 
@@ -362,8 +306,7 @@ A.familyEvening = function () {
   g.family.crisisShown = false;
   NB.addLog('Проведён вечер с семьёй (+20)', 'success');
   NB.notify('Семья довольна', 'ok');
-  NB.save();
-  NB.render();
+  NB.save(); NB.render();
 };
 
 /* ============ ИСТОРИЯ ============ */
@@ -376,14 +319,8 @@ A.showHistory = function () {
     html: log.length
       ? `<div style="max-height:400px;overflow:auto">${log.map(h => `
         <div class="detail-section">
-          <div class="detail-row">
-            <span style="color:var(--text)">${NB.esc(h.title)}</span>
-            <span style="color:var(--muted);font-size:11.5px">${NB.fmtDateTime(h.at)}</span>
-          </div>
-          <div class="detail-row">
-            <span>${NB.esc(h.choice)}</span>
-            <span>${NB.esc(h.result || '—')}</span>
-          </div>
+          <div class="detail-row"><span style="color:var(--text)">${NB.esc(h.title)}</span><span style="color:var(--muted);font-size:11.5px">${NB.fmtDateTime(h.at)}</span></div>
+          <div class="detail-row"><span>${NB.esc(h.choice)}</span><span>${NB.esc(h.result || '—')}</span></div>
         </div>`).join('')}</div>`
       : '<p class="empty">Пока пусто</p>'
   });
@@ -433,45 +370,43 @@ A.markRead = function () {
 
 /* ============ MAP ============ */
 A.map = {
-  'export':           A.exportData,
-  'reset-data':       A.resetData,
-  'clear-activity':   A.clearActivity,
-  'advance-day':      A.advanceDay,
-  'finish-day':       A.finishDay,
-  'show-notifs':      A.showNotifs,
-  'mark-read':        A.markRead,
-  'start-tour':       A.startTour,
-  'show-history':     A.showHistory,
-  'buy-upgrade':      d => A.buyUpgrade(d.key),
-  'repair-upgrade':   d => A.repairUpgrade(d.key),
-  'resolve-event-modal': A.resolveEventModal,
-  'open-story':       A.openStory,
-  'build-bunker':     A.buildBunker,
-  'family-evening':   A.familyEvening,
-  'accept-client':    d => A.acceptClient(d.id),
-  'reject-client':    d => A.rejectClient(d.id),
-  'open-client':      d => A.openClient(d.id),
-  'add-client':       A.addClient,
-  'edit-client':      d => A.editClient(d.id),
-  'recharge':         d => A.rechargeClient(d.id),
-  'toggle':           d => A.toggleClient(d.id),
-  'del-client':       d => A.delClient(d.id),
-  'add-tariff':       A.addTariff,
-  'edit-tariff':      d => A.editTariff(d.id),
-  'del-tariff':       d => A.delTariff(d.id),
-  'pay-invoice':      d => A.payInvoiceStaff(d.id),
-  'del-invoice':      d => A.delInvoice(d.id),
-  'pay-bill':         d => A.payBill(d.id),
-  'take-loan':        A.takeLoan,
-  'resolve-ticket':   d => A.resolveTicket(d.id),
-  'new-ticket':       A.newTicket,
-  'gen-invoices':     A.genInvoices,
-  'hire-employee':    d => A.hireEmployee(d.id),
-  'fire-employee':    d => A.fireEmployee(d.id),
-  'refresh-employees-pool': A.refreshEmployeesPool,
-  'negotiate':        d => A.negotiate(d.id),
-  'sabotage':         d => A.sabotage(d.id),
-  'collect-revenue':  A.collectRevenue
+  'export':                   A.exportData,
+  'reset-data':               A.resetData,
+  'clear-activity':           A.clearActivity,
+  'advance-day':              A.advanceDay,
+  'finish-day':               A.finishDay,
+  'show-notifs':              A.showNotifs,
+  'mark-read':                A.markRead,
+  'start-tour':               A.startTour,
+  'show-history':             A.showHistory,
+  'buy-upgrade':              d => A.buyUpgrade(d.key),
+  'repair-upgrade':           d => A.repairUpgrade(d.key),
+  'resolve-event-modal':      A.resolveEventModal,
+  'open-story':               A.openStory,
+  'build-bunker':             A.buildBunker,
+  'bunker-order-food':        A.bunkerOrderFood,
+  'bunker-recruit':           A.bunkerRecruit,
+  'bunker-fortify':           A.bunkerFortify,
+  'family-evening':           A.familyEvening,
+  'accept-client':            d => A.acceptClient(d.id),
+  'reject-client':            d => A.rejectClient(d.id),
+  'open-client':              d => A.openClient(d.id),
+  'edit-client':              d => A.editClient(d.id),
+  'toggle':                   d => A.toggleClient(d.id),
+  'del-client':               d => A.delClient(d.id),
+  'add-tariff':               A.addTariff,
+  'edit-tariff':              d => A.editTariff(d.id),
+  'del-tariff':               d => A.delTariff(d.id),
+  'pay-bill':                 d => A.payBill(d.id),
+  'take-loan':                A.takeLoan,
+  'resolve-ticket':           d => A.resolveTicket(d.id),
+  'new-ticket':               A.newTicket,
+  'hire-employee':            d => A.hireEmployee(d.id),
+  'fire-employee':            d => A.fireEmployee(d.id),
+  'refresh-employees-pool':   A.refreshEmployeesPool,
+  'negotiate':                d => A.negotiate(d.id),
+  'sabotage':                 d => A.sabotage(d.id),
+  'collect-revenue':          A.collectRevenue
 };
 
 })(window);

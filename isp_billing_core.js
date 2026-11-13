@@ -607,7 +607,7 @@ NB.computeStats = () => {
   const active = NB.state.clients.filter(c => c.status === 'active');
   const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
   const p = NB.period();
-  const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
+  const due = NB.state.game.bills.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0);
   const rev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
   return { clients: NB.state.clients.length, mrr, revenue: rev, due, marketShare: NB.state.game.marketShare };
 };

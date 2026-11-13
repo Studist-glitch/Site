@@ -1,3 +1,4 @@
+/* isp_billing_boot.js — рендер и обработчики */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -6,14 +7,11 @@ const NB = global.NB;
 if (!NB.ui) NB.ui = {};
 if (typeof NB.ui.view === 'undefined') NB.ui.view = 'dashboard';
 if (typeof NB.ui.query === 'undefined') NB.ui.query = '';
-if (!NB.ui.clientSort) NB.ui.clientSort = { key: 'name', dir: 'asc' };
-if (typeof NB.ui.invoiceFilter === 'undefined') NB.ui.invoiceFilter = 'all';
-if (typeof NB.ui.invoiceTab === 'undefined') NB.ui.invoiceTab = 'client';
+if (!NB.ui.clientSort) NB.ui.clientSort = { key: 'risk', dir: 'asc' };
 if (typeof NB.ui.chatThreadId === 'undefined') NB.ui.chatThreadId = null;
 if (typeof NB.ui.activityFilter === 'undefined') NB.ui.activityFilter = 'all';
 if (!NB.ui.scrollPositions) NB.ui.scrollPositions = {};
 
-/* === RENDER === */
 NB.render = function () {
   const root = document.getElementById('root');
   if (!root) return;
@@ -79,9 +77,10 @@ function afterRender() {
     const rv = document.getElementById('revenue-chart');
     if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
   }, 50);
+  if (NB.atmosphere) setTimeout(() => NB.atmosphere.scan(), 60);
 }
 
-/* === SIM-BAR AUTO REFRESH === */
+/* SIM-BAR AUTO REFRESH */
 let autoRefreshTimer = null;
 function startAutoRefresh() {
   if (autoRefreshTimer) return;
@@ -98,24 +97,17 @@ function startAutoRefresh() {
   }, 15000);
 }
 
-/* === CLICK HANDLER === */
+/* CLICK HANDLER */
 document.addEventListener('click', e => {
-  /* 1. Action */
   const t = e.target.closest('[data-action]');
   if (t) {
     const name = t.dataset.action;
-    const map = NB.actions.map || {};
-    const fn = map[name];
-    if (!fn) {
-      console.warn('[NetBill] Unknown action:', name);
-      NB.toast(`Неизвестное действие: ${name}`, 'err');
-      return;
-    }
+    const fn = (NB.actions.map || {})[name];
+    if (!fn) { console.warn('[NetBill] Unknown action:', name); NB.toast(`Неизвестное действие: ${name}`, 'err'); return; }
     try { fn(t.dataset); } catch (err) { console.error('[NetBill] action error:', name, err); NB.toast('Ошибка действия', 'err'); }
     return;
   }
 
-  /* 2. View */
   const v = e.target.closest('[data-view]');
   if (v) {
     const targetView = v.dataset.view;
@@ -129,7 +121,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 3. Scroll to */
   const st = e.target.closest('[data-scroll-to]');
   if (st) {
     const target = document.querySelector(st.dataset.scrollTo);
@@ -137,23 +128,12 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 4. Invoice filters */
-  const f = e.target.closest('[data-filter]');
-  if (f) { NB.ui.invoiceFilter = f.dataset.filter; NB.renderView(); return; }
-
-  /* 5. Invoice tabs */
-  const it = e.target.closest('[data-invoice-tab]');
-  if (it) { NB.ui.invoiceTab = it.dataset.invoiceTab; NB.renderView(); return; }
-
-  /* 6. Activity filters */
   const af = e.target.closest('[data-activity-filter]');
   if (af) { NB.ui.activityFilter = af.dataset.activityFilter; NB.renderView(); return; }
 
-  /* 7. Chat thread */
   const ct = e.target.closest('[data-chat-thread]');
   if (ct) { NB.ui.chatThreadId = Number(ct.dataset.chatThread); NB.renderView(); return; }
 
-  /* 8. Chat reply */
   const cr = e.target.closest('[data-chat-reply]');
   if (cr) {
     const thread = NB.state.tickets.find(x => x.id === NB.ui.chatThreadId);
@@ -161,7 +141,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 9. Sort */
   const s = e.target.closest('[data-sort]');
   if (s) {
     const key = s.dataset.sort;
@@ -171,22 +150,16 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 10. Speed test */
   if (e.target.id === 'start-speed') { NB.charts.runSpeedTest(); return; }
 
-  /* 11. Play news video */
   const pv = e.target.closest('[data-news-video]');
-  if (pv) {
-    NB.playVideo(pv.dataset.newsVideo, pv.dataset.newsVideoTitle || '', { autoClose: 15000 });
-    return;
-  }
+  if (pv) { NB.playVideo(pv.dataset.newsVideo, pv.dataset.newsVideoTitle || '', { autoClose: 15000 }); return; }
 
-  /* 12. Modal close */
   if (e.target.id === 'modal') { NB.closeModal(); return; }
   if (e.target.closest('[data-close]')) { NB.closeModal(); return; }
 });
 
-/* === INPUT === */
+/* INPUT */
 let rafPending = false;
 document.addEventListener('input', e => {
   if (e.target.id !== 'client-search') return;
@@ -202,17 +175,14 @@ document.addEventListener('input', e => {
   });
 });
 
-/* === CHANGE === */
+/* CHANGE */
 document.addEventListener('change', e => {
   const key = e.target.dataset.setting;
   if (!key) return;
-  if (e.target.type === 'checkbox') {
-    NB.state.settings[key] = e.target.checked;
-    NB.save();
-  }
+  if (e.target.type === 'checkbox') { NB.state.settings[key] = e.target.checked; NB.save(); }
 });
 
-/* === KEYBOARD === */
+/* KEYBOARD */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const modal = document.getElementById('modal');
@@ -230,11 +200,10 @@ document.addEventListener('keydown', e => {
       NB.renderView();
       window.scrollTo(0, 0);
     }
-    return;
   }
 });
 
-/* === RESIZE === */
+/* RESIZE */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (resizeTimer) clearTimeout(resizeTimer);
@@ -246,17 +215,14 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-/* === BEFORE UNLOAD === */
-window.addEventListener('beforeunload', () => {
-  try { NB.save(); } catch (err) {}
-});
+window.addEventListener('beforeunload', () => { try { NB.save(); } catch (err) {} });
 
-/* === START === */
+/* START */
 NB.checkUnlocks();
 NB.render();
 startAutoRefresh();
 if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v20 ready');
+console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v21 ready');
 
 })(window);
