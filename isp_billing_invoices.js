@@ -1,4 +1,4 @@
-/* isp_billing_invoices.js — только расходные счета компании */
+/* isp_billing_invoices.js — только расходные счета */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -20,8 +20,7 @@ I.addBill = function (type, amount, opts) {
   const g = NB.state.game;
   const meta = I.BILL_TYPES[type] || { icon: '📄', label: opts.label || 'Счёт', growRate: 0 };
   const bill = {
-    id: g.billsSeq++,
-    type,
+    id: g.billsSeq++, type,
     label: opts.label || meta.label,
     amount: Math.max(0, Math.round(amount)),
     dueDay: opts.dueDay || (g.daily.dayNumber + (meta.interval || 7)),
@@ -48,7 +47,7 @@ I.generateForDay = function () {
   if (day % 7 === 0) {
     const kidsCount = g.family.kids.length;
     const base = 300 + kidsCount * 200 + (g.family.wife ? 100 : 0);
-    I.addBill('family', base, { label: `Семья: продукты, одежда, нужды (${kidsCount + (g.family.wife ? 1 : 0)} чел.)` });
+    I.addBill('family', base, { label: `Семья: продукты, одежда, нужды` });
     NB.addLog(`Счёт за семью: ${NB.money(base)}`, 'info');
   }
 
@@ -165,10 +164,7 @@ I.takeLoan = function (amount) {
   g.cash += amount;
   const monthlyPayment = Math.round(amount * 0.13);
   for (let i = 1; i <= 10; i++) {
-    I.addBill('loan', monthlyPayment, {
-      label: `Кредит ${NB.money(amount)} — платёж ${i}/10`,
-      dueDay: g.daily.dayNumber + i * 30
-    });
+    I.addBill('loan', monthlyPayment, { label: `Кредит ${NB.money(amount)} — платёж ${i}/10`, dueDay: g.daily.dayNumber + i * 30 });
   }
   NB.notify(`💰 Получен кредит ${NB.money(amount)}`, 'ok');
   NB.addLog(`Взят кредит ${NB.money(amount)}`, 'info');
@@ -177,7 +173,7 @@ I.takeLoan = function (amount) {
 };
 
 /* ============================================================
-   Только расходные счета
+   РЕНДЕР — только наши расходы
    ============================================================ */
 I.renderCompanyBills = function () {
   const g = NB.state.game;
@@ -203,7 +199,12 @@ I.renderCompanyBills = function () {
     </div>`;
   }).join('');
 
-  return `<div class="page-head"><div><h1>Наши расходы</h1><p class="muted">Счета, которые мы должны оплатить</p></div></div>
+  return `<div class="page-head">
+    <div>
+      <h1>Счета к оплате</h1>
+      <p class="muted">Здесь всё, что платим мы: зарплаты, налоги, коммуналка, семья и кредиты. Просрочки бьют по репутации и деньгам. Если не хватает — возьмите кредит.</p>
+    </div>
+  </div>
   <div class="bills-summary">
     <div class="bills-sum-card ${overdue.length > 0 ? 'overdue' : ''}"><b>${NB.money(totalPending)}</b><small>К оплате</small></div>
     <div class="bills-sum-card ${overdue.length > 0 ? 'overdue' : ''}"><b>${overdue.length}</b><small>Просрочено</small></div>
