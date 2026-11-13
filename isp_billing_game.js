@@ -1,35 +1,30 @@
-/* isp_billing_game.js — апгрейды, события, уровни, туры */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const G = NB.game = NB.game || {};
 
-/* ============================================================
-   АПГРЕЙДЫ
-   ============================================================ */
 G.UPGRADES = {
   ddos:           { icon:'🛡', name:'DDoS-защита',           desc:'Отбивает атаки.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN','Автоблок'], minDay: 3 },
-  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'Расширяет канал. Открывает высокие скорости.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+400 Мбит','+800 Мбит','+1200 Мбит'] },
+  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'Расширяет канал. +2000 Мбит/с за уровень.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+2000 Мбит','+4000 Мбит','+6000 Мбит'] },
   support:        { icon:'💬', name:'Поддержка',              desc:'Меньше оттока, быстрее оплата.', costs:[6000,15000,30000], upkeep:[15,40,80], levels:['2 оператора','24/7','Менеджеры'], minDay: 5 },
-  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше клиентов в день.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1 клиент','+2 клиента','+3 клиента'], minDay: 4 },
-  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. Ещё больше скорости.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade: 'bandwidth' },
-  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие.', costs:[50000], upkeep:[80], levels:['Спутниковый резерв'], minDay: 20 },
+  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1 клиент','+2 клиента','+3 клиента'], minDay: 4 },
+  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. +4000 Мбит/с.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade: 'bandwidth' },
+  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие. +8000 Мбит/с.', costs:[50000], upkeep:[80], levels:['Спутниковый резерв'], minDay: 20 },
   ai:             { icon:'🤖', name:'AI-автоматизация',       desc:'Автоподдержка.', costs:[70000], upkeep:[120], levels:['AI-оператор'], minDay: 30 },
-  quantum:        { icon:'⚛', name:'Квантовый шифр',          desc:'Только после особой концовки.', costs:[180000], upkeep:[200], levels:['Квантовая сеть'], requiresFlag: 'quantumUnlocked' },
-  firewall:       { icon:'🧱', name:'Firewall',               desc:'Снижает взломы и угрозы.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay: 15 },
-  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Небольшой буст канала.', costs:[4000,12000], upkeep:[10,25], levels:['+150','+300'] },
+  quantum:        { icon:'⚛', name:'Квантовый шифр',          desc:'После особой концовки.', costs:[180000], upkeep:[200], levels:['Квантовая сеть'], requiresFlag: 'quantumUnlocked' },
+  firewall:       { icon:'🧱', name:'Firewall',               desc:'Снижает взломы.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay: 15 },
+  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Буст канала. +1000 Мбит/с.', costs:[4000,12000], upkeep:[10,25], levels:['+1000','+2000'] },
   darkFiber:      { icon:'🌑', name:'Тёмное волокно',          desc:'Секретный канал.', costs:[80000], upkeep:[150], levels:['Скрытая магистраль'], minDay: 40 },
   autoCollect:    { icon:'💰', name:'Автосбор выручки',        desc:'Собирает автоматически.', costs:[6000,15000], upkeep:[10,25], levels:['100%','+5%'], minDay: 6 },
-  autoClean:      { icon:'🧹', name:'Автоочистка спама',       desc:'Убирает спам и снижает риск спамеров.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay: 8 },
+  autoClean:      { icon:'🧹', name:'Автоочистка спама',       desc:'Убирает спам.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay: 8 },
   salesBoost:     { icon:'📈', name:'Буст продаж',             desc:'Шанс подключения.', costs:[8000,20000], upkeep:[15,40], levels:['+10%','+20%'], minDay: 10 },
-  bunker:         { icon:'🏚', name:'Бункер',                  desc:'Укрытие от глобальной угрозы.', costs:[70000,130000], upkeep:[80,200], levels:['Базовый','Укреплённый'], requiresFlag: 'bunkerBlueprints' },
+  bunker:         { icon:'🏚', name:'Бункер',                  desc:'Укрытие от угрозы.', costs:[70000,130000], upkeep:[80,200], levels:['Базовый','Укреплённый'], requiresFlag: 'bunkerBlueprints' },
   anomalyScanner: { icon:'📡', name:'Аномальный сканер',       desc:'Рано предупреждает.', costs:[20000,45000], upkeep:[20,50], levels:['Первый','Полный'], minDay: 12 }
 };
 
 G.upgradeVisible = function (key) {
-  const u = G.UPGRADES[key];
+  const u = G.UPGRADES[key]; if (!u) return false;
   const g = NB.state.game;
-  if (!u) return false;
   if (u.minDay && g.daily.dayNumber < u.minDay) return false;
   if (u.requiresUpgrade && !g.upgrades[u.requiresUpgrade]) return false;
   if (u.requiresFlag && !g.world.flags[u.requiresFlag]) return false;
@@ -40,8 +35,7 @@ G.upgradeVisible = function (key) {
 G.upgradeCost = function (key) {
   if (!G.upgradeVisible(key)) return null;
   const g = NB.state.game;
-  const lvl = g.upgrades[key];
-  const u = G.UPGRADES[key];
+  const lvl = g.upgrades[key], u = G.UPGRADES[key];
   if (!u || lvl >= u.costs.length) return null;
   return u.costs[lvl];
 };
@@ -49,8 +43,8 @@ G.upgradeCost = function (key) {
 G.dailyUpkeep = function () {
   let s = 0;
   Object.keys(NB.state.game.upgrades).forEach(k => {
-    const lvl = NB.state.game.upgrades[k];
-    const u = G.UPGRADES[k]; if (!u) return;
+    const lvl = NB.state.game.upgrades[k], u = G.UPGRADES[k];
+    if (!u) return;
     for (let i = 0; i < lvl; i++) s += u.upkeep[i] || 0;
   });
   return s;
@@ -70,7 +64,17 @@ G.buyUpgrade = function (key) {
   NB.notify(`${G.UPGRADES[key].name} ур.${NB.state.game.upgrades[key]}`, 'ok');
   NB.addLog(`Куплено: ${G.UPGRADES[key].name}`, 'success');
   NB.addCompanyXp(5);
-  NB.save(); NB.render();
+  NB.save();
+  setTimeout(() => {
+    NB.render();
+    const cards = document.querySelectorAll('.upgrade');
+    cards.forEach(c => {
+      if (c.querySelector('h3')?.textContent === G.UPGRADES[key].name) {
+        c.classList.add('just-bought');
+        setTimeout(() => c.classList.remove('just-bought'), 600);
+      }
+    });
+  }, 50);
 };
 
 G.repairUpgrade = function (key) {
@@ -85,9 +89,7 @@ G.repairUpgrade = function (key) {
   NB.save(); NB.render();
 };
 
-/* ============================================================
-   СОБЫТИЯ — 22 штуки
-   ============================================================ */
+/* ============ СОБЫТИЯ — 31 шт ============ */
 G.EVENTS = [
   { id:'coffee', title:'☕ Кофе', desc:'Сотрудники просят кофе.', weight:1.2,
     condition:()=>NB.state.game.employees.length>0,
@@ -150,48 +152,48 @@ G.EVENTS = [
   { id:'family_ap', title:'👨‍👩‍👧 Семья', desc:'Жена просит время.', weight:1.2,
     condition:()=>NB.state.game.family.wife && NB.state.game.daily.dayNumber>10,
     opts:[
-      { label:'Провести вечер (1 AP)', run:()=>{ if(!NB.spendAp(1)) return 'Нет AP'; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+15); return 'Хороший вечер'; }},
+      { label:'Вечер (1 AP)', run:()=>{ if(!NB.spendAp(1)) return 'Нет AP'; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+15); return 'Хорошо'; }},
       { label:'Отложить', run:()=>{ NB.state.game.family.wifeHappiness=Math.max(0,NB.state.game.family.wifeHappiness-10); return 'Промолчала'; }}
     ]
   },
-  { id:'broken', title:'⚡ Поломка', desc:'Одно устройство сломалось.', weight:0.8,
+  { id:'broken', title:'⚡ Поломка', desc:'Устройство сломалось.', weight:0.8,
     condition:()=>Object.keys(NB.state.game.upgrades).some(k=>NB.state.game.upgrades[k]>0&&!NB.state.game.upgradesBroken[k]),
     opts:[
       { label:'Починить (3000₽)', run:()=>{ if(NB.state.game.cash<3000) return 'Нет денег'; NB.state.game.cash-=3000; return 'Починено'; }},
       { label:'Пока работает', run:()=>{ const opts=Object.keys(NB.state.game.upgrades).filter(k=>NB.state.game.upgrades[k]>0&&!NB.state.game.upgradesBroken[k]); if(opts.length){const k=NB.pick(opts); NB.state.game.upgradesBroken[k]={brokenAt:NB.state.game.daily.dayNumber,reason:'Износ'}; return `Сломалось: ${G.UPGRADES[k].name}`;} return 'Обошлось'; }}
     ]
   },
-  { id:'hacker_blackmail', title:'👾 Шантаж', desc:'Кто-то взломал базу клиентов. Требует 15 000 ₽.', weight:0.9,
+  { id:'hacker_blackmail', title:'👾 Шантаж', desc:'Взломали базу. Требуют 15 000 ₽.', weight:0.9,
     opts:[
-      { label:'Заплатить', run:()=>{ if(NB.state.game.cash<15000) return 'Нет денег'; NB.state.game.cash-=15000; return 'Заплачено. Инцидент закрыт.'; }},
-      { label:'ФСБ (-5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.reputation=Math.min(100,NB.state.game.reputation+5); return 'Хакер найден'; }},
+      { label:'Заплатить', run:()=>{ if(NB.state.game.cash<15000) return 'Нет денег'; NB.state.game.cash-=15000; return 'Заплачено'; }},
+      { label:'ФСБ (-5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.reputation=Math.min(100,NB.state.game.reputation+5); return 'Найден'; }},
       { label:'Игнорировать', run:()=>{ for(let i=0;i<5&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} NB.state.game.reputation=Math.max(0,NB.state.game.reputation-15); return 'База утекла'; }}
     ]
   },
-  { id:'outage', title:'⚡ Авария в узле', desc:'Серьёзная авария. 3 часа без интернета.', weight:1.0,
+  { id:'outage', title:'⚡ Авария в узле', desc:'3 часа без интернета.', weight:1.0,
     opts:[
-      { label:'Компенсировать (3000₽)', run:()=>{ if(NB.state.game.cash<3000) return 'Нет денег'; NB.state.game.cash-=3000; NB.state.game.reputation=Math.min(100,NB.state.game.reputation+2); return 'Клиенты довольны'; }},
+      { label:'Компенсировать (3000₽)', run:()=>{ if(NB.state.game.cash<3000) return 'Нет денег'; NB.state.game.cash-=3000; NB.state.game.reputation=Math.min(100,NB.state.game.reputation+2); return 'Довольны'; }},
       { label:'Ничего', run:()=>{ NB.state.game.reputation=Math.max(0,NB.state.game.reputation-5); return '−5 реп'; }}
     ]
   },
-  { id:'family_vacation', title:'🏖 Отпуск', desc:'Жена хочет на море. Дети тоже.', weight:0.8,
+  { id:'family_vacation', title:'🏖 Отпуск', desc:'Жена хочет на море.', weight:0.8,
     condition:()=>NB.state.game.family.wife && NB.state.game.daily.dayNumber>20,
     opts:[
-      { label:'Оплатить (10 000₽)', run:()=>{ if(NB.state.game.cash<10000) return 'Нет денег'; NB.state.game.cash-=10000; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+30); return 'Семья счастлива'; }},
-      { label:'Отложить', run:()=>{ NB.state.game.family.wifeHappiness=Math.max(0,NB.state.game.family.wifeHappiness-15); return 'Жена расстроена'; }}
+      { label:'Оплатить (10 000₽)', run:()=>{ if(NB.state.game.cash<10000) return 'Нет денег'; NB.state.game.cash-=10000; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+30); return 'Счастлива'; }},
+      { label:'Отложить', run:()=>{ NB.state.game.family.wifeHappiness=Math.max(0,NB.state.game.family.wifeHappiness-15); return 'Расстроена'; }}
     ]
   },
-  { id:'child_sick', title:'🤒 Ребёнок заболел', desc:'Нужен врач. Срочно.', weight:0.7,
+  { id:'child_sick', title:'🤒 Ребёнок заболел', desc:'Нужен врач.', weight:0.7,
     condition:()=>NB.state.game.family.kids.length>0,
     opts:[
-      { label:'Хороший врач (5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+5); return 'Всё хорошо'; }},
+      { label:'Хороший врач (5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.family.wifeHappiness=Math.min(100,NB.state.game.family.wifeHappiness+5); return 'Хорошо'; }},
       { label:'Скорая', run:()=>{ NB.state.game.family.wifeHappiness=Math.max(0,NB.state.game.family.wifeHappiness-5); return 'Обошлось'; }}
     ]
   },
-  { id:'corp_offer', title:'🏢 Слияние', desc:'Крупный конкурент предлагает купить вас за 300 000 ₽.', weight:0.5,
+  { id:'corp_offer', title:'🏢 Слияние', desc:'Конкурент предлагает 300 000 ₽.', weight:0.5,
     condition:()=>NB.state.game.unlocks.competitors,
     opts:[
-      { label:'Продаться', run:()=>{
+      { label:'Продаться', action:()=>{
         const g = NB.state.game;
         g.cash += 300000;
         g.stats.won = true;
@@ -199,30 +201,30 @@ G.EVENTS = [
         setTimeout(() => { if (NB.showEndingScreen) NB.showEndingScreen('corporate_win'); }, 400);
         return '🏆 Слияние принято';
       }},
-      { label:'Отказать', run:()=>{ if(NB.state.game.competitors.length){const c=NB.pick(NB.state.game.competitors); c.relationship=Math.max(-100,c.relationship-20); c.aggression+=15; return 'Конкурент обиделся';} return 'Отказ'; }}
+      { label:'Отказать', run:()=>{ if(NB.state.game.competitors.length){const c=NB.pick(NB.state.game.competitors); c.relationship=Math.max(-100,c.relationship-20); c.aggression+=15; return 'Обиделся';} return 'Отказ'; }}
     ]
   },
-  { id:'drone_incident', title:'🤖 Сбой дрона', desc:'Один из дронов-клиентов ведёт себя странно.', weight:0.9,
+  { id:'drone_incident', title:'🤖 Сбой дрона', desc:'Дрон-клиент странно себя ведёт.', weight:0.9,
     condition:()=>NB.state.game.world.drones.enabled,
     opts:[
-      { label:'Отключить дрона', run:()=>{ const drone = NB.state.clients.find(c=>c.isDrone); if(drone){ NB.state.clients=NB.state.clients.filter(c=>c.id!==drone.id); } NB.state.game.reputation=Math.min(100,NB.state.game.reputation+3); return 'Инцидент закрыт'; }},
-      { label:'Проигнорировать', run:()=>{ NB.state.game.reputation=Math.max(0,NB.state.game.reputation-3); return '−3 реп'; }}
+      { label:'Отключить', run:()=>{ const drone = NB.state.clients.find(c=>c.isDrone); if(drone){ NB.state.clients=NB.state.clients.filter(c=>c.id!==drone.id); } NB.state.game.reputation=Math.min(100,NB.state.game.reputation+3); return 'Закрыто'; }},
+      { label:'Игнорировать', run:()=>{ NB.state.game.reputation=Math.max(0,NB.state.game.reputation-3); return '−3 реп'; }}
     ]
   },
-  { id:'equipment_gift', title:'🎁 Подарок', desc:'Старый друг отдаёт списанный коммутатор.', weight:0.5,
+  { id:'equipment_gift', title:'🎁 Подарок', desc:'Старый друг отдаёт коммутатор.', weight:0.5,
     opts:[
-      { label:'Принять', run:()=>{ const lvl=NB.state.game.upgrades.bandwidth; if(lvl<G.UPGRADES.bandwidth.costs.length){ NB.state.game.upgrades.bandwidth++; return 'Бесплатный апгрейд bandwidth'; } return 'Уже не нужно'; }},
+      { label:'Принять', run:()=>{ const lvl=NB.state.game.upgrades.bandwidth; if(lvl<G.UPGRADES.bandwidth.costs.length){ NB.state.game.upgrades.bandwidth++; return 'Бесплатный апгрейд'; } return 'Не нужно'; }},
       { label:'Отказаться', run:()=>'Отказ' }
     ]
   },
-  { id:'talent_search', title:'🔍 Талант', desc:'На рынке появился редкий специалист.', weight:0.6,
+  { id:'talent_search', title:'🔍 Талант', desc:'Редкий специалист на рынке.', weight:0.6,
     condition:()=>NB.state.game.unlocks.employees,
     opts:[
-      { label:'Нанять (8000₽)', run:()=>{ if(NB.state.game.cash<8000) return 'Нет денег'; NB.state.game.cash-=8000; if(NB.employees && NB.employees.generateEmployee){ NB.state.game.employees.push(NB.employees.generateEmployee(2)); } return 'Нанят ценный сотрудник'; }},
+      { label:'Нанять (8000₽)', run:()=>{ if(NB.state.game.cash<8000) return 'Нет денег'; NB.state.game.cash-=8000; if(NB.employees && NB.employees.generateEmployee){ NB.state.game.employees.push(NB.employees.generateEmployee(2)); } return 'Нанят'; }},
       { label:'Пропустить', run:()=>'Пропущено' }
     ]
   },
-  { id:'salary_negotiation', title:'💰 Повышение', desc:'Сотрудник просит повышения. Его работа важна.', weight:0.8,
+  { id:'salary_negotiation', title:'💰 Повышение', desc:'Сотрудник просит повышения.', weight:0.8,
     condition:()=>NB.state.game.employees.length>0,
     opts:[
       { label:'Переговоры (мини-игра)', action:()=>{
@@ -233,39 +235,24 @@ G.EVENTS = [
             const emp = NB.pick(g.employees);
             if (!emp) { NB.notify('Некого повышать', 'warn'); NB.render(); return; }
             if (success) {
-              if (g.cash < 5000) { NB.notify('Переговоры выиграны, но денег нет', 'warn'); NB.render(); return; }
+              if (g.cash < 5000) { NB.notify('Денег нет', 'warn'); NB.render(); return; }
               g.cash -= 5000;
               emp.salary = Math.round(emp.salary * 1.2);
-              NB.notify(`${emp.name} доволен. Зарплата повышена.`, 'ok');
+              NB.notify(`${emp.name} доволен`, 'ok');
             } else {
               g.employees = g.employees.filter(e => e.id !== emp.id);
-              NB.notify(`${emp.name} уволился после провала переговоров`, 'warn');
+              NB.notify(`${emp.name} уволился`, 'warn');
             }
             NB.save(); NB.render();
-          }, {
-            successText: 'Сотрудник согласен на повышение зарплаты.',
-            failText: 'Переговоры провалились. Сотрудник ушёл.'
-          });
+          }, { successText: 'Сотрудник согласен.', failText: 'Провал. Ушёл.' });
         }, 250);
         return 'Переговоры начались.';
       }},
-      { label:'Дать премию (5000₽)', run:()=>{
-        if(NB.state.game.cash<5000) return 'Нет денег';
-        NB.state.game.cash-=5000;
-        NB.state.game.reputation=Math.min(100,NB.state.game.reputation+2);
-        return 'Сотрудник благодарен.';
-      }},
-      { label:'Отказать', run:()=>{
-        if (NB.state.game.employees.length) {
-          const emp = NB.pick(NB.state.game.employees);
-          NB.state.game.employees = NB.state.game.employees.filter(e => e.id !== emp.id);
-          return `${emp.name} ушёл.`;
-        }
-        return 'Никого не было.';
-      }}
+      { label:'Премия (5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.reputation=Math.min(100,NB.state.game.reputation+2); return 'Благодарен'; }},
+      { label:'Отказать', run:()=>{ if (NB.state.game.employees.length) { const emp = NB.pick(NB.state.game.employees); NB.state.game.employees = NB.state.game.employees.filter(e => e.id !== emp.id); return `${emp.name} ушёл`; } return 'Никого'; }}
     ]
   },
-  { id:'hostile_takeover', title:'🏴 Враждебный конкурент', desc:'Starlink атакует: DDoS + переманивание клиентов. За 3 дня можно потерять 20 клиентов.', weight:0.7,
+  { id:'hostile_takeover', title:'🏴 Враждебный конкурент', desc:'Starlink атакует. За 3 дня — 20 клиентов.', weight:0.7,
     condition:()=>NB.state.game.unlocks.competitors && NB.state.game.competitors.some(c=>c.alive),
     opts:[
       { label:'Контратака (мини-игра)', action:()=>{
@@ -273,52 +260,143 @@ G.EVENTS = [
         setTimeout(() => {
           NB.minigames.start('codebreak', (success) => {
             const g = NB.state.game;
-            if (success) {
-              g.reputation = Math.min(100, g.reputation + 10);
-              NB.notify('Атака отбита. Репутация выросла.', 'ok');
-            } else {
-              for (let i = 0; i < 5 && i < NB.state.clients.length; i++) {
-                const v = NB.state.clients[i];
-                NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
-              }
+            if (success) { g.reputation = Math.min(100, g.reputation + 10); NB.notify('Отбито!', 'ok'); }
+            else {
+              for (let i = 0; i < 5 && i < NB.state.clients.length; i++) { const v = NB.state.clients[i]; NB.state.clients = NB.state.clients.filter(c => c.id !== v.id); }
               g.reputation = Math.max(0, g.reputation - 10);
-              NB.notify('Контратака провалилась. Потери клиентов.', 'warn');
+              NB.notify('Провал. Потери.', 'warn');
             }
             NB.save(); NB.render();
           });
         }, 250);
-        return 'Контратака начинается...';
+        return 'Контратака...';
       }},
-      { label:'Откупиться (10 000₽)', run:()=>{
-        if(NB.state.game.cash<10000) return 'Нет денег';
-        NB.state.game.cash-=10000;
-        return 'Откупились. Атака прекратилась.';
+      { label:'Откупиться (10k₽)', run:()=>{ if(NB.state.game.cash<10000) return 'Нет денег'; NB.state.game.cash-=10000; return 'Откупились'; }},
+      { label:'Терпеть', run:()=>{ for(let i=0;i<8&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 15); return '−8 клиентов'; }}
+    ]
+  },
+  { id:'client_complaint', title:'📢 Массовая жалоба', desc:'10 клиентов недовольны.', weight:0.9,
+    condition:()=>NB.state.game.daily.dayNumber > 15 && NB.state.clients.length > 5,
+    opts:[
+      { label:'Компенсировать (3000₽)', run:()=>{ if(NB.state.game.cash<3000) return 'Нет денег'; NB.state.game.cash-=3000; NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 5); return '+5 реп'; }},
+      { label:'Ответить лично (1 AP)', action:()=>{ if (!NB.spendAp(1)) return 'Нет AP'; NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 8); return '+8 реп'; }},
+      { label:'Игнорировать', run:()=>{ NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 10); for(let i=0;i<3&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return '−3 клиента'; }}
+    ]
+  },
+  { id:'investor_offer', title:'💼 Инвестор', desc:'Инвестор предлагает 50 000 ₽ за 15% компании.', weight:0.5,
+    condition:()=>NB.state.game.daily.dayNumber > 25,
+    opts:[
+      { label:'Принять', run:()=>{ const g=NB.state.game; g.cash+=50000; g.reputation=Math.max(0,g.reputation-5); g.world.flags.investorTaken=true; return '+50 000 ₽'; }},
+      { label:'Отказать', run:()=>'Отказ' }
+    ]
+  },
+  { id:'subsidy', title:'🏛 Субсидия', desc:'30 000 ₽ за подключение деревень.', weight:0.6,
+    condition:()=>NB.state.game.reputation > 60,
+    opts:[
+      { label:'Взять', run:()=>{ const g=NB.state.game; g.cash+=30000; g.reputation=Math.max(0,g.reputation-8); return '+30 000 ₽, −8 реп'; }},
+      { label:'Отказать', run:()=>'Отказ' }
+    ]
+  },
+  { id:'vip_client', title:'👑 VIP-клиент', desc:'Богатый клиент хочет VIP-тариф за 5000 ₽/мес.', weight:0.7,
+    condition:()=>NB.state.game.reputation > 70,
+    opts:[
+      { label:'Принять', run:()=>{ const g=NB.state.game; if(NB.state.tariffs.length < 6){ NB.state.tariffs.push({id:NB.state.seq.tariff++,name:'VIP',speed:500,price:5000,color:'#ffd700',desc:'Персональный VIP'}); } const t=NB.state.tariffs[NB.state.tariffs.length-1]; NB.state.clients.push({id:NB.state.seq.client++,name:'VIP-клиент',address:NB.genAddress(),phone:NB.genPhone(),tariffId:t.id,balance:0,status:'active',createdAt:new Date().toISOString(),password:NB.DEFAULT_PASS,isDrone:false,risk:'good',revealed:true}); return 'VIP подключён'; }},
+      { label:'Отказать', run:()=>'Отказ' }
+    ]
+  },
+  { id:'loyal_customer', title:'🏆 Постоянный клиент', desc:'Старый клиент предлагает оплатить год вперёд со скидкой 20%.', weight:0.7,
+    condition:()=>NB.state.clients.length > 10 && NB.state.game.daily.dayNumber > 20,
+    opts:[
+      { label:'Согласиться', run:()=>{
+        const active = NB.state.clients.filter(x => x.status === 'active' && x.balance > 0);
+        const c = NB.pick(active);
+        if (!c) return 'Нет подходящего клиента';
+        const t = NB.tariff(c.tariffId);
+        if (!t) return 'Ошибка';
+        const total = Math.round(t.price * 12 * 0.8);
+        if (c.balance < total) return 'У клиента недостаточно средств';
+        c.balance -= total;
+        NB.state.game.cash += total;
+        return `+${NB.money(total)} за год`;
       }},
-      { label:'Терпеть', run:()=>{
-        for(let i=0;i<8&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);}
-        NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 15);
-        return '−8 клиентов, −15 репутации';
+      { label:'Отказать', run:()=>'Отказ' }
+    ]
+  },
+  { id:'vandalism', title:'🔨 Вандализм', desc:'Кто-то сломал оборудование на крыше.', weight:0.8,
+    condition:()=>Object.keys(NB.state.game.upgrades).some(k => NB.state.game.upgrades[k] > 0 && !NB.state.game.upgradesBroken[k]),
+    opts:[
+      { label:'Починить (4000₽)', run:()=>{
+        if(NB.state.game.cash < 4000) return 'Нет денег';
+        NB.state.game.cash -= 4000;
+        return 'Оборудование восстановлено';
+      }},
+      { label:'Оставить как есть', run:()=>{
+        const broken = Object.keys(NB.state.game.upgrades).filter(k => NB.state.game.upgrades[k] > 0 && !NB.state.game.upgradesBroken[k]);
+        if (broken.length) {
+          const k = NB.pick(broken);
+          NB.state.game.upgradesBroken[k] = { brokenAt: NB.state.game.daily.dayNumber, reason: 'Вандализм' };
+          return `Сломано: ${G.UPGRADES[k].name}`;
+        }
+        return 'Обошлось';
       }}
     ]
   },
-  { id:'client_complaint', title:'📢 Массовая жалоба', desc:'10 клиентов жалуются на качество. Требуют компенсацию.', weight:0.9,
-    condition:()=>NB.state.game.daily.dayNumber > 15 && NB.state.clients.length > 5,
+  { id:'viral_negative', title:'💢 Волна негатива', desc:'Негативный пост о вашей компании стал виральным.', weight:0.9,
+    condition:()=>NB.state.game.daily.dayNumber > 15,
     opts:[
-      { label:'Компенсировать (3000₽)', run:()=>{
-        if(NB.state.game.cash<3000) return 'Нет денег';
-        NB.state.game.cash-=3000;
+      { label:'Опровергнуть (1 AP)', action:()=>{
+        if (!NB.spendAp(1)) return 'Нет AP';
+        NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 3);
+        return '+3 репутации';
+      }},
+      { label:'Игнорировать', run:()=>{
+        NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 8);
+        for (let i = 0; i < 2 && i < NB.state.clients.length; i++) {
+          const v = NB.state.clients[i];
+          NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
+        }
+        return '−2 клиента, −8 репутации';
+      }},
+      { label:'Нанять пиар (8000₽)', run:()=>{
+        if (NB.state.game.cash < 8000) return 'Нет денег';
+        NB.state.game.cash -= 8000;
         NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 5);
         return '+5 репутации';
+      }}
+    ]
+  },
+  { id:'server_upgrade_offer', title:'⚙ Апгрейд по акции', desc:'Поставщик предлагает скидку 40% на пропускную способность.', weight:0.7,
+    condition:()=>NB.state.game.daily.dayNumber > 10 && NB.state.game.cash > 5000,
+    opts:[
+      { label:'Купить (40% off)', run:()=>{
+        const lvl = NB.state.game.upgrades.bandwidth;
+        const maxLvl = G.UPGRADES.bandwidth.costs.length;
+        if (lvl >= maxLvl) return 'Уже максимум';
+        const cost = Math.round(G.UPGRADES.bandwidth.costs[lvl] * 0.6);
+        if (NB.state.game.cash < cost) return 'Нет денег';
+        NB.state.game.cash -= cost;
+        NB.state.game.upgrades.bandwidth++;
+        return 'Пропускная способность улучшена';
       }},
-      { label:'Ответить лично (1 AP)', action:()=>{
-        if (!NB.spendAp(1)) return 'Нет AP';
-        NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 8);
-        return '+8 репутации';
+      { label:'Отказаться', run:()=>'Пропущено' }
+    ]
+  },
+  { id:'weather_damage', title:'⛈ Погода сломала кабель', desc:'Гроза повредила магистраль. Половина клиентов без связи.', weight:0.6,
+    condition:()=>NB.state.game.daily.dayNumber > 5,
+    opts:[
+      { label:'Срочный ремонт (6000₽)', run:()=>{
+        if(NB.state.game.cash < 6000) return 'Нет денег';
+        NB.state.game.cash -= 6000;
+        return 'Связь восстановлена';
       }},
-      { label:'Проигнорировать', run:()=>{
-        NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 10);
-        for(let i=0;i<3&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);}
-        return '−3 клиента, −10 репутации';
+      { label:'Ждать', run:()=>{
+        NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 6);
+        const lost = Math.min(3, NB.state.clients.length);
+        for (let i = 0; i < lost; i++) {
+          const v = NB.state.clients[i];
+          NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
+        }
+        return `−${lost} клиентов, −6 репутации`;
       }}
     ]
   }
@@ -357,7 +435,6 @@ G.resolveEvent = function (idx) {
   if (!evt) return;
   const opt = evt.opts[idx]; if (!opt) return;
 
-  /* action() — если это мини-игра или кастомное действие */
   let result = '';
   if (opt.action) {
     result = opt.action();
@@ -369,7 +446,6 @@ G.resolveEvent = function (idx) {
     if (NB.render) NB.render();
     return;
   }
-
   if (opt.run) result = opt.run();
   NB.state.game.activeEvent = null;
   NB.state.game.history.push({ id: evt.id, title: evt.title, choice: opt.label, result, at: new Date().toISOString() });
@@ -379,9 +455,7 @@ G.resolveEvent = function (idx) {
   NB.save(); NB.checkGameState(); NB.render();
 };
 
-/* ============================================================
-   УРОВНИ
-   ============================================================ */
+/* ============ УРОВНИ ============ */
 G.LEVELS = [
   { at:0,       label:'Новичок' },
   { at:50000,   label:'Стартап' },
@@ -403,8 +477,7 @@ NB.checkGameState = function () {
   if (g.cash >= g.goal) {
     g.stats.won = true;
     NB.notify('🏆 Цель достигнута!', 'ok');
-    NB.confetti();
-    NB.save();
+    NB.confetti(); NB.save();
     setTimeout(() => { if (NB.showEndingScreen) NB.showEndingScreen('corporate_win'); }, 500);
   } else if (g.cash < -20000) {
     g.stats.lost = true;
@@ -412,16 +485,9 @@ NB.checkGameState = function () {
     NB.save();
   }
   const lvl = G.levelFor(g.cash);
-  if (lvl > g.level) {
-    g.level = lvl;
-    NB.notify(`Уровень: ${G.LEVELS[lvl-1].label}`, 'ok');
-    NB.save();
-  }
+  if (lvl > g.level) { g.level = lvl; NB.notify(`Уровень: ${G.LEVELS[lvl-1].label}`, 'ok'); NB.save(); }
 };
 
-/* ============================================================
-   РЫНОК
-   ============================================================ */
 G.updateMarketShare = function () {
   const g = NB.state.game;
   const total = NB.state.clients.filter(c => c.status === 'active').length;
@@ -433,147 +499,43 @@ G.updateMarketShare = function () {
   alive.forEach(c => { c.share = Math.round((c.share / sum) * other * 10) / 10; });
 };
 
-/* ============================================================
-   ГЛАВНЫЙ ТУР
-   ============================================================ */
+/* ============ ТУРЫ ============ */
 G.TOUR = [
   { view:'dashboard', selector:'.daily-tasks-panel', icon:'📋', title:'Добро пожаловать', text:'Слева — меню (открывается по мере роста). Главное — задачи дня. Пока не выполнены — «Следующий день» заблокирован.' },
   { view:'dashboard', selector:'.daily-tasks-list', icon:'✅', title:'Задачи дня', text:'Соберите выручку, примите клиентов, разберите заявки. Только тогда можно завершить день.' },
-  { view:'dashboard', selector:'.pending-clients-section', icon:'🆕', title:'Клиенты', text:'Принимайте клиентов — они приносят деньги. Рискованные (взломщики, спамеры, неизвестные) — риск. Неизвестные раскрываются через 3 дня.' },
+  { view:'dashboard', selector:'.pending-clients-section', icon:'🆕', title:'Клиенты', text:'Принимайте клиентов — деньги. Рискованные (взломщики, спамеры, неизвестные) — риск. Неизвестные раскрываются через 3 дня.' },
   { view:'dashboard', selector:'.collect-revenue-btn', icon:'💰', title:'Соберите деньги', text:'Клик «Собрать» — деньги в кассу. Иначе 20% сгорит.' },
-  { view:'dashboard', selector:'.economy-panel', icon:'💵', title:'Экономика', text:'Net/день = доход − расход. Минус — плохо. Проверьте «Пропускную способность» и «Маркетинг».' },
+  { view:'dashboard', selector:'.economy-panel', icon:'💵', title:'Экономика', text:'Net/день = доход − расход. Минус — плохо. Проверьте пропускную способность и маркетинг.' },
   { view:'invoices', selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим (зарплаты, семья, налоги, коммуналка).' },
   { view:'tariffs', selector:'.tariff-grid', icon:'◆', title:'Тарифы', text:'Скорость ограничена пропускной способностью. Цена — от скорости. Покупайте апгрейды, чтобы поднимать планку.' },
   { view:'upgrades', selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Открывается постепенно. Сначала — пропускная способность, маркетинг, автосбор. Остальное — позже.' },
   { view:'dashboard', selector:'.advance-day-btn', icon:'📅', title:'Готовы!', text:'Каждый день: собрать → принять клиентов → заявки → следующий день. Удачи!' }
 ];
 
-G.startTour = function () {
-  const steps = G.TOUR;
-  if (document.querySelector('.tour-overlay')) return;
-  let idx = 0;
-  const overlay = document.createElement('div');
-  overlay.className = 'tour-overlay';
-  overlay.innerHTML = `<div class="tour-highlight" id="tour-hl"></div>
-    <div class="tour-bubble left" id="tour-bubble">
-      <div class="tour-icon" id="tour-icon"></div>
-      <div class="tour-title" id="tour-title"></div>
-      <div class="tour-text" id="tour-text"></div>
-      <div class="tour-dots" id="tour-dots"></div>
-      <div class="tour-actions">
-        <button type="button" class="tour-skip" id="tour-skip">Пропустить</button>
-        <div class="right">
-          <button type="button" class="tour-back" id="tour-back" style="display:none">Назад</button>
-          <button type="button" class="tour-next" id="tour-next">Далее</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const hl = overlay.querySelector('#tour-hl');
-  const bubble = overlay.querySelector('#tour-bubble');
-
-  const step = () => {
-    const s = steps[idx];
-    if (s.view && NB.ui.view !== s.view) {
-      NB.ui.view = s.view;
-      NB.renderView();
-      setTimeout(step, 220);
-      return;
-    }
-    NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
-    const target = s.selector ? document.querySelector(s.selector) : null;
-    if (target) {
-      target.classList.add('tutorial-pulse');
-      const r = target.getBoundingClientRect();
-      hl.style.display = 'block';
-      hl.style.left = (r.left - 6) + 'px';
-      hl.style.top = (r.top - 6) + 'px';
-      hl.style.width = (r.width + 12) + 'px';
-      hl.style.height = (r.height + 12) + 'px';
-      const mob = window.innerWidth <= 760;
-      if (mob) {
-        bubble.className = 'tour-bubble below';
-        bubble.style.left = '12px'; bubble.style.right = '12px'; bubble.style.width = 'auto';
-        bubble.style.top = (r.bottom + 18) + 'px'; bubble.style.transform = 'none';
-      } else {
-        bubble.className = 'tour-bubble left';
-        bubble.style.width = '320px';
-        bubble.style.transform = 'none';
-        bubble.style.left = Math.min(r.right + 20, window.innerWidth - 340) + 'px';
-        bubble.style.top = Math.max(12, r.top - 22) + 'px';
-      }
-    } else {
-      hl.style.display = 'none';
-      bubble.className = 'tour-bubble left';
-      bubble.style.width = '360px';
-      bubble.style.left = '50%';
-      bubble.style.transform = 'translateX(-50%)';
-      bubble.style.top = '160px';
-    }
-    overlay.querySelector('#tour-icon').textContent = s.icon;
-    overlay.querySelector('#tour-title').textContent = s.title;
-    overlay.querySelector('#tour-text').textContent = s.text;
-    overlay.querySelector('#tour-dots').innerHTML = steps.map((_, i) => `<i class="${i === idx ? 'active' : ''}"></i>`).join('');
-    overlay.querySelector('#tour-next').textContent = idx === steps.length - 1 ? 'Начать!' : 'Далее';
-    overlay.querySelector('#tour-back').style.display = idx > 0 ? '' : 'none';
-  };
-
-  const finish = () => {
-    NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
-    overlay.style.opacity = '0';
-    setTimeout(() => overlay.remove(), 300);
-    NB.state.onboarded.tour = true;
-    if (!NB.state.onboarded.views) NB.state.onboarded.views = {};
-    NB.state.onboarded.views.dashboard = true;
-    NB.save();
-  };
-
-  overlay.querySelector('#tour-next').addEventListener('click', () => {
-    if (idx === steps.length - 1) finish(); else { idx++; step(); }
-  });
-  overlay.querySelector('#tour-back').addEventListener('click', () => { if (idx > 0) { idx--; step(); } });
-  overlay.querySelector('#tour-skip').addEventListener('click', finish);
-  overlay.style.pointerEvents = 'auto';
-  requestAnimationFrame(step);
-};
-
-NB.startTour = () => G.startTour();
-
-/* ============================================================
-   ТУРЫ ПО ВКЛАДКАМ
-   ============================================================ */
 G.TOURS_BY_VIEW = {
-  dashboard: [
-    { selector:'.daily-tasks-panel', icon:'📋', title:'Задачи дня', text:'Главное: собрать выручку, принять клиентов, разобрать заявки. Пока не выполнено — «Следующий день» заблокирован.' },
-    { selector:'.pending-clients-section', icon:'🆕', title:'Клиенты', text:'Принимайте клиентов — деньги. Рискованные (взломщики, спамеры, неизвестные) — риск. Неизвестные раскрываются через 3 дня.' },
-    { selector:'.economy-panel', icon:'💵', title:'Экономика', text:'Net/день = доход − расход. Минус — плохо. Проверьте пропускную способность и маркетинг.' },
-    { selector:'.advance-day-btn', icon:'📅', title:'Следующий день', text:'Завершает день. Спишутся расходы, придут новые клиенты и заявки.' }
-  ],
+  dashboard: G.TOUR,
   chat: [
-    { selector:'.chat-wrap', icon:'💬', title:'Поддержка', text:'Клиенты пишут. Отвечайте. Некоторые ответы требуют AP, сотрудников с навыком или мини-игру.' }
+    { selector:'.chat-wrap', icon:'💬', title:'Поддержка', text:'Клиенты пишут. Отвечайте. Некоторые ответы требуют AP, сотрудников или мини-игру.' }
   ],
   employees: [
-    { selector:'.employees-grid', icon:'👥', title:'Сотрудники', text:'Нанятые помогают в чате и событиях. У них свой AP. Прокачиваются с успешными решениями.' }
+    { selector:'.employees-grid', icon:'👥', title:'Сотрудники', text:'Помогают в чате и событиях. У них свой AP. Прокачиваются с успехами.' }
   ],
   competitors: [
-    { selector:'.comp-list', icon:'🏢', title:'Конкуренты', text:'Можно договариваться (1 AP) или саботировать (2 AP + 10 000 ₽). Отношения влияют на агрессию.' }
+    { selector:'.comp-list', icon:'🏢', title:'Конкуренты', text:'Переговоры (1 AP) или саботаж (2 AP + 10 000 ₽). Отношения влияют на агрессию.' }
   ],
   upgrades: [
     { selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Открывается постепенно. Пропускная способность — ключевая: без неё нельзя ставить высокие тарифы.' }
   ],
   invoices: [
-    { selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим (зарплаты, семья, налоги). Просрочки бьют по репутации.' }
+    { selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим. Просрочки бьют по репутации.' }
   ],
   tariffs: [
     { selector:'.tariff-grid', icon:'◆', title:'Тарифы', text:'Диапазон скорости растёт от пропускной способности. Цена — от скорости. Нельзя ставить максимум без апгрейдов.' }
   ]
 };
 
-G.startViewTour = function (view) {
-  if (!G.TOURS_BY_VIEW[view]) return;
-  if (NB.state.onboarded.views && NB.state.onboarded.views[view]) return;
+function makeTour(steps, onFinish) {
   if (document.querySelector('.tour-overlay')) return;
-  const steps = G.TOURS_BY_VIEW[view];
   let idx = 0;
   const overlay = document.createElement('div');
   overlay.className = 'tour-overlay';
@@ -595,18 +557,29 @@ G.startViewTour = function (view) {
   const hl = overlay.querySelector('#tour-hl');
   const bubble = overlay.querySelector('#tour-bubble');
 
+  const updateHighlight = () => {
+    const s = steps[idx];
+    if (!s.selector) return;
+    const target = document.querySelector(s.selector);
+    if (!target) return;
+    const r = target.getBoundingClientRect();
+    hl.style.display = 'block';
+    hl.style.left = (r.left - 6) + 'px';
+    hl.style.top = (r.top - 6) + 'px';
+    hl.style.width = (r.width + 12) + 'px';
+    hl.style.height = (r.height + 12) + 'px';
+  };
+
   const step = () => {
     const s = steps[idx];
+    if (s.view && NB.ui.view !== s.view) { NB.ui.view = s.view; NB.renderView(); setTimeout(step, 220); return; }
     NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
+
     const target = s.selector ? document.querySelector(s.selector) : null;
     if (target) {
       target.classList.add('tutorial-pulse');
+      updateHighlight();
       const r = target.getBoundingClientRect();
-      hl.style.display = 'block';
-      hl.style.left = (r.left - 6) + 'px';
-      hl.style.top = (r.top - 6) + 'px';
-      hl.style.width = (r.width + 12) + 'px';
-      hl.style.height = (r.height + 12) + 'px';
       const mob = window.innerWidth <= 760;
       if (mob) {
         bubble.className = 'tour-bubble below';
@@ -636,13 +609,16 @@ G.startViewTour = function (view) {
   };
 
   const finish = () => {
+    window.removeEventListener('scroll', updateHighlight);
+    window.removeEventListener('resize', updateHighlight);
     NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 300);
-    if (!NB.state.onboarded.views) NB.state.onboarded.views = {};
-    NB.state.onboarded.views[view] = true;
-    NB.save();
+    if (onFinish) onFinish();
   };
+
+  window.addEventListener('scroll', updateHighlight, { passive: true });
+  window.addEventListener('resize', updateHighlight, { passive: true });
 
   overlay.querySelector('#tour-next').addEventListener('click', () => {
     if (idx === steps.length - 1) finish(); else { idx++; step(); }
@@ -651,6 +627,28 @@ G.startViewTour = function (view) {
   overlay.querySelector('#tour-skip').addEventListener('click', finish);
   overlay.style.pointerEvents = 'auto';
   requestAnimationFrame(step);
+}
+
+G.startTour = function () {
+  makeTour(G.TOUR, () => {
+    NB.state.onboarded.tour = true;
+    if (!NB.state.onboarded.views) NB.state.onboarded.views = {};
+    NB.state.onboarded.views.dashboard = true;
+    NB.save();
+  });
 };
+
+G.startViewTour = function (view) {
+  if (!G.TOURS_BY_VIEW[view]) return;
+  if (view === 'dashboard' && !NB.state.onboarded.tour) return G.startTour();
+  if (NB.state.onboarded.views && NB.state.onboarded.views[view]) return;
+  makeTour(G.TOURS_BY_VIEW[view], () => {
+    if (!NB.state.onboarded.views) NB.state.onboarded.views = {};
+    NB.state.onboarded.views[view] = true;
+    NB.save();
+  });
+};
+
+NB.startTour = () => G.startTour();
 
 })(window);

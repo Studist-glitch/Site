@@ -1,3 +1,4 @@
+/* isp_billing_chat.js — чат-тикеты */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -15,7 +16,7 @@ C.TEMPLATES = {
         replies: [
           { label: 'Давайте проверю линию', apCost: 1, leadsTo: 'check_line' },
           { label: 'Перезагрузите роутер', apCost: 0, leadsTo: 'reboot' },
-          { label: 'Отправить техника', apCost: 0, employeeSkill: 'repair', leadsTo: 'send_tech', result: 'good' }
+          { label: 'Отправить техника', apCost: 0, employeeSkill: 'repair', leadsTo: 'send_tech', reward: { reputation: 1 } }
         ]
       },
       check_line: {
@@ -53,7 +54,7 @@ C.TEMPLATES = {
       initial: {
         replies: [
           { label: 'Новый роутер за 1500 ₽', apCost: 0, leadsTo: 'resolved', reward: { cash: 1500, reputation: 2 } },
-          { label: 'Попробуйте сброс', apCost: 1, minigame: 'codebreak', leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Попробуйте сброс', apCost: 1, minigame: 'sequence', leadsTo: 'resolved', reward: { reputation: 1 } },
           { label: 'Это не наша проблема', apCost: 0, leadsTo: 'resolved', penalty: { reputation: -3 } }
         ]
       }
@@ -73,7 +74,7 @@ C.TEMPLATES = {
       check_tariff: {
         messages: [{ from: 'client', text: 'И?' }],
         replies: [
-          { label: 'Ошибка наша. Пересчёт сделан.', apCost: 0, leadsTo: 'resolved', reward: { reputation: 2 }, cost: 100 },
+          { label: 'Ошибка наша. Пересчёт сделан.', apCost: 0, cost: 100, leadsTo: 'resolved', reward: { reputation: 2 } },
           { label: 'Всё верно, тариф такой', apCost: 0, leadsTo: 'resolved', penalty: { reputation: -1 } }
         ]
       }
@@ -83,23 +84,23 @@ C.TEMPLATES = {
     subject: 'Угроза взлома',
     intro: [
       { from: 'client', text: 'Привет. Я взломал твой сервер. У меня база клиентов.' },
-      { from: 'client', text: 'Заплати 20 000 ₽ — или солью всё в открытый доступ.' }
+      { from: 'client', text: 'Заплати 20 000 ₽ — или солью всё.' }
     ],
     stages: {
       initial: {
         replies: [
-          { label: 'Заплатить 20 000 ₽', apCost: 0, cost: 20000, leadsTo: 'paid', reward: { reputation: 0 } },
+          { label: 'Заплатить 20 000 ₽', apCost: 0, cost: 20000, leadsTo: 'paid' },
           { label: 'Я вызову ФСБ', apCost: 1, minigame: 'codebreak', leadsTo: 'caught', reward: { reputation: 5 } },
           { label: 'Сам тебя взломаю', apCost: 2, employeeSkill: 'hack', leadsTo: 'counter_hack', reward: { reputation: 3, cash: 5000 } },
           { label: 'Проигнорировать', apCost: 0, leadsTo: 'leaked', penalty: { reputation: -15 } }
         ]
       },
       paid: {
-        messages: [{ from: 'client', text: 'Умный ход. Пока база у меня — не дёргайся.' }],
+        messages: [{ from: 'client', text: 'Умный ход.' }],
         replies: [{ label: 'Понял', apCost: 0, leadsTo: 'resolved' }]
       },
       caught: {
-        messages: [{ from: 'client', text: 'Ладно, ладно! Я не хотел! Забери всё обратно!' }],
+        messages: [{ from: 'client', text: 'Ладно, ладно! Я не хотел!' }],
         replies: [{ label: 'Хорошо', apCost: 0, leadsTo: 'resolved', reward: { reputation: 3 } }]
       },
       counter_hack: {
@@ -107,8 +108,31 @@ C.TEMPLATES = {
         replies: [{ label: 'Это тебе урок', apCost: 0, leadsTo: 'resolved', reward: { reputation: 5 } }]
       },
       leaked: {
-        messages: [{ from: 'client', text: 'Жаль. Твоя репутация теперь в открытом доступе.' }],
+        messages: [{ from: 'client', text: 'Твоя репутация теперь в открытом доступе.' }],
         replies: [{ label: '...', apCost: 0, leadsTo: 'resolved' }]
+      }
+    }
+  },
+  hacker_subtle: {
+    subject: 'Странное сообщение',
+    intro: [
+      { from: 'client', text: 'Привет. Заметил странную активность в моём аккаунте.' },
+      { from: 'client', text: 'Хотя... возможно, я сам что-то нажал.' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Проверю логи', apCost: 1, employeeSkill: 'hack', leadsTo: 'analyzed' },
+          { label: 'Смените пароль', apCost: 0, leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Это вы сами', apCost: 0, leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      },
+      analyzed: {
+        messages: [{ from: 'client', text: 'И что там?' }],
+        replies: [
+          { label: 'Ложная тревога', apCost: 0, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Попытка взлома. Блокирую', apCost: 0, leadsTo: 'resolved', reward: { reputation: 4, cash: 500 } }
+        ]
       }
     }
   },
@@ -124,21 +148,21 @@ C.TEMPLATES = {
         ]
       },
       info: {
-        messages: [{ from: 'client', text: 'Отлично! Схема простая: переведи 5000₽ — получишь 50000₽ через неделю.' }],
+        messages: [{ from: 'client', text: 'Отлично! Переведи 5000₽ — получишь 50000₽ через неделю.' }],
         replies: [
           { label: 'Вы точно мошенник. Блокирую.', apCost: 0, leadsTo: 'resolved', reward: { reputation: 3 } },
           { label: 'Попробую (5000₽)', apCost: 0, cost: 5000, leadsTo: 'scammed', penalty: { reputation: -3 } }
         ]
       },
       scammed: {
-        messages: [{ from: 'client', text: 'Спасибо за доверие! Деньги придут через неделю.' }],
+        messages: [{ from: 'client', text: 'Спасибо! Деньги придут через неделю.' }],
         replies: [{ label: 'Буду ждать', apCost: 0, leadsTo: 'resolved' }]
       }
     }
   },
   business_offer: {
     subject: 'Подключение офиса',
-    intro: [{ from: 'client', text: 'Добрый день! Мы открываем офис, нужно 10 точек. Что предложите?' }],
+    intro: [{ from: 'client', text: 'Добрый день! Открываем офис, нужно 10 точек. Что предложите?' }],
     stages: {
       initial: {
         replies: [
@@ -148,28 +172,73 @@ C.TEMPLATES = {
         ]
       },
       negotiate: {
-        messages: [{ from: 'client', text: 'Приятно иметь дело! Договор подпишем завтра.' }],
+        messages: [{ from: 'client', text: 'Приятно иметь дело! Договор завтра.' }],
         replies: [{ label: 'Отлично', apCost: 0, leadsTo: 'resolved', reward: { cash: 2000, reputation: 2 } }]
       }
     }
   },
   refund_request: {
     subject: 'Возврат средств',
-    intro: [{ from: 'client', text: 'Меня не устроило качество. Верните деньги за 3 месяца.' }],
+    intro: [{ from: 'client', text: 'Меня не устроило качество. Верните за 3 месяца.' }],
     stages: {
       initial: {
         replies: [
           { label: 'Вернём полную сумму (1500₽)', apCost: 0, cost: 1500, leadsTo: 'resolved', reward: { reputation: 4 } },
-          { label: 'Вернём 50%', apCost: 0, cost: 750, leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Вернём 50% (750₽)', apCost: 0, cost: 750, leadsTo: 'resolved', reward: { reputation: 1 } },
           { label: 'Отказать', apCost: 0, leadsTo: 'refuse' }
         ]
       },
       refuse: {
-        messages: [{ from: 'client', text: 'Тогда я напишу жалобу в Роспотребнадзор!' }],
+        messages: [{ from: 'client', text: 'Тогда жалоба в Роспотребнадзор!' }],
         replies: [
           { label: 'Давайте всё же вернём (1500₽)', apCost: 0, cost: 1500, leadsTo: 'resolved', reward: { reputation: 2 } },
           { label: 'Жалуйтесь', apCost: 0, leadsTo: 'resolved', penalty: { reputation: -5 } }
         ]
+      }
+    }
+  },
+  sla_complaint: {
+    subject: 'Жалоба на скорость',
+    intro: [{ from: 'client', text: 'Уже третий день скорость ниже заявленной! Я платил за 500, а получаю 50!' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Проверю линию (1 AP)', apCost: 1, minigame: 'sequence', leadsTo: 'checked' },
+          { label: 'Компенсировать (500₽)', apCost: 0, cost: 500, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Это ваш роутер', apCost: 0, leadsTo: 'refused', penalty: { reputation: -3 } }
+        ]
+      },
+      checked: {
+        messages: [{ from: 'client', text: 'И что показало?' }],
+        replies: [
+          { label: 'Проблема у нас. Исправлено.', apCost: 0, leadsTo: 'resolved', reward: { reputation: 4 } },
+          { label: 'Требуется замена оборудования (1000₽)', apCost: 0, cost: 1000, leadsTo: 'resolved', reward: { reputation: 1 } }
+        ]
+      },
+      refused: {
+        messages: [{ from: 'client', text: 'Ну и сервис...' }],
+        replies: [{ label: 'До свидания', apCost: 0, leadsTo: 'resolved' }]
+      }
+    }
+  },
+  upsell_biz: {
+    subject: 'Хочу улучшить тариф',
+    intro: [{ from: 'client', text: 'Мне нравится ваш сервис. Думаю перейти на более дорогой тариф. Что посоветуете?' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Предложить VIP', apCost: 0, employeeSkill: 'pitch', leadsTo: 'upsold' },
+          { label: 'Предложить стандартный', apCost: 0, leadsTo: 'upsold_std' },
+          { label: 'Ничего не предлагать', apCost: 0, leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      },
+      upsold: {
+        messages: [{ from: 'client', text: 'Отлично! Оформляйте.' }],
+        replies: [{ label: 'Готово', apCost: 0, leadsTo: 'resolved', reward: { cash: 3000, reputation: 2 } }]
+      },
+      upsold_std: {
+        messages: [{ from: 'client', text: 'Хорошо, подойдёт.' }],
+        replies: [{ label: 'Оформлено', apCost: 0, leadsTo: 'resolved', reward: { cash: 800, reputation: 1 } }]
       }
     }
   }
@@ -195,9 +264,16 @@ C.createTicket = function (clientId) {
 C.renderView = function () {
   const st = NB.state;
   const tickets = st.tickets.filter(t => t.status === 'open');
-  const selected = NB.ui.chatThreadId
-    ? st.tickets.find(t => t.id === NB.ui.chatThreadId && t.status === 'open')
-    : (tickets[0] || null);
+
+  if (!NB.ui.chatThreadId && tickets[0]) NB.ui.chatThreadId = tickets[0].id;
+
+  let selected = NB.ui.chatThreadId
+    ? tickets.find(t => t.id === NB.ui.chatThreadId)
+    : null;
+  if (!selected && tickets[0]) {
+    selected = tickets[0];
+    NB.ui.chatThreadId = selected.id;
+  }
 
   return `
     <div class="page-head">
@@ -209,7 +285,7 @@ C.renderView = function () {
           const c = NB.client(t.clientId) || { name: '—' };
           const last = t.chat[t.chat.length - 1];
           return `<div class="chat-thread-item ${selected && selected.id === t.id ? 'active' : ''}" data-chat-thread="${t.id}">
-            <b>${NB.esc(c.name)} <span class="chat-badge">NEW</span></b>
+            <b>${NB.esc(c.name)}</b>
             <small>${NB.esc(t.subject)}</small>
             <small style="color:var(--text-2);margin-top:4px">${last ? NB.esc(last.text.slice(0, 50)) : ''}</small>
           </div>`;
@@ -275,7 +351,6 @@ C.handleReply = function (ticketId, replyIdx) {
   if (!reply) return;
   const g = NB.state.game;
 
-  /* === СНАЧАЛА ВСЕ ПРОВЕРКИ === */
   if (reply.apCost > 0 && g.ap.current < reply.apCost) return NB.toast('Не хватает AP', 'err');
   if (reply.cost && g.cash < reply.cost) return NB.toast('Недостаточно денег', 'err');
   let employee = null;
@@ -285,15 +360,12 @@ C.handleReply = function (ticketId, replyIdx) {
     if (employee.ap.current < 1) return NB.toast('У сотрудника нет AP', 'err');
   }
 
-  /* === СПИСЫВАЕМ === */
   if (reply.apCost > 0) NB.spendAp(reply.apCost);
   if (reply.cost) g.cash -= reply.cost;
   if (employee) NB.employees.spendAp(employee.id, 1);
 
-  /* === СООБЩЕНИЕ === */
   t.chat.push({ from: 'staff', text: reply.label, at: Date.now() });
 
-  /* === МИНИ-ИГРА === */
   if (reply.minigame) {
     NB.save();
     NB.minigames.start(reply.minigame, (success) => {
@@ -302,7 +374,6 @@ C.handleReply = function (ticketId, replyIdx) {
     return;
   }
 
-  /* === ПЕРЕХОД === */
   if (reply.leadsTo === 'resolved') {
     C.resolveTicket(t, reply, true, employee);
   } else if (tpl.stages[reply.leadsTo]) {

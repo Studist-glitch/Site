@@ -1,10 +1,9 @@
-/* isp_billing_actions.js — все действия */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const A = NB.actions = NB.actions || {};
 
-/* ============ Клиенты ============ */
+/* ============ КЛИЕНТЫ ============ */
 A.acceptClient = function (id) {
   const g = NB.state.game;
   const pc = g.pendingClients.find(c => c.id === Number(id));
@@ -14,7 +13,7 @@ A.acceptClient = function (id) {
     id: NB.state.seq.client++, name: pc.name, address: pc.address, phone: pc.phone,
     tariffId: pc.tariffId, balance: 0, status: 'active',
     createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
-    isDrone, risk: pc.risk
+    isDrone, risk: pc.risk, revealed: true
   });
   g.pendingClients = g.pendingClients.filter(c => c.id !== pc.id);
   NB.notify(`Принят «${pc.name}»`, 'ok');
@@ -41,11 +40,16 @@ A.openClient = function (id) {
   const myTickets = NB.state.tickets.filter(x => x.clientId === c.id).slice(0,3);
   const totalPaid = NB.state.invoices.filter(i => i.clientId === c.id && i.status === 'paid')
     .reduce((s,i) => s + i.amount, 0);
+  const riskLabels = {
+    good:'✓ Надёжный', normal:'— Обычный', risky:'⚠ Рискованный',
+    hacker:'⚠ Возможен взлом', spammer:'⚠ Возможен спам', unknown:'❓ Нет данных'
+  };
   const html = `
     <div class="detail-section">
       <div class="detail-row"><span>Телефон</span><span>${NB.esc(c.phone)}</span></div>
       <div class="detail-row"><span>Адрес</span><span>${NB.esc(c.address)}</span></div>
       <div class="detail-row"><span>Тип</span><span>${c.isDrone ? '🤖 Дрон' : '👤 Человек'}</span></div>
+      <div class="detail-row"><span>Риск</span><span>${riskLabels[c.risk] || '—'}</span></div>
       <div class="detail-row"><span>С нами с</span><span>${NB.fmtDate(c.createdAt)}</span></div>
       <div class="detail-row"><span>Статус</span><span>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</span></div>
     </div>
@@ -62,6 +66,13 @@ A.openClient = function (id) {
         <span>${NB.money(i.amount)} · ${i.status === 'paid' ? '✓' : '○'}</span>
       </div>`).join('') : '<p class="muted small">Нет</p>'}
     </div>
+    ${myTickets.length ? `<div class="detail-section">
+      <h4>Заявки</h4>
+      ${myTickets.map(tk => `<div class="detail-row">
+        <span>${NB.esc(tk.subject)}</span>
+        <span class="pill ${tk.status === 'open' ? 'wait' : 'ok'}">${tk.status === 'open' ? 'Открыта' : 'Решена'}</span>
+      </div>`).join('')}
+    </div>` : ''}
     <div class="detail-actions">
       <button class="btn primary small" data-action="recharge" data-id="${c.id}">Пополнить</button>
       <button class="btn ghost small" data-action="edit-client" data-id="${c.id}">Изменить</button>
@@ -88,7 +99,7 @@ A.addClient = function () {
         tariffId: Number(fd.get('tariffId')),
         balance: 0, status: 'active',
         createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
-        isDrone: false, risk: 'normal'
+        isDrone: false, risk: 'normal', revealed: true
       });
       NB.save(); NB.closeModal(); NB.render();
       NB.notify(`Добавлен «${name}»`, 'ok');
@@ -150,7 +161,7 @@ A.delClient = function (id) {
   NB.save(); NB.closeModal(); NB.render();
 };
 
-/* ============ Счета ============ */
+/* ============ СЧЕТА ============ */
 A.genInvoices = function () {
   const p = NB.period();
   let created = 0;
@@ -183,9 +194,7 @@ A.delInvoice = function (id) {
   NB.save(); NB.render();
 };
 
-A.payBill = function (id) {
-  NB.invoices.payBill(Number(id));
-};
+A.payBill = function (id) { NB.invoices.payBill(Number(id)); };
 
 A.takeLoan = function () {
   NB.openModal({
@@ -201,7 +210,7 @@ A.takeLoan = function () {
   });
 };
 
-/* ============ Тарифы ============ */
+/* ============ ТАРИФЫ ============ */
 A.addTariff = function () {
   NB.openModal({
     title: 'Новый тариф',
@@ -260,7 +269,7 @@ A.delTariff = function (id) {
   NB.save(); NB.render();
 };
 
-/* ============ Заявки ============ */
+/* ============ ЗАЯВКИ ============ */
 A.resolveTicket = function (id) {
   const t = NB.state.tickets.find(x => x.id === Number(id));
   if (!t) return;
@@ -270,36 +279,23 @@ A.resolveTicket = function (id) {
 };
 
 A.newTicket = function () {
-  const c = NB.client(NB.state.session?.id);
-  if (!c) return;
-  NB.openModal({
-    title: 'Новая заявка',
-    submit: 'Отправить',
-    html: NB.textareaField('Опишите проблему', 'subject'),
-    onSubmit(fd) {
-      const subject = String(fd.get('subject') || '').trim();
-      if (!subject) return NB.toast('Опишите', 'err');
-      NB.state.tickets.push({ id: NB.state.seq.ticket++, clientId: c.id, subject,
-        status: 'open', createdAt: new Date().toISOString() });
-      NB.save(); NB.closeModal(); NB.render();
-    }
-  });
+  NB.toast('Заявки создаются клиентами автоматически', 'info');
 };
 
-/* ============ Сотрудники ============ */
+/* ============ СОТРУДНИКИ ============ */
 A.hireEmployee = function (id) { NB.employees.hire(Number(id)); };
 A.fireEmployee = function (id) { NB.employees.fire(Number(id)); };
 A.refreshEmployeesPool = function () { NB.employees.refreshPool(); };
 
-/* ============ Апгрейды ============ */
+/* ============ АПГРЕЙДЫ ============ */
 A.buyUpgrade = function (key) { NB.game.buyUpgrade(key); };
 A.repairUpgrade = function (key) { NB.game.repairUpgrade(key); };
 
-/* ============ Конкуренты ============ */
+/* ============ КОНКУРЕНТЫ ============ */
 A.negotiate = function (id) { NB.competitors.negotiate(id); };
 A.sabotage = function (id) { NB.competitors.sabotage(id); };
 
-/* ============ Сюжет ============ */
+/* ============ СЮЖЕТ ============ */
 A.openStory = function () { NB.story.showNextInQueue(); };
 A.buildBunker = function () {
   const g = NB.state.game;
@@ -318,8 +314,10 @@ A.buildBunker = function () {
   NB.save(); NB.render();
 };
 
-/* ============ Общее ============ */
+/* ============ ОБЩЕЕ ============ */
 A.advanceDay = function () { NB.advanceDay(); };
+A.finishDay = function () { NB.advanceDay(); };
+
 A.collectRevenue = function () {
   const g = NB.state.game;
   if (g.daily.pendingRevenue <= 0) return NB.toast('Нечего собирать', 'err');
@@ -329,6 +327,8 @@ A.collectRevenue = function () {
   g.daily.pendingRevenue = 0;
   NB.notify(`Собрано ${NB.money(amount)}`, 'ok');
   NB.addLog(`Собрано: +${NB.money(amount)}`, 'success');
+  const btn = document.querySelector('.collect-revenue-btn');
+  if (btn) { btn.classList.add('got-money'); setTimeout(() => btn.classList.remove('got-money'), 500); }
   NB.save(); NB.render();
 };
 
@@ -353,6 +353,43 @@ A.resolveEventModal = function () {
   if (NB.state.game.activeEvent) NB.game.showEventModal();
 };
 
+/* ============ СЕМЬЯ ============ */
+A.familyEvening = function () {
+  const g = NB.state.game;
+  if (!g.family.wife) return NB.toast('Нет семьи', 'err');
+  if (!NB.spendAp(1)) return NB.toast('Не хватает AP', 'err');
+  g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 20);
+  g.family.crisisShown = false;
+  NB.addLog('Проведён вечер с семьёй (+20)', 'success');
+  NB.notify('Семья довольна', 'ok');
+  NB.save();
+  NB.render();
+};
+
+/* ============ ИСТОРИЯ ============ */
+A.showHistory = function () {
+  const g = NB.state.game;
+  const log = (g.history || []).slice(-20).reverse();
+  NB.openModal({
+    title: 'История решений',
+    noSubmit: true,
+    html: log.length
+      ? `<div style="max-height:400px;overflow:auto">${log.map(h => `
+        <div class="detail-section">
+          <div class="detail-row">
+            <span style="color:var(--text)">${NB.esc(h.title)}</span>
+            <span style="color:var(--muted);font-size:11.5px">${NB.fmtDateTime(h.at)}</span>
+          </div>
+          <div class="detail-row">
+            <span>${NB.esc(h.choice)}</span>
+            <span>${NB.esc(h.result || '—')}</span>
+          </div>
+        </div>`).join('')}</div>`
+      : '<p class="empty">Пока пусто</p>'
+  });
+};
+
+/* ============ NOTIFS ============ */
 A.showNotifs = function () {
   const existing = document.getElementById('notif-panel');
   if (existing) { existing.classList.remove('show'); setTimeout(() => existing.remove(), 220); return; }
@@ -394,19 +431,23 @@ A.markRead = function () {
   if (p) { p.classList.remove('show'); setTimeout(() => p.remove(), 200); }
 };
 
+/* ============ MAP ============ */
 A.map = {
   'export':           A.exportData,
   'reset-data':       A.resetData,
   'clear-activity':   A.clearActivity,
   'advance-day':      A.advanceDay,
+  'finish-day':       A.finishDay,
   'show-notifs':      A.showNotifs,
   'mark-read':        A.markRead,
   'start-tour':       A.startTour,
+  'show-history':     A.showHistory,
   'buy-upgrade':      d => A.buyUpgrade(d.key),
   'repair-upgrade':   d => A.repairUpgrade(d.key),
   'resolve-event-modal': A.resolveEventModal,
   'open-story':       A.openStory,
   'build-bunker':     A.buildBunker,
+  'family-evening':   A.familyEvening,
   'accept-client':    d => A.acceptClient(d.id),
   'reject-client':    d => A.rejectClient(d.id),
   'open-client':      d => A.openClient(d.id),

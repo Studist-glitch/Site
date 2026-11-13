@@ -5,33 +5,30 @@ const T = NB.tariffs = NB.tariffs || {};
 
 T.SPEED_STEPS = [25, 50, 100, 150, 200, 300, 500, 700, 1000, 1500, 2000, 3000, 5000];
 
-/* Диапазон скоростей зависит от апгрейдов */
 T.getRange = function () {
   const g = NB.state.game.upgrades;
   const cLvl = NB.state.game.company.level;
-
-  /* Базовая скорость — 300 (индекс 5). Апгрейды расширяют. */
   let maxIdx = 5;
   maxIdx += (g.bandwidth || 0);
   maxIdx += (g.fiber || 0);
   maxIdx += (g.satellite || 0);
   maxIdx += Math.min(2, Math.floor((cLvl - 1) / 3));
   maxIdx = Math.min(maxIdx, T.SPEED_STEPS.length - 1);
-
-  const maxSpeed = T.SPEED_STEPS[maxIdx];
-
   return {
     speedMin: 25,
-    speedMax: maxSpeed,
-    steps: T.SPEED_STEPS.filter(s => s <= maxSpeed)
+    speedMax: T.SPEED_STEPS[maxIdx],
+    steps: T.SPEED_STEPS.filter(s => s <= T.SPEED_STEPS[maxIdx])
   };
 };
 
-/* Цена — per-speed bounds */
+/* Цена — строго пропорциональна скорости, узкий диапазон */
 T.getPriceBounds = function (speed) {
-  const minP = Math.round(speed * 3 + 100);
-  const maxP = Math.round(speed * 15 + 500);
-  return { min: minP, max: maxP };
+  /* Базовая: ~5₽ за Мбит/с. Диапазон: 0.7× — 1.6× от базовой */
+  const base = Math.round(speed * 5);
+  return {
+    min: Math.max(100, Math.round(base * 0.7)),
+    max: Math.round(base * 1.6)
+  };
 };
 
 T.validate = function (speed, price) {
@@ -87,16 +84,13 @@ T.bindSliders = function () {
       const speed = r.steps[Number(sS.value)];
       const b = T.getPriceBounds(speed);
       sD.textContent = speed + ' Мбит/с';
-      pS.min = b.min;
-      pS.max = b.max;
+      pS.min = b.min; pS.max = b.max;
       const rec = T.recommendedPrice(speed);
       pS.value = Math.min(b.max, Math.max(b.min, rec));
       pD.textContent = pS.value + ' ₽/мес';
       pR.textContent = `${b.min}–${b.max} ₽`;
     });
-    pS.addEventListener('input', () => {
-      pD.textContent = pS.value + ' ₽/мес';
-    });
+    pS.addEventListener('input', () => { pD.textContent = pS.value + ' ₽/мес'; });
   }, 50);
 };
 

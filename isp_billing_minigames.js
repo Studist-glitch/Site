@@ -3,17 +3,15 @@
 const NB = global.NB;
 const M = NB.minigames = NB.minigames || {};
 
-/* ============ 1. Sequence ============ */
 M.sequence = function (callback) {
   const colors = ['0', '1', '2', '3'];
   const rounds = 3;
   let round = 0, sequence = [], playerIdx = 0;
 
-  NB.openModal({
-    title: '', noSubmit: true, boxClass: 'mg-modal',
+  NB.openModal({ title: '', noSubmit: true, boxClass: 'mg-modal',
     html: `<div class="mg-modal">
       <div class="mg-title">🔐 Взлом системы</div>
-      <div class="mg-desc">Запомните последовательность и повторите. ${rounds} раунда.</div>
+      <div class="mg-desc">Запомните последовательность. ${rounds} раунда.</div>
       <div class="mg-status" id="mg-status">Готовы?</div>
       <div class="mg-sequence" id="mg-seq">
         ${colors.map(c => `<button class="mg-seq-btn" data-color="${c}"></button>`).join('')}
@@ -35,7 +33,7 @@ M.sequence = function (callback) {
     sequence = [];
     for (let i = 0; i < 2 + round; i++) sequence.push(NB.randInt(0, 3));
     playerIdx = 0;
-    status.textContent = `Раунд ${round + 1}/${rounds} — смотрите...`;
+    status.textContent = `Раунд ${round + 1}/${rounds}`;
     let i = 0;
     const play = () => {
       if (i >= sequence.length) { status.textContent = 'Ваш ход'; return; }
@@ -59,7 +57,6 @@ M.sequence = function (callback) {
   startRound();
 };
 
-/* ============ 2. Pairs ============ */
 M.pairs = function (callback) {
   const icons = ['🔧', '🔌', '💾', '📡', '⚡', '🔋', '🖥', '📱'];
   const deck = [...icons, ...icons].sort(() => Math.random() - 0.5);
@@ -102,7 +99,6 @@ M.pairs = function (callback) {
   });
 };
 
-/* ============ 3. Codebreak — ввод кода по таймеру ============ */
 M.codebreak = function (callback) {
   const code = Array.from({ length: 6 }, () => NB.randInt(0, 9)).join('');
   let timeLeft = 8, timer = null, done = false;
@@ -151,15 +147,88 @@ M.codebreak = function (callback) {
   setTimeout(() => input.focus(), 80);
 };
 
-/* ============ 4. Negotiate — диалог-переговоры (3 раунда) ============ */
+/* ============================================================
+   BITFLIP — сетка-паттерн
+   ============================================================ */
+M.bitflip = function (callback) {
+  const SIZE = 16;
+  const targetOnes = 7;
+  const target = Array(SIZE).fill(0);
+  const indices = [...Array(SIZE).keys()].sort(() => Math.random() - 0.5).slice(0, targetOnes);
+  indices.forEach(i => { target[i] = 1; });
+
+  /* Стартовое состояние — случайное, но не равно target */
+  let current = [];
+  do {
+    current = Array.from({ length: SIZE }, () => Math.random() < 0.5 ? 1 : 0);
+  } while (current.every((v, i) => v === target[i]));
+
+  let moves = 8, done = false;
+
+  const finish = (ok) => {
+    if (done) return; done = true;
+    NB.closeModal();
+    callback && callback(ok);
+  };
+
+  const render = () => {
+    if (current.every((v, i) => v === target[i])) { finish(true); return; }
+    if (moves <= 0) { finish(false); return; }
+
+    NB.openModal({ title: '', noSubmit: true, boxClass: 'mg-modal',
+      html: `<div class="mg-modal">
+        <div class="mg-title">📡 Калибровка сигнала</div>
+        <div class="mg-desc">Включите подсвеченные клетки. Ходов: ${moves}</div>
+        <div style="display:flex;gap:20px;justify-content:center;margin:18px 0">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-align:center">Цель</div>
+            <div style="display:grid;grid-template-columns:repeat(4,32px);gap:4px">
+              ${target.map(v => `<div style="width:32px;height:32px;border-radius:5px;background:${v ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'var(--surface-2)'};border:1px solid var(--line)"></div>`).join('')}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-align:center">Сигнал</div>
+            <div style="display:grid;grid-template-columns:repeat(4,32px);gap:4px" id="bf-grid">
+              ${current.map((v, i) => `<button data-bf-i="${i}" style="width:32px;height:32px;border-radius:5px;background:${v ? 'linear-gradient(135deg,#ff6b00,#ff9500)' : 'var(--surface-2)'};border:1px solid var(--line);cursor:pointer;transition:.15s"></button>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="mg-actions"><button class="btn ghost" id="bf-skip">Сдаться</button></div>
+      </div>`
+    });
+
+    setTimeout(() => {
+      NB.$$('[data-bf-i]').forEach(btn => btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.bfI);
+        if (target[i] && !current[i]) {
+          /* Правильно включаем — не тратим ход */
+          current[i] = 1;
+        } else if (target[i] && current[i]) {
+          /* Отключаем нужную — тратим ход */
+          current[i] = 0;
+          moves--;
+        } else {
+          /* Трогаем ненужную — тратим ход */
+          current[i] = current[i] ? 0 : 1;
+          moves--;
+        }
+        render();
+      }));
+      const skip = document.getElementById('bf-skip');
+      if (skip) skip.addEventListener('click', () => finish(false));
+    }, 20);
+  };
+  render();
+};
+
 M.negotiate = function (opts, callback) {
   opts = opts || {};
   const rounds = opts.rounds || [
-    { prompt: 'Начнём с главного. Чего ты хочешь?',
+    { prompt: 'Чего ты хочешь?',
       options: [
         { label: '«Давай сразу к делу — вот моё предложение»', weight: 2, reply: 'Хорошо, слушаю.' },
         { label: '«Расскажи, что тебя беспокоит»', weight: 3, reply: 'Спасибо, что спросил...' },
-        { label: '«У меня нет времени. Говори коротко»', weight: 1, reply: 'Ладно, коротко.' }
+        { label: '«У меня нет времени. Говори коротко»', weight: 1, reply: 'Ладно.' }
       ]
     },
     { prompt: 'Это всё звучит неплохо, но...',
@@ -219,63 +288,6 @@ M.negotiate = function (opts, callback) {
         idx++;
         render();
       }));
-    }, 30);
-  };
-  render();
-};
-
-/* ============ 5. Bitflip — переключение битов ============ */
-M.bitflip = function (callback) {
-  const target = Array.from({ length: 8 }, () => Math.random() < 0.5 ? 1 : 0);
-  const current = Array.from({ length: 8 }, () => 0);
-  let moves = 5;
-
-  const render = () => {
-    const done = target.every((v, i) => v === current[i]);
-    if (done) {
-      NB.openModal({ title: '', noSubmit: true, boxClass: 'mg-modal',
-        html: `<div class="mg-modal">
-          <div class="mg-title">✅ Расшифровано</div>
-          <div class="mg-desc">Сигнал восстановлен.</div>
-          <div class="mg-actions"><button class="btn primary" id="bf-close">Далее</button></div>
-        </div>`
-      });
-      document.getElementById('bf-close').addEventListener('click', () => { NB.closeModal(); callback && callback(true); });
-      return;
-    }
-    if (moves <= 0) {
-      NB.openModal({ title: '', noSubmit: true, boxClass: 'mg-modal',
-        html: `<div class="mg-modal">
-          <div class="mg-title">❌ Не удалось</div>
-          <div class="mg-desc">Не хватило ходов.</div>
-          <div class="mg-actions"><button class="btn ghost" id="bf-close">Закрыть</button></div>
-        </div>`
-      });
-      document.getElementById('bf-close').addEventListener('click', () => { NB.closeModal(); callback && callback(false); });
-      return;
-    }
-    NB.openModal({ title: '', noSubmit: true, boxClass: 'mg-modal',
-      html: `<div class="mg-modal">
-        <div class="mg-title">📡 Восстановление сигнала</div>
-        <div class="mg-desc">Кликайте по битам, чтобы получить нужный сигнал. Ходов: ${moves}</div>
-        <div style="display:flex;flex-direction:column;gap:14px;align-items:center;margin:18px 0">
-          <div style="font-size:11px;color:var(--muted)">Цель:</div>
-          <div style="display:flex;gap:6px">${target.map(v => `<span style="width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font-family:monospace;font-weight:800;font-size:13px;background:${v ? 'rgba(34,197,94,.2)' : 'rgba(255,255,255,.05)'};color:${v ? '#4ade80' : 'var(--muted)'}">${v}</span>`).join('')}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Сейчас:</div>
-          <div style="display:flex;gap:6px">${current.map((v, i) => `<button data-bf-i="${i}" style="width:24px;height:24px;border-radius:5px;border:1px solid var(--line);cursor:pointer;font-family:monospace;font-weight:800;font-size:13px;background:${v ? 'rgba(34,197,94,.2)' : 'rgba(255,255,255,.05)'};color:${v ? '#4ade80' : 'var(--muted)'}">${v}</button>`).join('')}</div>
-        </div>
-        <div class="mg-actions"><button class="btn ghost" id="bf-skip">Сдаться</button></div>
-      </div>`
-    });
-    setTimeout(() => {
-      NB.$$('[data-bf-i]').forEach(btn => btn.addEventListener('click', () => {
-        const i = Number(btn.dataset.bfI);
-        current[i] = current[i] ? 0 : 1;
-        moves--;
-        render();
-      }));
-      const skip = document.getElementById('bf-skip');
-      if (skip) skip.addEventListener('click', () => { NB.closeModal(); callback && callback(false); });
     }, 30);
   };
   render();

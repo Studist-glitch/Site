@@ -1,11 +1,8 @@
-/* isp_billing_boot.js — рендер, обработка событий, старт */
 (function (global) {
 'use strict';
 const NB = global.NB;
 
-/* ============================================================
-   ИНИЦИАЛИЗАЦИЯ UI-СОСТОЯНИЯ
-   ============================================================ */
+/* === UI STATE === */
 if (!NB.ui) NB.ui = {};
 if (typeof NB.ui.view === 'undefined') NB.ui.view = 'dashboard';
 if (typeof NB.ui.query === 'undefined') NB.ui.query = '';
@@ -16,9 +13,7 @@ if (typeof NB.ui.chatThreadId === 'undefined') NB.ui.chatThreadId = null;
 if (typeof NB.ui.activityFilter === 'undefined') NB.ui.activityFilter = 'all';
 if (!NB.ui.scrollPositions) NB.ui.scrollPositions = {};
 
-/* ============================================================
-   ГЛАВНЫЙ РЕНДЕР
-   ============================================================ */
+/* === RENDER === */
 NB.render = function () {
   const root = document.getElementById('root');
   if (!root) return;
@@ -26,34 +21,20 @@ NB.render = function () {
 
   const v = NB.views.staff;
   const nav = NB.getVisibleNav();
-
-  /* Fallback: если текущая view недоступна — переключаем на dashboard */
   if (!nav.some(n => n.id === NB.ui.view)) NB.ui.view = 'dashboard';
-
   const content = v[NB.ui.view] ? v[NB.ui.view]() : v.dashboard();
   root.innerHTML = NB.buildShell(nav, content);
-
   NB.ui._booting = false;
   afterRender();
 
-  /* Отложенные модалки */
-  if (NB.state.game.activeEvent) {
-    setTimeout(() => NB.game.showEventModal(), 300);
-  }
-  if (NB.state.game.world.storyQueue.length) {
-    setTimeout(() => NB.story.showNextInQueue(), 600);
-  }
-  /* Первый тур */
-  if (!NB.state.onboarded.tour) {
-    setTimeout(() => NB.game.startTour(), 800);
-  } else if (!NB.state.onboarded.views[NB.ui.view] && NB.game.TOURS_BY_VIEW[NB.ui.view]) {
+  if (NB.state.game.activeEvent) setTimeout(() => NB.game.showEventModal(), 300);
+  if (NB.state.game.world.storyQueue.length) setTimeout(() => NB.story.showNextInQueue(), 600);
+  if (!NB.state.onboarded.tour) setTimeout(() => NB.game.startTour(), 800);
+  else if (!NB.state.onboarded.views[NB.ui.view] && NB.game.TOURS_BY_VIEW[NB.ui.view]) {
     setTimeout(() => NB.game.startViewTour(NB.ui.view), 900);
   }
 };
 
-/* ============================================================
-   ЧАСТИЧНЫЙ РЕНДЕР — только view
-   ============================================================ */
 NB.renderView = function () {
   const view = document.getElementById('view');
   if (!view) return NB.render();
@@ -61,11 +42,9 @@ NB.renderView = function () {
 
   const nav = NB.getVisibleNav();
   if (!nav.some(n => n.id === NB.ui.view)) NB.ui.view = 'dashboard';
-
   const v = NB.views.staff;
   const content = v[NB.ui.view] ? v[NB.ui.view]() : v.dashboard();
 
-  /* Обновляем активный пункт меню */
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.view === NB.ui.view);
   });
@@ -78,69 +57,48 @@ NB.renderView = function () {
   NB.ui._booting = false;
   afterRender();
 
-  /* Обновляем панель дня */
   const bar = document.querySelector('.sim-bar');
   if (bar) bar.outerHTML = NB.simBar();
-
-  /* Тема */
   if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-  /* Восстановление скролла */
   const savedScroll = NB.ui.scrollPositions[NB.ui.view];
   if (savedScroll) window.scrollTo(0, savedScroll);
 
-  /* Контекстный тур при первом заходе в view */
   setTimeout(() => {
     if (!NB.state.onboarded.views[NB.ui.view] && NB.game.TOURS_BY_VIEW[NB.ui.view]) {
-      if (!document.querySelector('.tour-overlay')) {
-        NB.game.startViewTour(NB.ui.view);
-      }
+      if (!document.querySelector('.tour-overlay')) NB.game.startViewTour(NB.ui.view);
     }
   }, 500);
 };
 
-/* ============================================================
-   ПОСТ-РЕНДЕР
-   ============================================================ */
 function afterRender() {
   if (NB.ui.view === 'dashboard') NB.charts.startTraffic();
   else NB.charts.stopTraffic();
-
   NB.charts.animateCounters();
-
   setTimeout(() => {
     const rv = document.getElementById('revenue-chart');
     if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
   }, 50);
 }
 
-/* ============================================================
-   АВТООБНОВЛЕНИЕ SIMBAR (каждые 15 сек)
-   ============================================================ */
+/* === SIM-BAR AUTO REFRESH === */
 let autoRefreshTimer = null;
 function startAutoRefresh() {
   if (autoRefreshTimer) return;
   autoRefreshTimer = setInterval(() => {
-    /* Не обновляем если открыт модал/тур */
-    const modalOpen = !document.getElementById('modal').classList.contains('hidden');
-    const tourOpen = !!document.querySelector('.tour-overlay');
-    if (modalOpen || tourOpen) return;
+    if (!document.getElementById('modal').classList.contains('hidden')) return;
+    if (document.querySelector('.tour-overlay')) return;
     if (NB.ui._booting) return;
-
     const bar = document.querySelector('.sim-bar');
     if (bar) {
-      const freshBar = NB.simBar();
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = freshBar;
+      wrapper.innerHTML = NB.simBar();
       bar.replaceWith(wrapper.firstElementChild);
     }
   }, 15000);
 }
 
-/* ============================================================
-   ВСПОМОГАТЕЛЬНЫЕ ДЕЙСТВИЯ
-   ============================================================ */
-/* Провести вечер с семьёй (быстрое действие из рекомендаций) */
+/* === FAMILY EVENING ACTION === */
 if (!NB.actions.familyEvening) {
   NB.actions.familyEvening = function () {
     const g = NB.state.game;
@@ -148,23 +106,19 @@ if (!NB.actions.familyEvening) {
     if (!NB.spendAp(1)) return NB.toast('Не хватает AP', 'err');
     g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 20);
     g.family.crisisShown = false;
-    NB.addLog('Проведён вечер с семьёй (+20 счастья)', 'success');
+    NB.addLog('Проведён вечер с семьёй (+20)', 'success');
     NB.notify('Семья довольна', 'ok');
     NB.save();
     NB.renderView();
   };
 }
 
-/* ============================================================
-   ОБРАБОТКА КЛИКОВ
-   ============================================================ */
+/* === CLICK HANDLER === */
 document.addEventListener('click', e => {
-
-  /* 1. Действия (data-action) */
+  /* 1. Action */
   const t = e.target.closest('[data-action]');
   if (t) {
     const name = t.dataset.action;
-    /* Специальный case для family-evening через рекомендации */
     const map = NB.actions.map || {};
     const fn = name === 'family-evening' ? NB.actions.familyEvening : map[name];
     if (!fn) {
@@ -172,25 +126,16 @@ document.addEventListener('click', e => {
       NB.toast(`Неизвестное действие: ${name}`, 'err');
       return;
     }
-    try {
-      fn(t.dataset);
-    } catch (err) {
-      console.error('[NetBill] Action error:', name, err);
-      NB.toast('Ошибка действия', 'err');
-    }
+    try { fn(t.dataset); } catch (err) { console.error('[NetBill] action error:', name, err); NB.toast('Ошибка действия', 'err'); }
     return;
   }
 
-  /* 2. Переключение вкладки */
+  /* 2. View */
   const v = e.target.closest('[data-view]');
   if (v) {
     const targetView = v.dataset.view;
     const nav = NB.getVisibleNav();
-    if (!nav.some(n => n.id === targetView)) {
-      NB.toast('Вкладка ещё не открыта', 'err');
-      return;
-    }
-    /* Сохраняем скролл перед сменой */
+    if (!nav.some(n => n.id === targetView)) { NB.toast('Вкладка ещё не открыта', 'err'); return; }
     NB.ui.scrollPositions[NB.ui.view] = window.scrollY;
     NB.ui.view = targetView;
     NB.ui.query = '';
@@ -199,7 +144,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 3. Скролл к секции */
+  /* 3. Scroll to */
   const st = e.target.closest('[data-scroll-to]');
   if (st) {
     const target = document.querySelector(st.dataset.scrollTo);
@@ -207,82 +152,56 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* 4. Фильтры счетов */
+  /* 4. Invoice filters */
   const f = e.target.closest('[data-filter]');
-  if (f) {
-    NB.ui.invoiceFilter = f.dataset.filter;
-    NB.renderView();
-    return;
-  }
+  if (f) { NB.ui.invoiceFilter = f.dataset.filter; NB.renderView(); return; }
 
-  /* 5. Вкладки счетов */
+  /* 5. Invoice tabs */
   const it = e.target.closest('[data-invoice-tab]');
-  if (it) {
-    NB.ui.invoiceTab = it.dataset.invoiceTab;
-    NB.renderView();
-    return;
-  }
+  if (it) { NB.ui.invoiceTab = it.dataset.invoiceTab; NB.renderView(); return; }
 
-  /* 6. Фильтры активности */
+  /* 6. Activity filters */
   const af = e.target.closest('[data-activity-filter]');
-  if (af) {
-    NB.ui.activityFilter = af.dataset.activityFilter;
-    NB.renderView();
-    return;
-  }
+  if (af) { NB.ui.activityFilter = af.dataset.activityFilter; NB.renderView(); return; }
 
-  /* 7. Треды чата */
+  /* 7. Chat thread */
   const ct = e.target.closest('[data-chat-thread]');
-  if (ct) {
-    NB.ui.chatThreadId = Number(ct.dataset.chatThread);
-    NB.renderView();
-    return;
-  }
+  if (ct) { NB.ui.chatThreadId = Number(ct.dataset.chatThread); NB.renderView(); return; }
 
-  /* 8. Ответы в чате */
+  /* 8. Chat reply */
   const cr = e.target.closest('[data-chat-reply]');
   if (cr) {
-    const thread = NB.state.tickets.find(t => t.id === NB.ui.chatThreadId);
+    const thread = NB.state.tickets.find(x => x.id === NB.ui.chatThreadId);
     if (thread) NB.chat.handleReply(thread.id, Number(cr.dataset.chatReply));
     return;
   }
 
-  /* 9. Сортировка клиентов */
+  /* 9. Sort */
   const s = e.target.closest('[data-sort]');
   if (s) {
     const key = s.dataset.sort;
-    if (NB.ui.clientSort.key === key) {
-      NB.ui.clientSort.dir = NB.ui.clientSort.dir === 'asc' ? 'desc' : 'asc';
-    } else {
-      NB.ui.clientSort.key = key;
-      NB.ui.clientSort.dir = 'asc';
-    }
+    if (NB.ui.clientSort.key === key) NB.ui.clientSort.dir = NB.ui.clientSort.dir === 'asc' ? 'desc' : 'asc';
+    else { NB.ui.clientSort.key = key; NB.ui.clientSort.dir = 'asc'; }
     NB.renderView();
     return;
   }
 
-  /* 10. Speed-test */
-  if (e.target.id === 'start-speed') {
-    NB.charts.runSpeedTest();
+  /* 10. Speed test */
+  if (e.target.id === 'start-speed') { NB.charts.runSpeedTest(); return; }
+
+  /* 11. Play news video */
+  const pv = e.target.closest('[data-news-video]');
+  if (pv) {
+    NB.playVideo(pv.dataset.newsVideo, pv.dataset.newsVideoTitle || '', { autoClose: 15000 });
     return;
   }
 
-  /* 11. Закрытие модалки по клику на фон */
-  if (e.target.id === 'modal') {
-    NB.closeModal();
-    return;
-  }
-
-  /* 12. data-close внутри модалки */
-  if (e.target.closest('[data-close]')) {
-    NB.closeModal();
-    return;
-  }
+  /* 12. Modal close */
+  if (e.target.id === 'modal') { NB.closeModal(); return; }
+  if (e.target.closest('[data-close]')) { NB.closeModal(); return; }
 });
 
-/* ============================================================
-   INPUT — поиск клиентов (debounce через RAF)
-   ============================================================ */
+/* === INPUT === */
 let rafPending = false;
 document.addEventListener('input', e => {
   if (e.target.id !== 'client-search') return;
@@ -294,16 +213,11 @@ document.addEventListener('input', e => {
     rafPending = false;
     NB.renderView();
     const el = document.getElementById('client-search');
-    if (el) {
-      el.focus();
-      try { el.setSelectionRange(pos, pos); } catch (err) {}
-    }
+    if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (err) {} }
   });
 });
 
-/* ============================================================
-   CHANGE — настройки (чекбоксы)
-   ============================================================ */
+/* === CHANGE === */
 document.addEventListener('change', e => {
   const key = e.target.dataset.setting;
   if (!key) return;
@@ -313,23 +227,13 @@ document.addEventListener('change', e => {
   }
 });
 
-/* ============================================================
-   КЛАВИАТУРА
-   ============================================================ */
+/* === KEYBOARD === */
 document.addEventListener('keydown', e => {
-  /* Esc — закрыть модал */
   if (e.key === 'Escape') {
     const modal = document.getElementById('modal');
-    if (modal && !modal.classList.contains('hidden')) {
-      NB.closeModal();
-      return;
-    }
+    if (modal && !modal.classList.contains('hidden')) { NB.closeModal(); return; }
   }
-
-  /* Не перехватываем ввод в полях */
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-
-  /* 1-9 — быстрые вкладки */
   if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const idx = Number(e.key) - 1;
     const nav = NB.getVisibleNav();
@@ -345,9 +249,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ============================================================
-   RESIZE
-   ============================================================ */
+/* === RESIZE === */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (resizeTimer) clearTimeout(resizeTimer);
@@ -359,22 +261,17 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-/* ============================================================
-   BEFOREUNLOAD — автосохранение
-   ============================================================ */
+/* === BEFORE UNLOAD === */
 window.addEventListener('beforeunload', () => {
-  try { NB.save(); } catch (err) { /* ignore */ }
+  try { NB.save(); } catch (err) {}
 });
 
-/* ============================================================
-   СТАРТ
-   ============================================================ */
+/* === START === */
 NB.checkUnlocks();
 NB.render();
 startAutoRefresh();
-
 if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v17 ready');
+console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v18 ready');
 
 })(window);

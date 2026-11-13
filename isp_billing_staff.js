@@ -1,19 +1,16 @@
-/* isp_billing_staff.js — все вьюхи */
+/* isp_billing_staff.js — вьюхи */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const S = NB.views.staff;
 
-/* ============================================================
-   ХЕЛПЕРЫ
-   ============================================================ */
 const riskMeta = {
-  good:    { label: '✓ Надёжный',        cls: 'good',    icon: '✓' },
-  normal:  { label: '— Обычный',         cls: 'normal',  icon: '' },
-  risky:   { label: '⚠ Рискованный',     cls: 'risky',   icon: '⚠' },
-  hacker:  { label: '⚠ Возможен взлом',  cls: 'hacker',  icon: '⚠' },
-  spammer: { label: '⚠ Возможен спам',   cls: 'spammer', icon: '📢' },
-  unknown: { label: '❓ Нет данных',      cls: 'unknown', icon: '❓' }
+  good:    { label: '✓ Надёжный',        cls: 'good' },
+  normal:  { label: '— Обычный',         cls: 'normal' },
+  risky:   { label: '⚠ Рискованный',     cls: 'risky' },
+  hacker:  { label: '⚠ Возможен взлом',  cls: 'hacker' },
+  spammer: { label: '⚠ Возможен спам',   cls: 'spammer' },
+  unknown: { label: '❓ Нет данных',      cls: 'unknown' }
 };
 
 function riskBadge(risk) {
@@ -21,104 +18,34 @@ function riskBadge(risk) {
   return `<span class="pc-risk ${m.cls}">${m.label}</span>`;
 }
 
-function trafficColor(p) {
-  if (p > 100) return '#ef4444';
-  if (p > 80) return '#f59e0b';
-  if (p > 60) return '#fbbf24';
-  return '#22c55e';
-}
-
-/* Рекомендации — приоритезированные подсказки */
 function buildRecommendations() {
   const g = NB.state.game;
   const st = NB.state;
   const out = [];
-
   const overdueBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber);
   if (overdueBills.length > 0) {
     const total = overdueBills.reduce((s, b) => s + b.amount, 0);
-    out.push({
-      level: 'critical',
-      icon: '🔥',
-      title: `${overdueBills.length} просроченных счетов на ${NB.money(total)}`,
-      action: { label: 'Оплатить', view: 'invoices', tab: 'company' }
-    });
+    out.push({ level:'critical', icon:'🔥', title:`${overdueBills.length} просроченных счетов на ${NB.money(total)}`, action:{ label:'Оплатить', view:'invoices', tab:'company' }});
   }
-
   const load = NB.traffic.getLoad();
-  if (load.percent > 100) {
-    out.push({
-      level: 'critical',
-      icon: '📶',
-      title: `Сеть перегружена (${load.percent}%). Клиенты уходят.`,
-      action: { label: 'Расширить канал', view: 'upgrades' }
-    });
-  } else if (load.percent > 80) {
-    out.push({
-      level: 'warning',
-      icon: '📶',
-      title: `Нагрузка ${load.percent}% — скоро перегрузка`,
-      action: { label: 'Улучшить канал', view: 'upgrades' }
-    });
-  }
-
+  if (load.percent > 100) out.push({ level:'critical', icon:'📶', title:`Сеть перегружена (${load.percent}%). Клиенты уходят.`, action:{ label:'Расширить канал', view:'upgrades' }});
+  else if (load.percent > 80) out.push({ level:'warning', icon:'📶', title:`Нагрузка ${load.percent}% — скоро перегрузка`, action:{ label:'Улучшить канал', view:'upgrades' }});
   const net = NB.netDailyEstimate();
-  if (net.net < 0) {
-    out.push({
-      level: 'critical',
-      icon: '📉',
-      title: `Убыток ${NB.money(-net.net)}/день. Что-то делать!`,
-      action: { label: 'Открыть магазин', view: 'upgrades' }
-    });
-  }
-
+  if (net.net < 0) out.push({ level:'critical', icon:'📉', title:`Убыток ${NB.money(-net.net)}/день. Что-то делать!`, action:{ label:'Магазин', view:'upgrades' }});
   if (g.family.wife && g.family.wifeHappiness < 25 && !g.family.crisisShown) {
-    out.push({
-      level: 'warning',
-      icon: '💔',
-      title: `${g.family.wife.name} недовольна (${g.family.wifeHappiness}%). Скоро уйдёт.`,
-      action: { label: 'Провести вечер', action: 'family-evening' }
-    });
+    out.push({ level:'warning', icon:'💔', title:`${g.family.wife.name} недовольна (${g.family.wifeHappiness}%).`, action:{ label:'Провести вечер', action:'family-evening' }});
   }
-
-  if (g.reputation < 40) {
-    out.push({
-      level: 'warning',
-      icon: '⭐',
-      title: `Репутация ${g.reputation}. Клиенты уходят чаще.`,
-      action: { label: 'Решить заявки', view: 'chat' }
-    });
-  }
-
+  if (g.reputation < 40) out.push({ level:'warning', icon:'⭐', title:`Репутация ${g.reputation}. Клиенты уходят чаще.`, action:{ label:'Решить заявки', view:'chat' }});
   const openTickets = st.tickets.filter(t => t.status === 'open').length;
-  if (openTickets >= 5) {
-    out.push({
-      level: 'warning',
-      icon: '✉',
-      title: `${openTickets} открытых заявок — к концу дня −${openTickets * 2} репутации`,
-      action: { label: 'Разобрать', view: 'chat' }
-    });
-  }
-
-  if (g.pendingClients.length >= 5) {
-    out.push({
-      level: 'info',
-      icon: '🆕',
-      title: `${g.pendingClients.length} клиентов ждут решения`,
-      action: { label: 'Принять', scroll: '.pending-clients-section' }
-    });
-  }
-
+  if (openTickets >= 5) out.push({ level:'warning', icon:'✉', title:`${openTickets} заявок — к концу дня −${openTickets * 2} репутации`, action:{ label:'Разобрать', view:'chat' }});
+  if (g.pendingClients.length >= 5) out.push({ level:'info', icon:'🆕', title:`${g.pendingClients.length} клиентов ждут`, action:{ label:'Принять', scroll:'.pending-clients-section' }});
   return out.slice(0, 4);
 }
 
-/* ============================================================
-   ДАШБОРД
-   ============================================================ */
 S.dashboard = function () {
   const st = NB.state;
-  const g  = st.game;
-  const w  = g.world;
+  const g = st.game;
+  const w = g.world;
   const stats = NB.computeStats();
   const openTicketsList = st.tickets.filter(t => t.status === 'open');
   const openTickets = openTicketsList.length;
@@ -129,47 +56,40 @@ S.dashboard = function () {
   const net = NB.netDailyEstimate();
   const traffic = NB.traffic.getLoad();
 
-  /* === Рекомендации === */
   const recs = buildRecommendations();
   const recsHtml = recs.length ? `
-    <div class="recs-panel" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+    <div class="recs-panel">
       ${recs.map(r => {
         const colors = {
-          critical: { bg: 'rgba(239,68,68,.08)', border: 'rgba(239,68,68,.4)', color: '#f87171' },
-          warning:  { bg: 'rgba(245,158,11,.06)', border: 'rgba(245,158,11,.35)', color: '#fbbf24' },
-          info:     { bg: 'rgba(255,107,0,.06)', border: 'rgba(255,107,0,.3)', color: 'var(--primary-3)' }
-        }[r.level] || { bg: 'var(--surface-2)', border: 'var(--line)', color: 'var(--muted)' };
+          critical: { bg:'rgba(239,68,68,.08)', border:'rgba(239,68,68,.4)', color:'#f87171' },
+          warning:  { bg:'rgba(245,158,11,.06)', border:'rgba(245,158,11,.35)', color:'#fbbf24' },
+          info:     { bg:'rgba(255,107,0,.06)', border:'rgba(255,107,0,.3)', color:'var(--primary-3)' }
+        }[r.level] || { bg:'var(--surface-2)', border:'var(--line)', color:'var(--muted)' };
         const act = r.action;
         const attrs = act.view ? `data-view="${act.view}"` : (act.action ? `data-action="${act.action}"` : (act.scroll ? `data-scroll-to="${act.scroll}"` : ''));
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${colors.bg};border:1px solid ${colors.border};border-radius:10px">
-          <span style="font-size:18px">${r.icon}</span>
-          <span style="flex:1;font-size:13px;color:${colors.color}">${NB.esc(r.title)}</span>
-          <button class="btn primary small" ${attrs} style="white-space:nowrap">${NB.esc(act.label)}</button>
+        return `<div class="rec-item" style="background:${colors.bg};border-color:${colors.border}">
+          <span class="rec-icon">${r.icon}</span>
+          <span class="rec-text" style="color:${colors.color}">${NB.esc(r.title)}</span>
+          <button class="btn primary small" ${attrs}>${NB.esc(act.label)}</button>
         </div>`;
       }).join('')}
     </div>` : '';
 
-  /* === Быстрые действия === */
   const quickActions = [];
   if (g.pendingClients.length > 0) quickActions.push({ view:'dashboard', scroll:'.pending-clients-section', icon:'🆕', label:`Клиенты ${g.pendingClients.length}` });
   if (openTickets > 0) quickActions.push({ view:'chat', icon:'💬', label:`Заявки ${openTickets}` });
   const overdueBillsQuick = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length;
   if (overdueBillsQuick > 0) quickActions.push({ view:'invoices', icon:'🔥', label:`Счета ${overdueBillsQuick}` });
 
-  /* === Дневные задачи === */
   const revenueDone = g.daily.pendingRevenue === 0 || g.upgrades.autoCollect > 0;
   const clientsDone = pendingClients.length === 0;
   const tasksDone = (revenueDone ? 1 : 0) + (clientsDone ? 1 : 0) + (openTickets === 0 ? 1 : 0);
-  const tasksTotal = 3;
 
   const dailyTasksHtml = `
     <div class="daily-tasks-panel">
       <div class="dt-header">
-        <div>
-          <h3>📋 Задачи на сегодня</h3>
-          <p class="muted small">Выполните всё — можно завершать день</p>
-        </div>
-        <span class="dt-progress">${tasksDone}/${tasksTotal}</span>
+        <div><h3>📋 Задачи на сегодня</h3><p class="muted small">Выполните всё — можно завершать день</p></div>
+        <span class="dt-progress">${tasksDone}/3</span>
       </div>
       <div class="daily-tasks-list">
         <div class="dt-item ${revenueDone ? 'done' : ''}">
@@ -190,7 +110,6 @@ S.dashboard = function () {
       </div>
     </div>`;
 
-  /* === Pending клиенты === */
   let pendingHtml = '';
   if (pendingClients.length > 0) {
     pendingHtml = `
@@ -200,7 +119,6 @@ S.dashboard = function () {
           ${pendingClients.map(pc => {
             const t = NB.tariff(pc.tariffId) || { name:'—', price:0, color:'#7a7a86' };
             const dailyInc = Math.round(t.price / NB.INCOME_DIVISOR);
-            const m = riskMeta[pc.risk] || riskMeta.normal;
             return `<div class="pending-client">
               <div class="pc-info">
                 <b>${NB.esc(pc.name)}</b>
@@ -221,7 +139,6 @@ S.dashboard = function () {
       </div>`;
   }
 
-  /* === Просроченные счета === */
   const overdueBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber);
   let overdueHtml = '';
   if (overdueBills.length > 0) {
@@ -241,7 +158,6 @@ S.dashboard = function () {
       </div>`;
   }
 
-  /* === Заявки — preview === */
   let ticketsHtml = '';
   if (openTicketsList.length > 0) {
     ticketsHtml = `
@@ -260,16 +176,14 @@ S.dashboard = function () {
       </div>`;
   }
 
-  /* === Журнал дня === */
-  const logHtml = g.daily.log && g.daily.log.length > 1
-    ? `<div class="panel day-log-panel" style="margin-bottom:12px">
-        <div class="panel-head"><h2>📖 Что произошло сегодня</h2></div>
-        <div class="day-log-list">
-          ${g.daily.log.slice(-8).reverse().map(l => `<div class="log-entry log-${l.type || 'info'}">${NB.esc(l.text)}</div>`).join('')}
-        </div>
-      </div>` : '';
+  const logHtml = g.daily.log && g.daily.log.length > 1 ? `
+    <div class="panel day-log-panel" style="margin-bottom:12px">
+      <div class="panel-head"><h2>📖 Что произошло сегодня</h2></div>
+      <div class="day-log-list">
+        ${g.daily.log.slice(-8).reverse().map(l => `<div class="log-entry log-${l.type || 'info'}">${NB.esc(l.text)}</div>`).join('')}
+      </div>
+    </div>` : '';
 
-  /* === Семья === */
   let familyHtml = '';
   if (g.family.wife) {
     const isCrisis = g.family.wifeHappiness < 25;
@@ -282,10 +196,7 @@ S.dashboard = function () {
         <div class="family-members">
           <div class="family-member">
             <div class="family-member-avatar" style="${isCrisis ? 'background:linear-gradient(135deg,#fca5a5,#dc2626)' : ''}">${NB.initials(g.family.wife.name)}</div>
-            <div class="family-member-info">
-              <b>${NB.esc(g.family.wife.name)}</b>
-              <small>Счастье: ${g.family.wifeHappiness}%</small>
-            </div>
+            <div class="family-member-info"><b>${NB.esc(g.family.wife.name)}</b><small>Счастье: ${g.family.wifeHappiness}%</small></div>
           </div>
           ${g.family.kids.map(k => `<div class="family-member">
             <div class="family-member-avatar" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">${NB.initials(k.name)}</div>
@@ -295,7 +206,6 @@ S.dashboard = function () {
       </div>`;
   }
 
-  /* === Событие / угроза === */
   const eventBanner = g.activeEvent ? `
     <div class="game-panel" style="border-color:rgba(239,68,68,.6);margin-bottom:12px">
       <div class="game-head"><div>
@@ -318,7 +228,6 @@ S.dashboard = function () {
 
   const storyHtml = NB.story.renderPanel ? NB.story.renderPanel() : '';
 
-  /* === Экономика === */
   const econClass = net.net >= 0 ? 'positive' : 'negative';
   const economyPanel = `
     <div class="economy-panel ${econClass}">
@@ -332,26 +241,22 @@ S.dashboard = function () {
         <div class="econ-row"><span>🏢 Базовые расходы</span><b class="negative">−${NB.money(cost.base)}</b></div>
         ${cost.upkeep > 0 ? `<div class="econ-row"><span>⚙ Обслуживание</span><b class="negative">−${NB.money(cost.upkeep)}</b></div>` : ''}
         ${cost.salary > 0 ? `<div class="econ-row"><span>👥 Зарплаты</span><b class="negative">−${NB.money(cost.salary)}</b></div>` : ''}
+        ${cost.tax > 0 ? `<div class="econ-row"><span>📊 Налог 8%</span><b class="negative">−${NB.money(cost.tax)}</b></div>` : ''}
       </div>
-      ${net.net < 0 ? `<div class="econ-warning">⚠ Вы в минусе. Повысьте тарифы, купите маркетинг или сократите расходы.</div>` : ''}
+      ${net.net < 0 ? `<div class="econ-warning">⚠ Вы в минусе. Повысьте тарифы или сократите расходы.</div>` : ''}
     </div>`;
 
-  /* === Касса === */
   const goalPct = Math.min(100, (g.cash / g.goal) * 100);
   const canAdv = NB.canAdvanceDay();
   const status = g.stats.won ? '<span class="game-status win">Победа</span>'
     : g.stats.lost ? '<span class="game-status lose">Провал</span>'
     : '<span class="game-status playing">В игре</span>';
 
-  /* === Доля рынка === */
   let marketHtml = '';
   if (g.unlocks.competitors) {
     marketHtml = `
       <div class="panel" style="margin-bottom:12px">
-        <div class="panel-head">
-          <h2>Доля рынка</h2>
-          <button class="btn tiny" data-view="competitors">Все →</button>
-        </div>
+        <div class="panel-head"><h2>Доля рынка</h2><button class="btn tiny" data-view="competitors">Все →</button></div>
         <div class="market-bar">
           <i style="width:${g.marketShare}%;background:linear-gradient(90deg,var(--primary),var(--primary-2))"></i>
           ${g.competitors.filter(c => c.alive).map(c => `<i style="width:${c.share}%;background:${c.color}"></i>`).join('')}
@@ -363,7 +268,6 @@ S.dashboard = function () {
       </div>`;
   }
 
-  /* === Топ клиентов === */
   const paidByClient = {};
   st.invoices.filter(i => i.status === 'paid').forEach(i => {
     paidByClient[i.clientId] = (paidByClient[i.clientId] || 0) + i.amount;
@@ -372,22 +276,16 @@ S.dashboard = function () {
     .map(([id, sum]) => ({ client: NB.client(Number(id)), sum }))
     .filter(x => x.client).sort((a, b) => b.sum - a.sum).slice(0, 5);
 
-  /* === Распределение по тарифам === */
-  const dist = st.tariffs.map(t => ({
-    ...t, count: st.clients.filter(c => c.tariffId === t.id).length
-  })).sort((a, b) => b.count - a.count);
+  const dist = st.tariffs.map(t => ({ ...t, count: st.clients.filter(c => c.tariffId === t.id).length }))
+    .sort((a, b) => b.count - a.count);
   const maxCount = Math.max(1, ...dist.map(d => d.count));
 
   return `
     <div class="page-head">
-      <div>
-        <h1>День ${g.daily.dayNumber}</h1>
-        <p class="muted">${NB.dayLabel(st.simDate)} · ${openTickets} заявок · «${levelLabel}»</p>
-      </div>
+      <div><h1>День ${g.daily.dayNumber}</h1>
+        <p class="muted">${NB.dayLabel(st.simDate)} · ${openTickets} заявок · «${levelLabel}»</p></div>
       <div class="head-actions">
-        ${quickActions.map(q => `<button class="btn ghost small" data-view="${q.view}" ${q.scroll ? `data-scroll-to="${q.scroll}"` : ''} style="gap:6px">
-          <span>${q.icon}</span><span>${q.label}</span>
-        </button>`).join('')}
+        ${quickActions.map(q => `<button class="btn ghost small" data-view="${q.view}" ${q.scroll ? `data-scroll-to="${q.scroll}"` : ''}>${q.icon} ${q.label}</button>`).join('')}
         <button class="btn ghost small" data-action="export">📥 Экспорт</button>
       </div>
     </div>
@@ -443,18 +341,15 @@ S.dashboard = function () {
     <div class="grid-2">
       <div class="panel">
         <div class="panel-head"><h2>Сетевой трафик</h2><span class="live-badge"><i></i>live</span></div>
-        <div class="traffic-widget" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
+        <div class="traffic-widget">
           <div class="traffic-stat ${traffic.status === 'ok' ? 'ok' : traffic.status === 'elevated' || traffic.status === 'warning' ? 'warn' : 'bad'}">
-            <b>${traffic.usage}</b>
-            <small>Мбит/с</small>
+            <b>${traffic.usage}</b><small>Мбит/с</small>
           </div>
           <div class="traffic-stat ${traffic.status === 'ok' ? 'ok' : traffic.status === 'elevated' || traffic.status === 'warning' ? 'warn' : 'bad'}">
-            <b>${traffic.percent}%</b>
-            <small>нагрузка</small>
+            <b>${traffic.percent}%</b><small>нагрузка</small>
           </div>
           <div class="traffic-stat ${traffic.stability > 70 ? 'ok' : traffic.stability > 40 ? 'warn' : 'bad'}">
-            <b>${traffic.stability}%</b>
-            <small>стабильность</small>
+            <b>${traffic.stability}%</b><small>стабильность</small>
           </div>
         </div>
         <canvas id="traffic-chart" class="traffic-chart"></canvas>
@@ -466,7 +361,13 @@ S.dashboard = function () {
       <div class="panel">
         <div class="panel-head"><h2>Новости мира</h2></div>
         <div class="news-list">
-          ${w.news.slice(0, 8).map(n => `<div class="news-item"><small>${NB.fmtDateTime(n.at)}</small>${NB.esc(n.text)}</div>`).join('') || '<p class="empty">Пока тихо</p>'}
+          ${w.news.slice(0, 8).map(n => `
+            <div class="news-item">
+              <small>${NB.fmtDateTime(n.at)}</small>
+              <span>${NB.esc(n.text)}</span>
+              ${n.video ? `<button class="btn tiny" data-news-video="${n.video}" data-news-video-title="${NB.esc(n.videoTitle || '')}" style="margin-left:6px">▶ Смотреть</button>` : ''}
+            </div>
+          `).join('') || '<p class="empty">Пока тихо</p>'}
         </div>
       </div>
     </div>
@@ -476,10 +377,7 @@ S.dashboard = function () {
         ${top.length ? `<div class="top-list">${top.map((t, i) => `
           <div class="top-item">
             <div class="top-rank">${i + 1}</div>
-            <div class="top-body">
-              <b>${NB.esc(t.client.name)}</b>
-              <small>${NB.esc(t.client.phone)}</small>
-            </div>
+            <div class="top-body"><b>${NB.esc(t.client.name)}</b><small>${NB.esc(t.client.phone)}</small></div>
             <div class="top-amount">${NB.money(t.sum)}</div>
           </div>`).join('')}</div>` : '<p class="empty">Нет данных</p>'}
       </div>
@@ -487,10 +385,7 @@ S.dashboard = function () {
         <div class="panel-head"><h2>Распределение по тарифам</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>
         ${dist.map(d => `
           <div class="tariff-bar">
-            <div class="tariff-bar-top">
-              <span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span>
-              <b>${d.count}</b>
-            </div>
+            <div class="tariff-bar-top"><span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b></div>
             <div class="bar"><i style="width:${(d.count / maxCount) * 100}%;background:${d.color}"></i></div>
           </div>`).join('')}
       </div>
@@ -498,34 +393,27 @@ S.dashboard = function () {
   `;
 };
 
-/* ============================================================
-   КЛИЕНТЫ
-   ============================================================ */
 S.clients = function () {
   const q = NB.ui.query.trim().toLowerCase();
-  let list = NB.state.clients.filter(c => !q ||
-    c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
-
+  let list = NB.state.clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
   const dir = NB.ui.clientSort.dir === 'asc' ? 1 : -1;
   const riskOrder = { hacker: 0, spammer: 1, unknown: 2, risky: 3, normal: 4, good: 5 };
   list.sort((a, b) => {
     const k = NB.ui.clientSort.key;
-    if (k === 'name')    return a.name.localeCompare(b.name) * dir;
+    if (k === 'name') return a.name.localeCompare(b.name) * dir;
     if (k === 'balance') return (a.balance - b.balance) * dir;
-    if (k === 'tariff')  return (NB.price(a.tariffId) - NB.price(b.tariffId)) * dir;
-    if (k === 'risk')    return ((riskOrder[a.risk] ?? 4) - (riskOrder[b.risk] ?? 4)) * dir;
+    if (k === 'tariff') return (NB.price(a.tariffId) - NB.price(b.tariffId)) * dir;
+    if (k === 'risk') return ((riskOrder[a.risk] ?? 4) - (riskOrder[b.risk] ?? 4)) * dir;
     return 0;
   });
 
   const droneCount = NB.state.clients.filter(c => c.isDrone).length;
   const humanCount = NB.state.clients.filter(c => !c.isDrone).length;
   const riskyCount = NB.state.clients.filter(c => ['hacker', 'spammer', 'risky', 'unknown'].includes(c.risk)).length;
-  const blockedCount = NB.state.clients.filter(c => c.status === 'blocked').length;
 
   const rows = list.map(c => {
     const t = NB.tariff(c.tariffId) || { name:'—', color:'#7a7a86' };
     const droneIcon = c.isDrone ? ' 🤖' : '';
-    const m = riskMeta[c.risk] || riskMeta.normal;
     return `<tr class="fade">
       <td><div class="who" data-action="open-client" data-id="${c.id}">
         <div class="ava" style="background:${t.color}26;color:${t.color}">${NB.initials(c.name)}</div>
@@ -547,9 +435,8 @@ S.clients = function () {
 
   return `
     <div class="page-head">
-      <div>
-        <h1>Клиенты</h1>
-        <p class="muted">${NB.state.clients.length} всего · 👤 ${humanCount} · 🤖 ${droneCount}${riskyCount ? ` · ⚠ ${riskyCount} рискованных` : ''}${blockedCount ? ` · 🚫 ${blockedCount} заблок.` : ''}</p>
+      <div><h1>Клиенты</h1>
+        <p class="muted">${NB.state.clients.length} всего · 👤 ${humanCount}${droneCount ? ` · 🤖 ${droneCount}` : ''}${riskyCount ? ` · ⚠ ${riskyCount} рискованных` : ''}</p>
       </div>
       <button class="btn primary" data-action="add-client">＋ Новый клиент</button>
     </div>
@@ -571,9 +458,6 @@ S.clients = function () {
     </div>`;
 };
 
-/* ============================================================
-   ТАРИФЫ
-   ============================================================ */
 S.tariffs = function () {
   const r = NB.tariffs.getRange();
   return `
@@ -584,14 +468,13 @@ S.tariffs = function () {
     <div class="tariff-grid">
       ${NB.state.tariffs.map((t, i) => {
         const count = NB.state.clients.filter(c => c.tariffId === t.id).length;
-        const monthlyIncome = count * t.price;
-        return `<article class="tariff-card fade" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;animation-delay:${i * 60}ms">
-          <div style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.16;filter:blur(32px);pointer-events:none"></div>
+        return `<article class="tariff-card fade" style="animation-delay:${i * 60}ms">
+          <div style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.14;filter:blur(32px);pointer-events:none"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;position:relative">
             <h3 style="font-size:13.5px;color:#fff">${NB.esc(t.name)}</h3>
             <div style="display:flex;gap:2px">
-              <button class="icon" style="width:24px;height:24px;font-size:11px" data-action="edit-tariff" data-id="${t.id}" title="Изменить">✎</button>
-              <button class="icon danger" style="width:24px;height:24px;font-size:11px" data-action="del-tariff" data-id="${t.id}" title="Удалить">✕</button>
+              <button class="icon" style="width:24px;height:24px;font-size:11px" data-action="edit-tariff" data-id="${t.id}">✎</button>
+              <button class="icon danger" style="width:24px;height:24px;font-size:11px" data-action="del-tariff" data-id="${t.id}">✕</button>
             </div>
           </div>
           <p style="color:var(--muted);font-size:11.5px;margin-bottom:10px;min-height:14px;position:relative">${NB.esc(t.desc || '')}</p>
@@ -600,7 +483,7 @@ S.tariffs = function () {
           </div>
           <div class="tariff-price" style="font-size:16px;font-weight:700;margin:6px 0 10px;color:#fff;position:relative">${NB.money(t.price)}<small style="font-size:11px;color:var(--muted);margin-left:2px">/мес</small></div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;position:relative">
-            <span>${count} кл.</span><span>${NB.money(monthlyIncome)}</span>
+            <span>${count} кл.</span><span>${NB.money(count * t.price)}</span>
           </div>
         </article>`;
       }).join('')}
@@ -616,36 +499,15 @@ S.tariffs = function () {
     </div>`;
 };
 
-/* ============================================================
-   СЧЕТА
-   ============================================================ */
-S.invoices = function () {
-  return NB.invoices.renderView();
-};
+S.invoices = () => NB.invoices.renderView();
+S.chat = () => NB.chat.renderView();
+S.employees = () => NB.employees.renderView();
 
-/* ============================================================
-   ЧАТ
-   ============================================================ */
-S.chat = function () {
-  return NB.chat.renderView();
-};
-
-/* ============================================================
-   СОТРУДНИКИ
-   ============================================================ */
-S.employees = function () {
-  return NB.employees.renderView();
-};
-
-/* ============================================================
-   МАГАЗИН
-   ============================================================ */
 S.upgrades = function () {
   const g = NB.state.game;
   const allKeys = Object.keys(NB.game.UPGRADES);
   const visible = allKeys.filter(key => NB.game.upgradeVisible(key));
 
-  /* Следующий, который скоро откроется */
   const blocked = allKeys.filter(k => !NB.game.upgradeVisible(k))
     .map(k => {
       const u = NB.game.UPGRADES[k];
@@ -655,26 +517,11 @@ S.upgrades = function () {
       else if (u.requiresFlag) eta = 'по сюжету';
       return { key: k, u, eta };
     })
-    .filter(x => x.eta)
-    .slice(0, 2);
-
-  const blockedHint = blocked.length
-    ? `<div class="panel" style="margin-top:14px;border-style:dashed;opacity:.7">
-        <div class="panel-head"><h2>🔒 Скоро откроется</h2></div>
-        ${blocked.map(b => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;color:var(--muted)">
-          <span style="font-size:18px">${b.u.icon}</span>
-          <span style="flex:1">${NB.esc(b.u.name)}</span>
-          <span class="small">${NB.esc(b.eta)}</span>
-        </div>`).join('')}
-      </div>`
-    : '';
+    .filter(x => x.eta).slice(0, 2);
 
   return `
     <div class="page-head">
-      <div>
-        <h1>Магазин</h1>
-        <p class="muted">Касса: <b style="color:var(--primary-3)">${NB.money(g.cash)}</b> · ${visible.length} доступно</p>
-      </div>
+      <div><h1>Магазин</h1><p class="muted">Касса: <b style="color:var(--primary-3)">${NB.money(g.cash)}</b> · ${visible.length} доступно</p></div>
     </div>
     ${visible.length ? `<div class="upgrades-grid">
       ${visible.map((key, i) => {
@@ -690,7 +537,7 @@ S.upgrades = function () {
           <div class="upgrade-head"><div class="upgrade-icon">${u.icon}</div><div style="flex:1"><h3>${u.name}</h3></div></div>
           <div class="upgrade-desc">${u.desc}</div>
           <div class="upgrade-levels">${(u.costs || [1,2,3]).map((_, j) => `<i class="${j < lvl ? 'filled' : ''}"></i>`).join('')}</div>
-          <div class="upgrade-effect ${lvl === 0 ? 'neutral' : ''}">${broken ? '⚠ Сломано — работает неэффективно' : (lvl === 0 ? `Следующее: ${nextEffect || '—'}` : `Ур. ${lvl}: ${u.levels[lvl - 1]}`)}</div>
+          <div class="upgrade-effect ${lvl === 0 ? 'neutral' : ''}">${broken ? '⚠ Сломано' : (lvl === 0 ? `Следующее: ${nextEffect || '—'}` : `Ур. ${lvl}: ${u.levels[lvl - 1]}`)}</div>
           <div class="upgrade-foot" style="margin-top:14px">
             <div class="upgrade-price">${maxed ? '— MAX —' : NB.money(cost)}</div>
             <div style="display:flex;gap:6px">
@@ -703,35 +550,28 @@ S.upgrades = function () {
           <div style="font-size:11.5px;color:var(--muted);margin-top:10px">Обслуживание: ${upkeepNow} ₽/день</div>
         </div>`;
       }).join('')}
-    </div>` : '<div class="panel"><p class="empty">Улучшения появятся по мере роста компании</p></div>'}
-    ${blockedHint}
+    </div>` : '<div class="panel"><p class="empty">Улучшения появятся по мере роста</p></div>'}
+    ${blocked.length ? `<div class="panel" style="margin-top:14px;border-style:dashed;opacity:.7">
+      <div class="panel-head"><h2>🔒 Скоро откроется</h2></div>
+      ${blocked.map(b => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;color:var(--muted)">
+        <span style="font-size:18px">${b.u.icon}</span>
+        <span style="flex:1">${NB.esc(b.u.name)}</span>
+        <span class="small">${NB.esc(b.eta)}</span>
+      </div>`).join('')}
+    </div>` : ''}
   `;
 };
 
-/* ============================================================
-   КОНКУРЕНТЫ
-   ============================================================ */
-S.competitors = function () {
-  return NB.competitors.renderView();
-};
+S.competitors = () => NB.competitors.renderView();
 
-/* ============================================================
-   АКТИВНОСТЬ
-   ============================================================ */
 S.activity = function () {
   const all = NB.state.activity.slice().reverse();
   const filter = NB.ui.activityFilter || 'all';
   const filtered = filter === 'all' ? all : all.filter(a => a.type === filter);
-
   const filters = [
-    { id: 'all', label: 'Все', icon: '◷' },
-    { id: 'pay', label: 'Оплаты', icon: '₽' },
-    { id: 'tariff', label: 'Тарифы', icon: '◆' },
-    { id: 'ticket', label: 'Заявки', icon: '✉' },
-    { id: 'block', label: 'Инциденты', icon: '❙' },
-    { id: 'sys', label: 'Система', icon: '⚙' }
+    { id:'all', label:'Все' }, { id:'pay', label:'Оплаты' }, { id:'tariff', label:'Тарифы' },
+    { id:'ticket', label:'Заявки' }, { id:'block', label:'Инциденты' }, { id:'sys', label:'Система' }
   ];
-
   return `
     <div class="page-head">
       <div><h1>Активность</h1><p class="muted">журнал событий · ${all.length} записей</p></div>
@@ -740,7 +580,7 @@ S.activity = function () {
     <div class="panel">
       <div class="toolbar">
         <div class="filters">
-          ${filters.map(f => `<button class="chip ${filter === f.id ? 'active' : ''}" data-activity-filter="${f.id}">${f.icon} ${f.label}</button>`).join('')}
+          ${filters.map(f => `<button class="chip ${filter === f.id ? 'active' : ''}" data-activity-filter="${f.id}">${f.label}</button>`).join('')}
         </div>
       </div>
       <div class="activity-list" id="activity-list">
@@ -759,22 +599,11 @@ S._activityItem = function (a) {
   </div>`;
 };
 
-/* ============================================================
-   НАСТРОЙКИ
-   ============================================================ */
 S.settings = function () {
-  const st = NB.state.settings;
   const g = NB.state.game;
   return `
-    <div class="page-head"><div><h1>Настройки</h1><p class="muted">Данные и визуал</p></div></div>
+    <div class="page-head"><div><h1>Настройки</h1><p class="muted">Данные и прогресс</p></div></div>
     <div class="panel">
-      <div class="settings-section">
-        <h3>Визуал</h3>
-        <div class="setting-row">
-          <div class="setting-row-info"><b>Меньше рекламы</b><small>Снижает частоту всплывающего спама</small></div>
-          <label class="switch"><input type="checkbox" ${st.reduceAds ? 'checked' : ''} data-setting="reduceAds"><span class="switch-track"></span></label>
-        </div>
-      </div>
       <div class="settings-section">
         <h3>Прогресс</h3>
         <div class="setting-row">

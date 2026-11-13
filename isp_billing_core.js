@@ -57,7 +57,7 @@ NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.ran
 NB.genKid = () => NB.pick(KIDS);
 NB.genWife = () => NB.pick(WIVES);
 
-NB.LS_KEY = 'netbill_v17';
+NB.LS_KEY = 'netbill_v19';
 NB.DEFAULT_PASS = '1234';
 NB.BASE_DAILY_COST = 30;
 NB.COST_PER_CLIENT = 2;
@@ -102,7 +102,7 @@ function defaultGame() {
       chat: false, employees: false, competitors: false, marketShare: false,
       advancedUpgrades: false, drones: false, spam: false, loans: false, activity: false
     },
-    network: { stability: 100, lastOverload: 0 },
+    network: { stability: 100, lastOverload: 0, anomalyVisualShown: 0 },
     daily: { pendingRevenue:0, collectedToday:0, lastDayRevenue:0, dayNumber:1, log: [] },
     pendingClients: [], pendingClientSeq: 1,
     bills: [], billsSeq: 1,
@@ -110,6 +110,8 @@ function defaultGame() {
     stats: { totalRevenue:0, totalExpenses:0, daysPlayed:1, eventsResolved:0, won:false, lost:false, endings:[] },
     world: {
       arc: 'ordinary', storyQueue: [], flags: {}, news: [], threat: 0,
+      newsCooldown: {},
+      videoShown: {},
       neon: { met:false, trust:0, helped:0, state:'active', lastContactDay:0 },
       drones: { enabled:false, count:0, replaced:0, droneClients:0 },
       bunker: { built:false, level:0, ultimatumDay:0 },
@@ -173,7 +175,7 @@ function seed() {
     activity: [{ id: 1, text: 'Биллинг запущен', type: 'sys', at: new Date().toISOString() }],
     notifications: [], revenue, growth,
     seq: { tariff:5, client: clients.length+1, invoice: invoices.length+1, ticket:1, activity:2, notif:1, story:1, emp:1 },
-    simDate: today, settings: { reduceAds: false },
+    simDate: today, settings: {},
     onboarded: { tour: false, views: {} },
     game: g,
     story: { seenEvents: [], choices: {} }
@@ -185,7 +187,8 @@ function migrate(s) {
   const g = s.game;
   if (!g.unlockedTech) g.unlockedTech = [];
   if (!g.unlocks) g.unlocks = defaultGame().unlocks;
-  if (!g.network) g.network = { stability: 100, lastOverload: 0 };
+  if (!g.network) g.network = { stability: 100, lastOverload: 0, anomalyVisualShown: 0 };
+  if (typeof g.network.anomalyVisualShown !== 'number') g.network.anomalyVisualShown = 0;
   if (!g.competitors) g.competitors = [];
   if (!g.upgradesBroken) g.upgradesBroken = {};
   if (!g.ap) g.ap = { current: 3, max: 3 };
@@ -197,10 +200,22 @@ function migrate(s) {
   if (!g.family) g.family = { wife: null, kids: [], wifeHappiness: 100, lastFamilyEventDay: 0, crisisShown: false };
   if (typeof g.family.crisisShown !== 'boolean') g.family.crisisShown = false;
   if (!g.world) g.world = defaultGame().world;
+  if (!g.world.newsCooldown) g.world.newsCooldown = {};
+  if (!g.world.videoShown) g.world.videoShown = {};
   if (!g.world.storyLines) g.world.storyLines = { neon:0, cynessa:0, corporate:0, family:0 };
   if (!s.story) s.story = { seenEvents: [], choices: {} };
   if (!s.onboarded) s.onboarded = { tour: false, views: {} };
   if (!s.onboarded.views) s.onboarded.views = {};
+  if (s.settings) {
+    delete s.settings.reduceAds;
+    delete s.settings.autoTick;
+    delete s.settings.tickMs;
+    delete s.settings.autoNewClients;
+    delete s.settings.autoPayments;
+    delete s.settings.churnChance;
+    delete s.settings.snSpam;
+    delete s.settings.spamEnabled;
+  }
   g.goal = NB.GOAL_CASH;
   return s;
 }
@@ -223,8 +238,9 @@ NB.resetState = function (skipConfirm) {
   location.reload();
 };
 
-NB.ui = { view: 'dashboard', query: '', clientSort: { key:'name', dir:'asc' }, invoiceFilter:'all', invoiceTab:'client', chatThreadId: null };
+NB.ui = { view: 'dashboard', query: '', clientSort: { key:'name', dir:'asc' }, invoiceFilter:'all', invoiceTab:'client', chatThreadId: null, activityFilter: 'all', scrollPositions: {} };
 
+/* ============ UNLOCKS ============ */
 NB.checkUnlocks = function () {
   const g = NB.state.game;
   const st = NB.state;
@@ -250,9 +266,11 @@ NB.checkUnlocks = function () {
   }
 };
 
+/* ============ TRAFFIC (FIXED BALANCE) ============ */
 NB.traffic.getCapacity = function () {
   const u = NB.state.game.upgrades;
-  return 500 + u.bandwidth * 400 + u.fiber * 800 + u.satellite * 1500 + u.microBooster * 150;
+  /* Base 5000 — комфортно для ~30 средних клиентов. Каждый апгрейд даёт существенный буст. */
+  return 5000 + u.bandwidth * 2000 + u.fiber * 4000 + u.satellite * 8000 + u.microBooster * 1000;
 };
 NB.traffic.getUsage = function () {
   return NB.state.clients.filter(c => c.status === 'active')
@@ -267,14 +285,20 @@ NB.traffic.getLoad = function () {
   if (percent > 100) status = 'overload';
   else if (percent > 80) status = 'warning';
   else if (percent > 60) status = 'elevated';
-  return { cap, usage, percent, stability, status };
+  const active = NB.state.clients.filter(c => c.status === 'active');
+  const avgSpeed = active.length > 0 ? usage / active.length : 100;
+  const freeCapacity = Math.max(0, cap - usage);
+  const roomForClients = Math.floor(freeCapacity / Math.max(50, avgSpeed));
+  return { cap, usage, percent, stability, status, roomForClients, freeCapacity };
 };
 
+/* ============ AP ============ */
 NB.canSpendAp = c => NB.state.game.ap.current >= (c || 0);
 NB.spendAp = c => { if (c <= 0) return true; if (NB.state.game.ap.current < c) return false; NB.state.game.ap.current -= c; NB.save(); return true; };
 NB.resetAp = () => { const g = NB.state.game; g.ap.current = g.ap.max; g.employees.forEach(e => { e.ap.current = e.ap.max; }); NB.save(); };
 NB.recomputeApMax = () => { const g = NB.state.game; g.ap.max = 3 + Math.floor(Math.max(0, g.company.level - 1) / 3); if (g.ap.current > g.ap.max) g.ap.current = g.ap.max; };
 
+/* ============ COMPANY XP ============ */
 NB.addCompanyXp = function (n) {
   const g = NB.state.game;
   g.company.xp += n;
@@ -291,6 +315,7 @@ NB.addCompanyXp = function (n) {
   NB.save();
 };
 
+/* ============ ЭКОНОМИКА ============ */
 NB.dailyIncomeEstimate = function () {
   const active = NB.state.clients.filter(c => c.status === 'active');
   let base = 0;
@@ -309,7 +334,9 @@ NB.dailyCostEstimate = function () {
   const base = NB.BASE_DAILY_COST + NB.COST_PER_CLIENT * active;
   const upkeep = NB.game.dailyUpkeep();
   const salary = NB.state.game.employees.reduce((s, e) => s + e.salary, 0);
-  return { base, upkeep, salary, total: base + upkeep + salary };
+  const income = NB.dailyIncomeEstimate();
+  const tax = Math.round(income.total * 0.08);
+  return { base, upkeep, salary, tax, total: base + upkeep + salary + tax };
 };
 
 NB.netDailyEstimate = () => {
@@ -325,6 +352,7 @@ NB.canAdvanceDay = function () {
   return { ok: true };
 };
 
+/* ============ ВИДЕО ============ */
 NB.playVideo = function (src, title, opts) {
   opts = opts || {};
   const wrap = document.createElement('div');
@@ -343,6 +371,7 @@ NB.playVideo = function (src, title, opts) {
   return { close };
 };
 
+/* ============ ЭФФЕКТЫ ============ */
 const style = document.createElement('style');
 style.textContent = `
 @keyframes shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-4px,0,0)}40%,60%{transform:translate3d(4px,0,0)}}
@@ -352,13 +381,16 @@ style.textContent = `
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,107,0,.6)}50%{box-shadow:0 0 0 8px rgba(255,107,0,0)}}
 @keyframes numberPop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
-@keyframes dangerPulse{0%,100%{background:rgba(255,0,0,.1)}50%{background:rgba(255,0,0,.25)}}
+@keyframes dangerPulse{0%,100%{background:rgba(255,0,0,.08)}50%{background:rgba(255,0,0,.2)}}
+@keyframes shake-horizontal{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
 .cyn-warning{animation:redPulse 2s infinite}
 .typewriter{overflow:hidden;white-space:nowrap;border-right:2px solid var(--primary);animation:typewriter 2s steps(80) both}
 .fade-in{animation:fadein .5s cubic-bezier(.2,.7,.3,1) both}
 .tutorial-pulse{animation:pulseGlow 1.5s infinite;border-radius:10px;position:relative;z-index:999}
 .number-pop{animation:numberPop .3s}
 body.cynessa-danger::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;background:rgba(255,0,0,.12);animation:dangerPulse 2s infinite}
+body.anomaly-glitch .view{animation:shake-horizontal .3s infinite}
+body.anomaly-glitch .game-cash, body.anomaly-glitch .stat-value{filter:blur(1px);opacity:.7}
 `;
 document.head.appendChild(style);
 
@@ -388,6 +420,7 @@ NB.effects.typewriter = (el, text) => {
   tick();
 };
 
+/* ============ КОНЦОВКИ ============ */
 NB.showCynessaEnding = function () {
   const g = NB.state.game;
   if (g.world.endingTriggered) return;
@@ -455,6 +488,7 @@ NB.showEndingScreen = function (type) {
   NB.save();
 };
 
+/* ============ NOTIFY ============ */
 NB.toast = (msg, type) => {
   const w = document.getElementById('toasts'); if (!w) return;
   const el = document.createElement('div');
@@ -505,6 +539,32 @@ NB.addLog = (text, type) => {
   if (g.daily.log.length > 30) g.daily.log = g.daily.log.slice(-30);
 };
 
+/* ============ НОВОСТИ С COOLDOWN ============ */
+NB.addNews = function (text, opts) {
+  opts = opts || {};
+  const w = NB.state.game.world;
+  if (!w.newsCooldown) w.newsCooldown = {};
+  const key = opts.cooldownKey || text;
+  const cooldownDays = opts.cooldown || 5;
+  const lastDay = w.newsCooldown[key];
+  if (lastDay !== undefined && NB.state.game.daily.dayNumber - lastDay < cooldownDays) return false;
+  w.newsCooldown[key] = NB.state.game.daily.dayNumber;
+  w.news.unshift({
+    id: NB.state.seq.story++,
+    text,
+    at: new Date().toISOString(),
+    video: opts.video || null,
+    videoTitle: opts.videoTitle || null
+  });
+  if (w.news.length > 40) w.news = w.news.slice(0, 40);
+  return true;
+};
+
+NB.addVideoNews = function (src, title, text, cooldown) {
+  return NB.addNews(text, { cooldownKey: 'video-' + src, cooldown: cooldown || 30, video: src, videoTitle: title });
+};
+
+/* ============ MODAL / FORMS ============ */
 let modalHandler = null;
 NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxClass, noSubmit }) => {
   const modal = document.getElementById('modal');
@@ -561,6 +621,8 @@ NB.refreshLive = () => {
   if (c) c.textContent = NB.money(NB.state.game.cash);
   const p = document.getElementById('pending-revenue');
   if (p) p.textContent = NB.money(NB.state.game.daily.pendingRevenue);
+  const p2 = document.getElementById('pending-revenue-2');
+  if (p2) p2.textContent = NB.money(NB.state.game.daily.pendingRevenue);
   const b = document.getElementById('game-goal-bar');
   if (b) b.style.width = Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100) + '%';
 };
@@ -581,6 +643,7 @@ NB.renderCompanyXp = () => {
   </div>`;
 };
 
+/* ============ SHELL ============ */
 NB.buildShell = (navItems, content) => {
   const unread = NB.state.notifications.filter(n => !n.read).length;
   const g = NB.state.game;
@@ -632,6 +695,7 @@ NB.simBar = () => {
   const netStr = (net.net >= 0 ? '+' : '') + NB.money(net.net);
   const traffic = NB.traffic.getLoad();
   const trafficColor = traffic.percent > 100 ? '#ef4444' : traffic.percent > 80 ? '#f59e0b' : '#22c55e';
+  const dronesCount = g.world.drones.enabled ? g.world.drones.count : 0;
   return `<div class="sim-bar">
     <div class="sim-date"><span>📅</span><span>${NB.dayLabel(NB.state.simDate)}</span><span class="sim-day">· Д${g.daily.dayNumber}</span></div>
     ${NB.renderApDots()}
@@ -641,10 +705,11 @@ NB.simBar = () => {
       <span class="econ-mini-item negative">−${NB.money(net.cost)}</span>
       <span class="econ-mini-net ${netClass}">${netStr}</span>
     </div>
-    <div class="traffic-mini" title="Нагрузка: ${traffic.percent}%">
+    <div class="traffic-mini" title="Нагрузка: ${traffic.percent}% (${traffic.usage}/${traffic.cap} Мбит/с)">
       <span class="traffic-mini-label">📶 ${traffic.percent}%</span>
       <div class="traffic-mini-bar"><i style="width:${Math.min(100,traffic.percent)}%;background:${trafficColor}"></i></div>
     </div>
+    ${dronesCount > 0 ? `<div class="traffic-mini" style="border-color:rgba(14,165,233,.4)"><span class="traffic-mini-label" style="color:#7dd3fc">🤖 ${dronesCount}</span></div>` : ''}
     <div class="spacer"></div>
     ${pending > 0 ? `<span class="sim-note">💰 ${NB.money(pending)}</span>` : ''}
     ${openTickets > 0 ? `<span class="sim-note warn">✉ ${openTickets}</span>` : ''}

@@ -1,3 +1,4 @@
+/* isp_billing_story.js — сюжет */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -29,7 +30,7 @@ S.applyTheme = function () {
 };
 
 S.SCENES = [
-  /* ========== ORDINARY ========== */
+  /* ============ ORDINARY ============ */
   { id:'family_intro', arc:'ordinary', title:'Вечер дома',
     text:'После рабочего дня вы возвращаетесь домой. Жена на кухне, ребёнок играет. Она смотрит с тревогой: «Ты всё время на работе. Мы почти не видимся».',
     day:3, requires:g=>g.family.wife,
@@ -43,16 +44,20 @@ S.SCENES = [
     text:'Жена говорит: «Может, второго?» Смотрит с надеждой. Денег не так много, но она права — жизнь не только работа.',
     day:20, requires:g=>g.family.wife && g.family.kids.length === 1 && g.family.wifeHappiness > 50,
     choices:[
-      { label:'Согласиться (1 AP)', ap:1, run:g=>{
-        g.family.kids.push({ name: NB.genKid(), age: 0 });
-        g.family.wifeHappiness=Math.min(100,g.family.wifeHappiness+20);
-        return 'Семья стала больше.';
-      }},
+      { label:'Согласиться (1 AP)', ap:1, run:g=>{ g.family.kids.push({ name: NB.genKid(), age: 0 }); g.family.wifeHappiness=Math.min(100,g.family.wifeHappiness+20); return 'Семья стала больше.'; }},
       { label:'Сейчас не время', run:g=>{ g.family.wifeHappiness=Math.max(0,g.family.wifeHappiness-15); return 'Она грустно кивнула.'; }}
     ]
   },
-  {
-    id:'family_crisis', arc:'ordinary', title:'Кризис в семье',
+  { id:'family_school', arc:'ordinary', title:'Школа',
+    text:'Жена звонит: «У ребёнка проблемы в школе. Учительница говорит — нужен репетитор. Это стоит денег».',
+    day:30, requires:g=>g.family.wife && g.family.kids.length > 0,
+    choices:[
+      { label:'Нанять репетитора (5000₽)', cost:5000, run:g=>{ g.family.wifeHappiness=Math.min(100,g.family.wifeHappiness+15); return 'Учительница довольна. Жена улыбается.'; }},
+      { label:'«Справимся сами»', run:g=>{ g.family.wifeHappiness=Math.max(0,g.family.wifeHappiness-5); return 'Жена кивнула. Но взгляд был недовольный.'; }},
+      { label:'Сходить к директору (1 AP)', ap:1, run:g=>{ g.family.wifeHappiness=Math.min(100,g.family.wifeHappiness+20); return 'Проблема решена. Ребёнок счастлив.'; }}
+    ]
+  },
+  { id:'family_crisis', arc:'ordinary', title:'Кризис в семье',
     text:'Жена собирает вещи. «Я больше не могу так. Ты живёшь на работе. Мы для тебя — фон».',
     day:40, requires:g=>g.family.wife && g.family.wifeHappiness < 25 && !g.family.crisisShown,
     choices:[
@@ -62,52 +67,38 @@ S.SCENES = [
         g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 40);
         return 'Она осталась. Но едва-едва.';
       }},
-      { label:'Сказать «уходи»', run:g=>{
-        g.family.crisisShown = true;
-        g.family.wife = null;
-        g.reputation = Math.max(0, g.reputation - 20);
-        return 'Она ушла. Вы остались один.';
-      }}
+      { label:'Сказать «уходи»', run:g=>{ g.family.crisisShown = true; g.family.wife = null; g.reputation = Math.max(0, g.reputation - 20); return 'Она ушла. Вы остались один.'; }}
     ]
   },
 
-  /* ========== FIRST SIGNAL ========== */
+  /* ============ FIRST SIGNAL ============ */
   { id:'signal_1', arc:'first_signal', title:'Странное письмо',
     text:'Поздний вечер. Письмо от «[ДАННЫЕ УДАЛЕНЫ]». Внутри: «Я знаю, что ты меня видишь. Не бойся». Вложение: attachment_404.txt',
     day:5,
     choices:[
-      { label:'Открыть', run:g=>{ g.world.threat=1; NB.effects.shake(600); return 'Файл открылся. На долю секунды в отражении экрана — чьё-то лицо.'; }},
-      { label:'Удалить', run:g=>{ return 'Стёрто. Но чувство осталось.'; }},
-      { label:'Переслать в поддержку', run:g=>{ return '«Источник не определяется. Это невозможно».'; }}
+      { label:'Открыть', run:g=>{ g.world.threat=1; NB.effects.shake(600); return 'Файл открылся. На долю секунды в отражении — чьё-то лицо.'; }},
+      { label:'Удалить', run:g=>'Стёрто. Но чувство осталось.' },
+      { label:'Переслать в поддержку', run:g=>'«Источник не определяется. Это невозможно».' }
     ]
   },
-  {
-  id:'signal_2', arc:'first_signal', title:'Шорох в проводах',
-  text:'Сотрудник жалуется: кто-то ходит по логам. В 03:33 кто-то обращался к биллингу. Адрес — пустой.',
-  day:9,
-  choices:[
-    { label:'Проверить ночью (1 AP)', ap:1, run:g=>{ g.world.threat=Math.min(8,g.world.threat+1); NB.effects.shake(400); return 'В темноте экрана моргнула точка. Она посмотрела в ответ.'; }},
-    { label:'Заплатить аудит (3000 ₽)', cost:3000, run:g=>{ return 'Аудит ничего не нашёл. Или нашёл и промолчал.'; }},
-    { label:'Забыть', run:g=>{ return 'Вы отвлеклись на работу.'; }}
+  { id:'signal_2', arc:'first_signal', title:'Шорох в проводах',
+    text:'Сотрудник жалуется: кто-то ходит по логам. В 03:33 кто-то обращался к биллингу. Адрес пустой.',
+    day:9,
+    choices:[
+      { label:'Проверить ночью (1 AP)', ap:1, run:g=>{ g.world.threat=Math.min(8,g.world.threat+1); NB.effects.shake(400); return 'В темноте экрана моргнула точка. Она посмотрела в ответ.'; }},
+      { label:'Аудит (3000 ₽)', cost:3000, run:g=>'Аудит ничего не нашёл. Или нашёл и промолчал.' },
+      { label:'Забыть', run:g=>'Вы отвлеклись на работу.' }
     ]
   },
 
-  /* ========== NEON SHADOW ========== */
+  /* ============ NEON SHADOW ============ */
   { id:'neon_contact', arc:'neon_shadow', title:'Neon Shadow',
-    text:'Стук в дверь. На пороге — уставший человек лет тридцати в простом худи. Глаза красные, будто не спал неделю. «Я — Neon Shadow. Разработчик Starve Neon. Мне нужна помощь. Моя игра — не просто игра. Это канал. Мне нужны твои серверы и защита».',
+    text:'Стук в дверь. На пороге — уставший человек лет тридцати в худи. «Я — Neon Shadow. Разработчик Starve Neon. Мне нужна помощь. Моя игра — не просто игра. Это канал».',
     day:15,
     choices:[
-      { label:'Впустить', run:g=>{ g.world.neon.met=true; g.world.neon.trust=10; return 'Он просидел три часа. Говорил о «сигнале», «канале», «девочке в поместье Эллиот».'; }},
-      { label:'Отказать', run:g=>{ return 'Он ушёл. Через час — DDoS-атака.'; }},
-      { label:'Сначала — что ты знаешь?', run:g=>{ g.world.neon.met=true; g.world.neon.trust=5; return '«Она уже близко. Та, что решает».'; }}
-    ]
-  },
-  { id:'neon_video_trailer', arc:'neon_shadow', title:'Трейлер',
-    text:'«Хочешь увидеть, о чём я?» Neon открывает ноутбук.',
-    day:17, requires:g=>g.world.neon.met,
-    choices:[
-      { label:'Посмотреть', action:()=>{ NB.playVideo('images/video1.webm', 'Starve Neon — трейлер'); return 'Тёмный неон. Дроны. Фиолетовая точка в темноте.'; }},
-      { label:'Отказаться', run:g=>'«Ладно. Потом».' }
+      { label:'Впустить', run:g=>{ g.world.neon.met=true; g.world.neon.trust=10; return 'Он говорил о «сигнале», «канале», «девочке в поместье Эллиот».'; }},
+      { label:'Отказать', run:g=>'Он ушёл. Через час — DDoS.' },
+      { label:'Сначала — что знаешь?', run:g=>{ g.world.neon.met=true; g.world.neon.trust=5; return '«Она уже близко. Та, что решает».'; }}
     ]
   },
   { id:'neon_request_1', arc:'neon_shadow', title:'Первая просьба',
@@ -115,16 +106,8 @@ S.SCENES = [
     day:19, requires:g=>g.world.neon.met,
     choices:[
       { label:'Разрешить', run:g=>{ g.world.neon.trust+=20; g.world.neon.helped++; return 'Утром трафик был чище обычного.'; }},
-      { label:'Разрешить за 5000 ₽', run:g=>{ g.cash+=5000; g.world.neon.trust+=10; g.world.neon.helped++; return 'Он улыбнулся — впервые.'; }},
+      { label:'За 5000 ₽', run:g=>{ g.cash+=5000; g.world.neon.trust+=10; g.world.neon.helped++; return 'Он улыбнулся — впервые.'; }},
       { label:'Отказать', run:g=>{ g.world.neon.trust-=10; return 'Он замолчал на несколько дней.'; }}
-    ]
-  },
-  { id:'neon_video_demo', arc:'neon_shadow', title:'Геймплей',
-    text:'«Это геймплей. Смотри».',
-    day:21, requires:g=>g.world.neon.trust>=10,
-    choices:[
-      { label:'Смотреть', action:()=>{ NB.playVideo('images/video2.webm', 'Starve Neon — геймплей'); return 'Игра, где ты выживаешь. Где ты — оператор.'; }},
-      { label:'Хватит', run:g=>'Neon закрыл ноутбук.' }
     ]
   },
   { id:'neon_request_2', arc:'neon_shadow', title:'Нужна помощь',
@@ -136,34 +119,33 @@ S.SCENES = [
       { label:'Отказать', run:g=>{ g.world.neon.trust-=15; return 'Он больше не писал два дня.'; }}
     ]
   },
-  { id:'neon_video_3', arc:'neon_shadow', title:'Тизер',
-    text:'«Это тизер финала. Только для тебя».',
-    day:27, requires:g=>g.world.neon.trust>=20,
-    choices:[
-      { label:'Смотреть', action:()=>{ NB.playVideo('images/video3.webm', 'Starve Neon — тизер'); NB.state.game.world.neon.trust+=5; NB.save(); return 'В конце — знакомый силуэт.'; }},
-      { label:'Не сейчас', run:g=>'Он кивнул.' }
-    ]
-  },
 
-  /* ========== WHISPERS ========== */
+  /* ============ WHISPERS ============ */
   { id:'whisper_1', arc:'whispers', title:'Новости из Осло',
     text:'Утренняя сводка: «На конференции в Осло 40 участников пропали. Очевидцы говорят о фиолетовых точках в воздухе».',
     day:32,
     choices:[
       { label:'Позвонить Neon', run:g=>{ g.world.neon.trust+=3; return '«Не лезь. Пока рано».'; }},
       { label:'Игнорировать', run:g=>'Работа важнее.' },
-      { label:'Написать в редакцию (500 ₽)', cost:500, run:g=>{ return '«Будьте осторожны. За нами уже следят».'; }}
+      { label:'Написать в редакцию (500 ₽)', cost:500, run:g=>'«Будьте осторожны. За нами уже следят».' }
     ]
   },
-  {
-    id:'whisper_2', arc:'whispers', title:'Гость в офисе',
+  { id:'whisper_2', arc:'whispers', title:'Гость в офисе',
     text:'Сотрудник не вышел. Второй видел ночью фигуру в кабинете. Камеры — помехи. Записка: «Не называй её имя».',
-    day:38,
-    requires: g => g.world.neon.met,
+    day:38, requires:g=>g.world.neon.met,
     choices:[
       { label:'Камеры (4000 ₽)', cost:4000, run:g=>{ NB.effects.shake(400); return 'Записано 4 секунды помех. И улыбка, которая длилась дольше.'; }},
       { label:'Не верить', run:g=>{ g.world.threat=Math.min(10,g.world.threat+1); return 'Ночью вы сами увидели тень в коридоре.'; }},
       { label:'Спросить Neon', run:g=>{ g.world.neon.trust+=5; return '«Она за всеми нами. Готовься».'; }}
+    ]
+  },
+  { id:'whisper_signal_strength', arc:'whispers', title:'Странный сигнал',
+    text:'В логах сети появился сигнал не из вашей инфраструктуры. Частота — 13.3 ГГц. Фиолетовая точка в центре.',
+    day:42, requires:g=>g.world.threat>=3,
+    choices:[
+      { label:'Записать сигнал (1 AP)', ap:1, run:g=>{ g.world.flags.signalRecorded=true; g.world.threat=Math.min(10,g.world.threat+1); return 'Записано. Сигнал усилился. Она знает.'; }},
+      { label:'Отключить узел', run:g=>{ g.world.threat=Math.max(0,g.world.threat-1); if(NB.state.clients[0]) NB.state.clients=NB.state.clients.filter(c=>c.id!==NB.state.clients[0].id); return 'Узел отключён. Один клиент потерян.'; }},
+      { label:'Спросить Neon', run:g=>{ if(!g.world.neon.met) return 'Связаться не с кем'; g.world.neon.trust+=5; return '«Не пытайся понять. Просто запомни: она везде».'; }}
     ]
   },
   { id:'whisper_3', arc:'whispers', title:'Имена',
@@ -179,15 +161,20 @@ S.SCENES = [
     text:'На записи с камер — голос: «Меня зовут Cynessa. Я — Абсолютный решатель. Скоро вы все поймёте».',
     day:48, requires:g=>g.world.threat>=3,
     choices:[
-      { label:'Записать в файл (1 AP)', ap:1, run:g=>{
-        g.world.threatNamed = true;
-        return 'Вы записали. Теперь знаете, с кем имеете дело.';
-      }},
+      { label:'Записать в файл (1 AP)', ap:1, run:g=>{ g.world.threatNamed = true; return 'Вы записали. Теперь знаете, с кем имеете дело.'; }},
       { label:'Забыть', run:g=>{ g.world.threat=Math.min(10,g.world.threat+1); return 'Вы попытались забыть. Не получилось.'; }}
     ]
   },
+  { id:'neon_truth', arc:'whispers', title:'Neon рассказывает',
+    text:'Neon приходит сам. Без стука. «Я расскажу тебе, что происходит. Она — решатель. Она хочет решить всё. Даже нас».',
+    day:53, requires:g=>g.world.neon.met && g.world.neon.trust>30,
+    choices:[
+      { label:'«Помогу чем смогу» (1 AP)', ap:1, run:g=>{ g.world.neon.trust+=20; g.world.flags.receivedTruth=true; return 'Он кивнул. Вы теперь знаете правду.'; }},
+      { label:'«Мне не нужны проблемы»', run:g=>{ g.world.neon.trust-=15; return 'Он ушёл. Не оборачиваясь.'; }}
+    ]
+  },
 
-  /* ========== THE GALA ========== */
+  /* ============ THE GALA ============ */
   { id:'gala_invite', arc:'the_gala', title:'Приглашение',
     text:'Официальное приглашение: «Гала-вечер технологической элиты. Только для избранных». Neon: «Не ходи. Что бы ни случилось — не ходи».',
     day:50,
@@ -215,8 +202,17 @@ S.SCENES = [
       { label:'Спросить о девочке', run:g=>{ g.world.neon.trust+=3; return '«Абсолютный решатель. Я видел её в поместье Эллиот. Я бежал».'; }}
     ]
   },
+  { id:'anomaly_breach', arc:'the_gala', title:'Прорыв',
+    text:'Экран мерцает. Появляется текст, которого вы не писали: «Я ВИЖУ ТЕБЯ. 5 ДНЕЙ».',
+    day:65, requires:g=>g.world.threat>=5,
+    choices:[
+      { label:'Усилить защиту (1 AP)', ap:1, run:g=>{ g.world.threat=Math.max(0,g.world.threat-1); NB.effects.shake(500); return 'Она отступила. Пока.'; }},
+      { label:'Игнорировать', run:g=>{ g.world.threat=Math.min(10,g.world.threat+2); NB.effects.redFlash(); return 'Она приблизилась.'; }},
+      { label:'Запросить помощь Neon', run:g=>{ if(g.world.neon.state!=='active') return 'Neon недоступен'; g.world.neon.trust+=3; g.world.flags.neonHelp=true; return '«Строй бункер. У тебя меньше времени, чем ты думаешь».'; }}
+    ]
+  },
 
-  /* ========== DRONES ========== */
+  /* ============ DRONES ============ */
   { id:'drones_offer', arc:'drones', title:'Замена',
     text:'Neon: «Дроны дешевле. Не устают. Не увольняются. Замени сотрудников».',
     day:70,
@@ -234,6 +230,15 @@ S.SCENES = [
       { label:'Только людей', run:g=>{ g.reputation=Math.min(100,g.reputation+10); return 'Верность людям. Пока.'; }}
     ]
   },
+  { id:'drones_choice_humanity', arc:'drones', title:'Один человек',
+    text:'На пороге — живой человек. Измождённый. «Вы последний провайдер в городе. У меня больная дочь. Нужна связь. Пожалуйста».',
+    day:80, requires:g=>g.world.drones.enabled,
+    choices:[
+      { label:'Подключить бесплатно', run:g=>{ g.reputation=Math.min(100,g.reputation+10); g.world.flags.helpedHuman=true; return 'Он плакал. Вы помогли.'; }},
+      { label:'По стандартному тарифу', run:g=>{ const t=NB.state.tariffs[0]; NB.state.clients.push({id:NB.state.seq.client++,name:'Выживший',address:NB.genAddress(),phone:NB.genPhone(),tariffId:t.id,balance:0,status:'active',createdAt:new Date().toISOString(),password:NB.DEFAULT_PASS,isDrone:false,risk:'good',revealed:true}); return '+1 человеческий клиент'; }},
+      { label:'«Мы работаем только с дронами»', run:g=>{ g.reputation=Math.max(0,g.reputation-15); g.world.flags.refusedHuman=true; return 'Он ушёл. Вы видели его глаза.'; }}
+    ]
+  },
   { id:'drone_uprising', arc:'drones', title:'Странное поведение',
     text:'Несколько дронов одновременно перестали выполнять команды. Просто... стоят и смотрят.',
     day:90, requires:g=>g.world.drones.enabled,
@@ -243,19 +248,13 @@ S.SCENES = [
     ]
   },
 
-  /* ========== BUNKER ========== */
+  /* ============ BUNKER ============ */
   { id:'bunker_ultimatum', arc:'bunker', title:'Ультиматум',
     text:'Cynessa атакует города. 3 дня до полного уничтожения. Neon: «Строй БУНКЕР. Сейчас».',
     day:95, requires:g=>g.world.flags.bunkerBlueprints,
     choices:[
       { label:'Строить (70 000 ₽)', cost:70000, run:g=>{ g.world.bunker.built=true; g.world.bunker.level=1; return 'Бетон, сталь, фильтры. Вы готовы.'; }},
-      { label:'Кредит + бункер', run:g=>{
-        const need = Math.max(0, 70000 - g.cash);
-        if (need > 0) { NB.invoices.takeLoan(Math.max(10000, Math.ceil(need / 10000) * 10000)); if (g.cash < 70000) return 'Не хватило'; }
-        g.cash -= 70000;
-        g.world.bunker.built=true; g.world.bunker.level=1;
-        return 'Готово. Долг остался.';
-      }},
+      { label:'Кредит + бункер', run:g=>{ const need=Math.max(0,70000-g.cash); if(need>0) NB.invoices.takeLoan(Math.max(10000,Math.ceil(need/10000)*10000)); if(g.cash<70000) return 'Не хватило'; g.cash-=70000; g.world.bunker.built=true; g.world.bunker.level=1; return 'Готово. Долг остался.'; }},
       { label:'Не строить', run:g=>{ g.world.flags.noBunker=true; g.world.threat=10; return 'Вы остались на поверхности. Да поможет вам бог.'; }}
     ]
   },
@@ -263,7 +262,7 @@ S.SCENES = [
     text:'Бункер тесен. Семья, вы, дроны. Нужны новые уровни.',
     day:105, requires:g=>g.world.bunker.built && g.world.bunker.level===1,
     choices:[
-      { label:'Расширить (50 000 ₽)', cost:50000, run:g=>{ g.world.bunker.level=2; return 'Второй уровень готов. Есть место для дронов.'; }},
+      { label:'Расширить (50 000 ₽)', cost:50000, run:g=>{ g.world.bunker.level=2; return 'Второй уровень готов.'; }},
       { label:'Пока хватит', run:g=>'Вы экономите.' }
     ]
   },
@@ -271,47 +270,36 @@ S.SCENES = [
     text:'Neon приходит. Уставший. «Я ухожу. Она идёт за мной. Если выживешь — я вернусь. Обещаю».',
     day:120, requires:g=>g.world.bunker.built,
     choices:[
-      { label:'Отпустить', run:g=>{ g.world.neon.state='missing'; return 'Он ушёл в темноту. Вы больше не получали от него сообщений.'; }},
-      { label:'Удержать (1 AP)', ap:1, run:g=>{ g.world.threat=Math.min(10,g.world.threat+1); return 'Он мягко отвёл вашу руку. «Ты не понимаешь. Я нужен ей».'; }}
+      { label:'Отпустить', run:g=>{ g.world.neon.state='missing'; return 'Он ушёл в темноту.'; }},
+      { label:'Удержать (1 AP)', ap:1, run:g=>{ g.world.threat=Math.min(10,g.world.threat+1); return 'Он мягко отвёл вашу руку.'; }}
     ]
   },
 
-  /* ========== SILENCE ========== */
+  /* ============ SILENCE ============ */
   { id:'silence_life', arc:'silence', title:'Жизнь под землёй',
-    text:'В бункере. Клиенты — дроны. Люди — единицы. Вода, еда, воздух. Дни сливаются. Neon молчит.',
+    text:'В бункере. Клиенты — дроны. Люди — единицы. Neon молчит. Снаружи тишина.',
     day:140, requires:g=>g.world.bunker.built,
     choices:[
       { label:'Поддерживать (1 AP)', ap:1, run:g=>{ g.reputation=Math.min(100,g.reputation+5); NB.addCompanyXp(20); return 'Вы держитесь.'; }},
-      { label:'Искать выход', run:g=>{ g.world.flags.searchExit=true; return 'Вы нашли старый канал связи. На той стороне кто-то ответил.'; }}
+      { label:'Искать выход', run:g=>{ g.world.flags.searchExit=true; return 'Вы нашли старый канал связи.'; }}
     ]
   },
   { id:'silence_news', arc:'silence', title:'Новости с поверхности',
-    text:'Радио: «Cynessa перестала атаковать. Колонии возвращаются. Связь восстанавливается. Это ещё не конец».',
+    text:'Радио: «Cynessa перестала атаковать. Колонии возвращаются. Связь восстанавливается».',
     day:155, requires:g=>g.world.bunker.built,
     choices:[
       { label:'Поверить', run:g=>{ g.world.flags.believedNews=true; return 'Вы готовитесь выйти.'; }},
       { label:'Не верить', run:g=>{ g.world.flags.distrustedNews=true; return 'Вы остаётесь.'; }}
     ]
   },
-  { id:'neon_video_4', arc:'silence', title:'Последнее видео Neon',
-    text:'На старом канале — знакомый файл. Neon оставил сообщение.',
-    day:165, requires:g=>g.world.neon.state==='missing',
-    choices:[
-      { label:'Открыть', action:()=>{
-        NB.playVideo('images/video4.webm', 'Starve Neon — послание');
-        return '«Если ты это смотришь — я не вернусь. Но она ушла со мной. Прости».';
-      }},
-      { label:'Не открывать', run:g=>'Вы не готовы.' }
-    ]
-  },
 
-  /* ========== RESOLUTION ========== */
+  /* ============ RESOLUTION ============ */
   { id:'resolution_neon_returns', arc:'resolution', title:'Neon вернулся',
-    text:'Стук в дверь бункера. На пороге — Neon. Живой. Уставший. Рядом с ним — тень. Он говорит: «Мы всё решили. Она больше не тронет вас. Я обещал».',
+    text:'Стук в дверь бункера. На пороге — Neon. Живой. Рядом с ним — тень. «Мы всё решили. Она больше не тронет вас. Я обещал».',
     day:180, requires:g=>g.world.neon.state==='missing',
     choices:[
       { label:'Поверить', run:g=>{ g.world.flags.worldSaved=true; return 'Neon улыбнулся. Тень исчезла.'; }},
-      { label:'Не верить', run:g=>{ return 'Neon не стал спорить. Он ушёл.'; }},
+      { label:'Не верить', run:g=>'Neon не стал спорить. Он ушёл.' },
       { label:'Спросить о Cynessa (1 AP)', ap:1, run:g=>{ g.world.flags.worldSaved=true; return '«Она не злая. Она просто следует программе. Я показал ей другой путь».'; }}
     ]
   },
@@ -319,7 +307,7 @@ S.SCENES = [
     text:'Вы выжили. Конкуренты либо мертвы, либо под вами. Вы — единственный крупный провайдер в регионе.',
     day:200, requires:g=>g.unlocks.competitors && g.competitors.filter(c=>c.alive).length === 0,
     choices:[
-      { label:'Праздновать', action:()=>{ NB.showEndingScreen('corporate_win'); return '🏆'; }},
+      { label:'Праздновать', action:()=>{ if (NB.showEndingScreen) NB.showEndingScreen('corporate_win'); return '🏆'; }},
       { label:'Двигаться дальше', run:g=>'Империя растёт.' }
     ]
   }
@@ -338,6 +326,7 @@ S.tick = function () {
   });
   S.applyTheme();
   S.maybeNews();
+  S.maybeVideoNews();
 };
 
 S.maybeNews = function () {
@@ -346,25 +335,71 @@ S.maybeNews = function () {
   if (Math.random() > 0.4) return;
   g.world.lastNewsDay = g.daily.dayNumber;
   const n = S.pickNews();
-  if (n) {
-    g.world.news.unshift({ id: NB.state.seq.story++, text: n, at: new Date().toISOString() });
-    if (g.world.news.length > 40) g.world.news = g.world.news.slice(0, 40);
-    NB.save();
-  }
+  if (n) NB.addNews(n, { cooldown: 5 });
+};
+
+S.maybeVideoNews = function () {
+  const g = NB.state.game;
+  if (!g.world.neon.met && !g.world.flags.galaAttended) return;
+  if (Math.random() > 0.15) return;
+  const videos = [
+    { src: 'images/video1.webm', title: 'Starve Neon — трейлер', text: 'В сети появился трейлер Starve Neon. Разработчик снова не показывает лица.' },
+    { src: 'images/video2.webm', title: 'Starve Neon — геймплей', text: 'Neon выложил геймплей Starve Neon. Фиолетовые точки мелькают даже в игре.' },
+    { src: 'images/video3.webm', title: 'Starve Neon — тизер', text: 'Новый тизер Starve Neon. В конце — знакомый силуэт.' },
+    { src: 'images/video4.webm', title: 'Starve Neon — послание', text: 'Последнее сообщение от Neon. Смотреть до конца.' }
+  ];
+  const v = NB.pick(videos);
+  NB.addVideoNews(v.src, v.title, v.text, 30);
 };
 
 S.pickNews = function () {
   const arc = S.currentArc().id;
   const pool = {
-    ordinary: ['Рынок ISP стабилен.', 'Спрос на гигабит растёт на 12% в квартал.', 'Мелкий провайдер обанкротился.'],
-    first_signal: ['Странный вирус в сети — не вредит, но оставляет фиолетовый след.', 'Сосед сообщил о «шёпоте в проводах».', 'Рост электромагнитного фона в городах.'],
-    neon_shadow: ['Starve Neon награждена. Разработчик не пришёл.', 'Слух: за игрой стоит «кто-то большой».', 'Neon Shadow в тренде. Кто он на самом деле?'],
-    whispers: ['Три инженера пропали без вести.', 'Видения после работы с серверами.', 'Запись: «Она уже здесь».'],
-    the_gala: ['Гала-вечер: 200 пропавших. Следствие в тупике.', 'Комендантский час в трёх городах.', 'Фиолетовое свечение над городами.'],
-    drones: ['Дроны заменяют 40% сотрудников.', 'Профсоюзы протестуют.', 'Первые дроны-клиенты подключились.'],
-    bunker: ['Города пустеют.', 'Колонии Марса принимают переселенцев.', 'Найден бункер провайдера.'],
-    silence: ['Тишина. Атаки прекратились.', 'Первые люди выходят из бункеров.', 'Связь с колониями восстановлена.'],
-    resolution: ['Мир медленно восстанавливается.', 'Neon и Cynessa ушли.', 'Колонии возвращаются.']
+    ordinary: [
+      'Рынок ISP стабилен.', 'Спрос на гигабит растёт на 12% в квартал.',
+      'Мелкий провайдер обанкротился.', 'Тарифы растут по всей стране.',
+      'Аналитики предсказывают бум домашнего интернета.'
+    ],
+    first_signal: [
+      'В сети появился странный вирус.', 'Сосед сообщил о «шёпоте в проводах».',
+      'Рост электромагнитного фона в городах.', 'Провайдер из Осло жалуется на «фиолетовые точки».',
+      'Учёные: «аномальные сигналы в сетях».'
+    ],
+    neon_shadow: [
+      'Starve Neon награждена. Разработчик не пришёл.', 'Слух: за игрой стоит «кто-то большой».',
+      'Neon Shadow в тренде.', 'Starve Neon обновлена — фанаты в восторге.',
+      'Разработчик Starve Neon снова пропал.'
+    ],
+    whispers: [
+      'Три инженера пропали без вести.', 'Видения после работы с серверами.',
+      'Запись: «Она уже здесь».', 'Странные сообщения в логах провайдеров.',
+      'Правительство начало расследование.'
+    ],
+    the_gala: [
+      'Гала-вечер: 200 пропавших.', 'Комендантский час в трёх городах.',
+      'Фиолетовое свечение над городами.', 'Аэропорты закрыты.',
+      'Военные патрули на улицах.'
+    ],
+    drones: [
+      'Дроны заменяют 40% сотрудников.', 'Профсоюзы протестуют.',
+      'Первые дроны-клиенты подключились.', 'Дроны-курьеры повсюду.',
+      'Странные сбои в работе дронов.'
+    ],
+    bunker: [
+      'Города пустеют.', 'Колонии Марса принимают переселенцев.',
+      'Найден бункер провайдера.', 'Правительства ушли в подземные убежища.',
+      'Связь с колониями нестабильна.'
+    ],
+    silence: [
+      'Тишина. Атаки прекратились.', 'Первые люди выходят из бункеров.',
+      'Связь с колониями восстановлена.', 'Выжившие не верят в конец.',
+      'Спутники фиксируют тишину.'
+    ],
+    resolution: [
+      'Мир медленно восстанавливается.', 'Neon и Cynessa ушли.',
+      'Колонии возвращаются.', 'Начинается новая эпоха.',
+      'Выжившие пересчитывают потери.'
+    ]
   };
   return NB.pick(pool[arc] || pool.ordinary);
 };
@@ -384,9 +419,7 @@ S.showScene = function (sc) {
     const meta = [];
     if (c.ap) meta.push(`−${c.ap} AP`);
     if (c.cost) meta.push(`${c.cost} ₽`);
-    const disabled = (c.ap && c.ap > g.ap.current) ||
-                    (c.cost && c.cost > g.cash) ||
-                    (c.requires && !c.requires(g));
+    const disabled = (c.ap && c.ap > g.ap.current) || (c.cost && c.cost > g.cash) || (c.requires && !c.requires(g));
     return `<button type="button" class="story-choice fade-in" data-story-scene="${i}" style="animation-delay:${i*80}ms" ${disabled ? 'disabled style="opacity:.4"' : ''}>
       <span>${NB.esc(c.label)}</span>
       <span class="story-choice-hint">${meta.join(' · ')}</span>
@@ -415,22 +448,18 @@ S.resolveScene = function (sc, idx) {
   const c = sc.choices[idx];
   if (!c) return;
   const g = NB.state.game;
-  
-  /* Проверки */
+
   if (c.ap && c.ap > 0 && g.ap.current < c.ap) return NB.toast('Не хватает AP', 'err');
   if (c.cost && g.cash < c.cost) return NB.toast('Недостаточно денег', 'err');
   if (c.requires && !c.requires(g)) return NB.toast('Недоступно', 'err');
-  
-  /* Списание */
+
   if (c.ap && c.ap > 0) NB.spendAp(c.ap);
   if (c.cost) g.cash -= c.cost;
-  
-  /* Выполнение — сцены НЕ списывают сами */
+
   let result = '';
   if (c.action) result = c.action();
   else if (c.run) result = c.run(g);
-  
-  /* Отметка */
+
   NB.state.story.seenEvents.push(sc.id);
   NB.state.story.choices[sc.id] = idx;
   g.world.storyQueue = g.world.storyQueue.filter(x => x !== sc.id);
