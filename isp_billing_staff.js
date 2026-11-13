@@ -1,4 +1,4 @@
-/* isp_billing_staff.js — вьюхи (клиенты без добавления, счета только расходные) */
+/* isp_billing_staff.js — вьюхи (без activity, с threats) */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -14,14 +14,17 @@ function riskBadge(r) { const m = riskMeta[r]||riskMeta.normal; return `<span cl
 function buildRecommendations() {
   const g = NB.state.game, st = NB.state, out = [];
   const overdue = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber);
-  if (overdue.length) out.push({ level:'critical', icon:'🔥', title:`${overdue.length} просроченных счетов на ${NB.money(overdue.reduce((s,b)=>s+b.amount,0))}`, action:{ label:'Оплатить', view:'invoices' }});
+  if (overdue.length) out.push({ level:'critical', icon:'🔥', title:`${overdue.length} просроченных счетов`, action:{ label:'Оплатить', view:'invoices' }});
   const load = NB.traffic.getLoad();
   if (load.percent > 100) out.push({ level:'critical', icon:'📶', title:`Сеть перегружена (${load.percent}%)`, action:{ label:'Расширить', view:'upgrades' }});
-  else if (load.percent > 80) out.push({ level:'warning', icon:'📶', title:`Нагрузка ${load.percent}%`, action:{ label:'Улучшить', view:'upgrades' }});
   const net = NB.netDailyEstimate();
   if (net.net < 0) out.push({ level:'critical', icon:'📉', title:`Убыток ${NB.money(-net.net)}/день`, action:{ label:'Магазин', view:'upgrades' }});
   if (g.world.threat >= 5) out.push({ level:'warning', icon:'⚠', title:`Угроза: ${g.world.threat}/10`, action:{ label:'Защита', view:'upgrades' }});
   if (g.world.bunker.built && (g.world.bunker.food||0) === 0) out.push({ level:'warning', icon:'🍖', title:'В бункере голод', action:{ label:'Еда', view:'bunker' }});
+  if (g.world.era === 'threats') {
+    const activeThreats = (g.world.threats || []).filter(t => t.alive).length;
+    if (activeThreats > 0) out.push({ level:'warning', icon:'⚠', title:`${activeThreats} активных угроз`, action:{ label:'Реагировать', view:'competitors' }});
+  }
   if (g.family.wife && g.family.wifeHappiness < 25 && !g.family.crisisShown) out.push({ level:'warning', icon:'💔', title:`${g.family.wife.name} недовольна`, action:{ label:'Вечер', action:'family-evening' }});
   if (g.reputation < 40) out.push({ level:'warning', icon:'⭐', title:`Репутация ${g.reputation}`, action:{ label:'Заявки', view:'chat' }});
   const openT = st.tickets.filter(t => t.status === 'open').length;
@@ -48,9 +51,6 @@ function renderUpgradeEffects() {
   return `<div class="upgrade-effects-panel"><div class="panel-head" style="margin-bottom:8px"><h2>⚙ Активные эффекты</h2></div><div class="upgrade-effects-list">${items.map(i=>`<span class="upgrade-effect-tag">${i}</span>`).join('')}</div></div>`;
 }
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
 S.dashboard = function () {
   const st = NB.state, g = st.game, w = g.world;
   const stats = NB.computeStats();
@@ -123,11 +123,24 @@ S.dashboard = function () {
   }
 
   let marketHtml = '';
-  if (g.unlocks.competitors) {
+  if (g.unlocks.competitors && w.era === 'rivals') {
     marketHtml = `<div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>Доля рынка</h2><button class="btn tiny" data-view="competitors">Все →</button></div><div class="market-bar"><i style="width:${g.marketShare}%;background:linear-gradient(90deg,var(--primary),var(--primary-2))"></i>${g.competitors.filter(c=>c.alive).map(c=>`<i style="width:${c.share}%;background:${c.color}"></i>`).join('')}</div><div class="market-legend"><span><i style="background:linear-gradient(90deg,var(--primary),var(--primary-2))"></i>NetBill ${g.marketShare}%</span>${g.competitors.filter(c=>c.alive).map(c=>`<span><i style="background:${c.color}"></i>${NB.esc(c.name)} ${Math.round(c.share*10)/10}%</span>`).join('')}</div></div>`;
   }
 
-  /* ТОП КЛИЕНТОВ — по тарифу (MRR), без счетов */
+  /* Панель угроз если эра threats */
+  let threatsPanelHtml = '';
+  if (w.era === 'threats') {
+    const activeThreats = (w.threats || []).filter(t => t.alive);
+    const combatPower = NB.competitors.combatPower ? NB.competitors.combatPower() : 0;
+    threatsPanelHtml = `<div class="panel" style="margin-bottom:12px;border-left:3px solid #ef4444">
+      <div class="panel-head"><h2>⚠ Угрозы</h2><button class="btn tiny" data-view="competitors">Реагировать →</button></div>
+      ${activeThreats.length ? `<div style="display:flex;flex-direction:column;gap:6px">
+        ${activeThreats.slice(0,3).map(t => `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surface-2);border-radius:8px;font-size:12.5px"><span style="color:#fff;font-weight:600">${NB.esc(t.name)}</span><span style="color:var(--muted)">сила ${t.power} · лут ${NB.money(t.loot)}</span></div>`).join('')}
+      </div>` : '<p class="muted small" style="padding:8px 0">Пока тихо. Ждите.</p>'}
+      <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">⚔ Боевая мощь: ${combatPower}</div>
+    </div>`;
+  }
+
   const top = [...st.clients.filter(c => c.status === 'active')]
     .sort((a, b) => NB.price(b.tariffId) - NB.price(a.tariffId))
     .slice(0, 5)
@@ -135,14 +148,13 @@ S.dashboard = function () {
 
   const dist = st.tariffs.map(t => ({...t, count: st.clients.filter(c => c.tariffId === t.id).length})).sort((a,b) => b.count - a.count);
   const maxCount = Math.max(1, ...dist.map(d => d.count));
-
   const upgradeEffHtml = renderUpgradeEffects();
 
   return `<div class="page-head"><div><h1>День ${g.daily.dayNumber}</h1><p class="muted">${NB.dayLabel(st.simDate)} · ${openTickets} заявок · «${levelLabel}»</p></div><div class="head-actions"><button class="btn ghost small" data-action="export">📥 Экспорт</button></div></div>
-  ${recsHtml}${eventBanner}${threatBar}${storyHtml}${overdueHtml}${dailyTasksHtml}${pendingHtml}${ticketsHtml}${logHtml}${familyHtml}${economyPanel}${upgradeEffHtml}${bunkerHtml}
+  ${recsHtml}${eventBanner}${threatBar}${storyHtml}${overdueHtml}${dailyTasksHtml}${pendingHtml}${ticketsHtml}${logHtml}${familyHtml}${economyPanel}${upgradeEffHtml}${bunkerHtml}${threatsPanelHtml}
   <div class="game-panel"><div class="game-head"><div><div class="game-title">Касса</div><div class="game-cash" id="game-cash">${NB.money(g.cash)}<small>из ${NB.money(g.goal)}</small></div><div class="game-goal-wrap"><div class="game-goal-labels"><span>Прогресс</span><b>${Math.round(goalPct)}%</b></div><div class="game-goal-bar"><i id="game-goal-bar" style="width:${goalPct}%"></i></div></div></div><div class="game-stats"><div class="game-stat"><b>${g.level}</b><span>уровень</span></div><div class="game-stat"><b>${g.reputation}</b><span>репутация</span></div><div class="game-stat"><b>${g.stats.eventsResolved}</b><span>событий</span></div><div class="game-stat">${status}</div></div></div></div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn ${canAdv.ok?'primary':'ghost'} advance-day-btn" data-action="advance-day" ${canAdv.ok?'':'disabled'} style="padding:12px 24px">${canAdv.ok?'📅 Следующий день →':`⬜ ${canAdv.reason}`}</button></div>
-  <div class="stats">${NB.statCard('Абоненты', stats.clients, `${st.clients.filter(c=>c.status==='active').length} активных`, false, '#ff6b00', 'clients')}${NB.statCard('MRR', stats.mrr, 'выручка/мес', true, '#ff9500', 'mrr')}${NB.statCard('Выручка', stats.revenue, 'за 14 дней', true, '#ffb347', 'revenue')}${NB.statCard('К оплате', stats.due, 'по счетам', true, '#f59e0b', 'due')}</div>
+  <div class="stats">${NB.statCard('Абоненты',stats.clients,`${st.clients.filter(c=>c.status==='active').length} активных`,false,'#ff6b00','clients')}${NB.statCard('MRR',stats.mrr,'выручка/мес',true,'#ff9500','mrr')}${NB.statCard('Выручка',stats.revenue,'за 14 дней',true,'#ffb347','revenue')}${NB.statCard('К оплате',stats.due,'по счетам',true,'#f59e0b','due')}</div>
   ${marketHtml}
   <div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>Выручка по дням</h2><span class="muted small">${st.revenue.length} дней</span></div><canvas id="revenue-chart" class="revenue-chart"></canvas><div class="chart-foot"><span>Итого: <b>${NB.money(stats.revenue)}</b></span><span class="muted">Расходы: ${NB.money(cost.total)}/день</span></div></div>
   <div class="grid-2"><div class="panel"><div class="panel-head"><h2>Трафик</h2><span class="live-badge"><i></i>live</span></div><div class="traffic-widget"><div class="traffic-stat ${traffic.status==='ok'?'ok':traffic.status==='elevated'||traffic.status==='warning'?'warn':'bad'}"><b>${traffic.usage}</b><small>Мбит/с</small></div><div class="traffic-stat ${traffic.status==='ok'?'ok':traffic.status==='elevated'||traffic.status==='warning'?'warn':'bad'}"><b>${traffic.percent}%</b><small>нагрузка</small></div><div class="traffic-stat ${traffic.stability>70?'ok':traffic.stability>40?'warn':'bad'}"><b>${traffic.stability}%</b><small>стабильность</small></div></div><canvas id="traffic-chart" class="traffic-chart"></canvas><div class="chart-foot"><span>Лимит: <b>${traffic.cap}</b> Мбит/с</span>${traffic.percent>80?`<button class="btn tiny" data-view="upgrades">⚡ Улучшить канал</button>`:''}</div></div>
@@ -151,9 +163,6 @@ S.dashboard = function () {
   <div class="panel"><div class="panel-head"><h2>Распределение по тарифам</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>${dist.map(d=>`<div class="tariff-bar"><div class="tariff-bar-top"><span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b></div><div class="bar"><i style="width:${(d.count/maxCount)*100}%;background:${d.color}"></i></div></div>`).join('')}</div></div>`;
 };
 
-/* ============================================================
-   КЛИЕНТЫ — без добавления, с сортировкой
-   ============================================================ */
 S.clients = function () {
   const q = NB.ui.query.trim().toLowerCase();
   let list = NB.state.clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
@@ -162,7 +171,6 @@ S.clients = function () {
   list.sort((a,b) => {
     const k = NB.ui.clientSort.key;
     if (k === 'name') return a.name.localeCompare(b.name) * dir;
-    if (k === 'balance') return (a.balance - b.balance) * dir;
     if (k === 'tariff') return (NB.price(a.tariffId) - NB.price(b.tariffId)) * dir;
     if (k === 'risk') return ((riskOrder[a.risk] ?? 4) - (riskOrder[b.risk] ?? 4)) * dir;
     return 0;
@@ -179,16 +187,15 @@ S.clients = function () {
       <td class="num">${NB.money(NB.price(c.tariffId))}</td>
       <td>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</td>
       <td class="actions">
-        <button class="icon" data-action="edit-client" data-id="${c.id}" title="Изменить">✎</button>
-        <button class="icon" data-action="toggle" data-id="${c.id}" title="${c.status==='active'?'Блок':'Разблок'}">${c.status==='active'?'❙':'▶'}</button>
-        <button class="icon danger" data-action="del-client" data-id="${c.id}" title="Удалить">✕</button>
+        <button class="icon" data-action="edit-client" data-id="${c.id}">✎</button>
+        <button class="icon" data-action="toggle" data-id="${c.id}">${c.status==='active'?'❙':'▶'}</button>
+        <button class="icon danger" data-action="del-client" data-id="${c.id}">✕</button>
       </td>
     </tr>`;
   }).join('');
-
   return `<div class="page-head"><div><h1>Клиенты</h1><p class="muted">${NB.state.clients.length} всего · 👤 ${NB.state.clients.length-droneCount}${droneCount?` · 🤖 ${droneCount}`:''}${riskyCount?` · ⚠ ${riskyCount} риск`:''}</p></div></div>
   <div class="panel">
-    <div class="toolbar"><input class="search" id="client-search" placeholder="Поиск по имени, адресу или телефону…" value="${NB.esc(NB.ui.query)}"></div>
+    <div class="toolbar"><input class="search" id="client-search" placeholder="Поиск…" value="${NB.esc(NB.ui.query)}"></div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <button class="chip ${NB.ui.clientSort.key==='risk'?'active':''}" data-sort="risk">⚠ По риску</button>
       <button class="chip ${NB.ui.clientSort.key==='tariff'?'active':''}" data-sort="tariff">💰 По тарифу</button>
@@ -201,9 +208,6 @@ S.clients = function () {
   </div>`;
 };
 
-/* ============================================================
-   ТАРИФЫ
-   ============================================================ */
 S.tariffs = function () {
   const r = NB.tariffs.getRange();
   return `<div class="page-head"><div><h1>Тарифы</h1><p class="muted">${NB.state.tariffs.length} планов · до ${r.speedMax} Мбит/с</p></div><button class="btn primary" data-action="add-tariff">＋ Новый</button></div>
@@ -211,16 +215,10 @@ S.tariffs = function () {
   <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Диапазон возможностей</h2></div><p class="muted small" style="margin-bottom:8px">Скорость и цена зависят от пропускной способности.</p><div class="tariff-range-info"><span>⚡ Скорость: <b>${r.speedMin}–${r.speedMax}</b> Мбит/с</span><span>💰 Апгрейды: <b>${NB.state.game.upgrades.bandwidth}</b></span><button class="btn tiny" data-view="upgrades" style="margin-left:auto">Улучшить канал →</button></div></div>`;
 };
 
-/* ============================================================
-   СЧЕТА — только расходные
-   ============================================================ */
 S.invoices = () => NB.invoices.renderCompanyBills();
 S.chat = () => NB.chat.renderView();
 S.employees = () => NB.employees.renderView();
 
-/* ============================================================
-   UPGRADES
-   ============================================================ */
 S.upgrades = function () {
   const g = NB.state.game;
   const allKeys = Object.keys(NB.game.UPGRADES);
@@ -261,9 +259,6 @@ S.upgrades = function () {
 
 S.competitors = () => NB.competitors.renderView();
 
-/* ============================================================
-   БУНКЕР
-   ============================================================ */
 S.bunker = function () {
   const g = NB.state.game, w = g.world;
   if (!w.bunker.built) return '<div class="panel"><p class="empty">Бункер не построен</p></div>';
@@ -274,27 +269,6 @@ S.bunker = function () {
   <div class="panel"><div class="panel-head"><h2>Действия</h2></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-action="bunker-order-food">🍖 Заказать еду (15 000 ₽)</button><button class="btn ghost" data-action="bunker-recruit">🚶 Принять выживших</button><button class="btn ghost" data-view="upgrades">⚙ Улучшить бункер</button></div></div>`;
 };
 
-/* ============================================================
-   АКТИВНОСТЬ
-   ============================================================ */
-S.activity = function () {
-  const all = NB.state.activity.slice().reverse();
-  const filter = NB.ui.activityFilter || 'all';
-  const filtered = filter === 'all' ? all : all.filter(a => a.type === filter);
-  const filters = [{id:'all',label:'Все'},{id:'pay',label:'Оплаты'},{id:'tariff',label:'Тарифы'},{id:'ticket',label:'Заявки'},{id:'block',label:'Инциденты'},{id:'sys',label:'Система'}];
-  return `<div class="page-head"><div><h1>Активность</h1><p class="muted">${all.length} записей</p></div><button class="btn ghost" data-action="clear-activity">Очистить</button></div>
-  <div class="panel"><div class="toolbar"><div class="filters">${filters.map(f=>`<button class="chip ${filter===f.id?'active':''}" data-activity-filter="${f.id}">${f.label}</button>`).join('')}</div></div><div class="activity-list">${filtered.length ? filtered.map(S._activityItem).join('') : '<p class="empty">Пусто</p>'}</div></div>`;
-};
-S._activityItem = function (a) {
-  const icons = {pay:'₽',recharge:'＋',ticket:'✉',net:'◈',sys:'⚙',block:'❙',tariff:'◆'};
-  const colors = {pay:'#22c55e',recharge:'#ff6b00',ticket:'#f59e0b',net:'#ff9500',sys:'#7a7a86',block:'#ef4444',tariff:'#ffb347'};
-  const c = colors[a.type] || '#7a7a86';
-  return `<div class="activity-item"><div class="activity-icon" style="background:${c}26;color:${c}">${icons[a.type]||'•'}</div><div class="activity-body">${NB.esc(a.text)}<small>${NB.fmtDateTime(a.at)}</small></div></div>`;
-};
-
-/* ============================================================
-   НАСТРОЙКИ
-   ============================================================ */
 S.settings = function () {
   const g = NB.state.game;
   return `<div class="page-head"><div><h1>Настройки</h1><p class="muted">Данные и прогресс</p></div></div>

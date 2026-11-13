@@ -1,3 +1,4 @@
+/* isp_billing_core.js — ядро: утилиты, состояние, unlocks, shell */
 (function (global) {
 'use strict';
 const NB = global.NB = global.NB || {};
@@ -57,13 +58,16 @@ NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.ran
 NB.genKid = () => NB.pick(KIDS);
 NB.genWife = () => NB.pick(WIVES);
 
-NB.LS_KEY = 'netbill_v20';
+NB.LS_KEY = 'netbill_v22';
 NB.DEFAULT_PASS = '1234';
 NB.BASE_DAILY_COST = 30;
 NB.COST_PER_CLIENT = 2;
 NB.INCOME_DIVISOR = 20;
 NB.GOAL_CASH = 1000000;
 
+/* ============================================================
+   НАВИГАЦИЯ
+   ============================================================ */
 NB.NAV_ITEMS = [
   { id: 'dashboard',   label: 'Дашборд',    icon: '◧', always: true },
   { id: 'clients',     label: 'Клиенты',    icon: '◔', always: true },
@@ -73,15 +77,35 @@ NB.NAV_ITEMS = [
   { id: 'employees',   label: 'Сотрудники', icon: '👥', unlock: 'employees' },
   { id: 'upgrades',    label: 'Магазин',    icon: '⚙', always: true },
   { id: 'competitors', label: 'Конкуренты', icon: '🏢', unlock: 'competitors' },
-  { id: 'activity',    label: 'Активность', icon: '◷', unlock: 'activity' },
+  { id: 'bunker',      label: 'Бункер',     icon: '🏚', unlock: 'bunkerBuilt' },
   { id: 'settings',    label: 'Настройки',  icon: '🛠', always: true }
 ];
 
 NB.getVisibleNav = function () {
   const g = NB.state.game;
-  return NB.NAV_ITEMS.filter(n => n.always || g.unlocks[n.unlock]);
+  return NB.NAV_ITEMS.filter(n => {
+    if (n.always) return true;
+    if (n.id === 'bunker') return g.world.bunker.built;
+    if (n.unlock) return g.unlocks[n.unlock];
+    return false;
+  });
 };
 
+/* Динамический label/icon для пунктов меню (competitors → threats) */
+NB.navLabel = function (item) {
+  const g = NB.state.game;
+  if (item.id === 'competitors' && g.world.era === 'threats') return 'Угрозы';
+  return item.label;
+};
+NB.navIcon = function (item) {
+  const g = NB.state.game;
+  if (item.id === 'competitors' && g.world.era === 'threats') return '⚠';
+  return item.icon;
+};
+
+/* ============================================================
+   DEFAULT STATE
+   ============================================================ */
 function defaultGame() {
   return {
     cash: 100000, goal: NB.GOAL_CASH, reputation: 100, level: 1,
@@ -91,7 +115,14 @@ function defaultGame() {
     upgrades: {
       ddos:0, bandwidth:0, support:0, marketing:0, fiber:0, satellite:0, ai:0, quantum:0,
       firewall:0, microBooster:0, darkFiber:0, autoCollect:0, autoClean:0, salesBoost:0,
-      bunker:0, anomalyScanner:0
+      bunker:0, anomalyScanner:0,
+      router:0, switch:0, cooling:0, coolingPro:0, ups:0, racks:0,
+      gpon:0, docsis:0, wifi6:0, mpls:0,
+      caching:0, cdn:0, qos:0, loadBalancer:0, compression:0, peering:0,
+      honeyPot:0, backupPower:0, droneRepair:0,
+      barracks:0, armory:0, trainingGround:0,
+      bunkerFood:0, bunkerDefense:0, bunkerMed:0, bunkerVent:0,
+      ark:0, arkSecurity:0, soldier:0
     },
     upgradesBroken: {},
     employees: [], employeesPool: [],
@@ -100,7 +131,7 @@ function defaultGame() {
     competitors: [],
     unlocks: {
       chat: false, employees: false, competitors: false, marketShare: false,
-      advancedUpgrades: false, drones: false, spam: false, loans: false, activity: false
+      advancedUpgrades: false, drones: false, spam: false, loans: false, threats: false
     },
     network: { stability: 100, lastOverload: 0, anomalyVisualShown: 0 },
     daily: { pendingRevenue:0, collectedToday:0, lastDayRevenue:0, dayNumber:1, log: [] },
@@ -117,11 +148,19 @@ function defaultGame() {
       bunker: { built:false, level:0, ultimatumDay:0 },
       lastNewsDay: 0, attacksSurvived: 0,
       storyLines: { neon: 0, cynessa: 0, corporate: 0, family: 0 },
-      endingTriggered: false
+      endingTriggered: false,
+      /* Эра: 'rivals' → 'threats' */
+      era: 'rivals',
+      threats: [], threatSeq: 0,
+      competitorQueue: [],
+      transitionStartedDay: 0
     }
   };
 }
 
+/* ============================================================
+   SEED / MIGRATE / LOAD
+   ============================================================ */
 function seed() {
   const tariffs = [
     { id:1, name:'Старт',  speed:50,  price:350,  color:'#ff6b00', desc:'Базовый доступ' },
@@ -138,14 +177,6 @@ function seed() {
       balance: b, status: b < 0 ? 'blocked' : 'active',
       createdAt: new Date(Date.now() - NB.randInt(5,400)*864e5).toISOString(),
       password: NB.DEFAULT_PASS, isDrone: false, risk: 'normal', revealed: true };
-  });
-  const p = NB.period();
-  const invoices = clients.map((c, i) => {
-    const t = tariffs.find(x => x.id === c.tariffId);
-    const paid = i % 3 !== 0;
-    return { id: i+1, clientId: c.id, period: p, amount: t.price,
-      status: paid ? 'paid' : 'unpaid',
-      paidAt: paid ? new Date(Date.now() - NB.randInt(1,20)*864e5).toISOString() : null };
   });
   const today = NB.toISO(new Date());
   const revenue = Array.from({ length: 14 }, (_, i) => ({ date: NB.addDays(today, -(13-i)), amount: NB.randInt(200,400) }));
@@ -171,14 +202,14 @@ function seed() {
   g.billsSeq = 4;
 
   return {
-    tariffs, clients, invoices, tickets: [],
+    tariffs, clients, tickets: [],
     activity: [{ id: 1, text: 'Биллинг запущен', type: 'sys', at: new Date().toISOString() }],
     notifications: [], revenue, growth,
-    seq: { tariff:5, client: clients.length+1, invoice: invoices.length+1, ticket:1, activity:2, notif:1, story:1, emp:1 },
+    seq: { tariff:5, client: clients.length+1, invoice: 1, ticket:1, activity:2, notif:1, story:1, emp:1 },
     simDate: today, settings: {},
     onboarded: { tour: false, views: {} },
     game: g,
-    story: { seenEvents: [], choices: {} }
+    story: { seenEvents: [], choices: {}, usedTickets: [] }
   };
 }
 
@@ -187,8 +218,8 @@ function migrate(s) {
   const g = s.game;
   if (!g.unlockedTech) g.unlockedTech = [];
   if (!g.unlocks) g.unlocks = defaultGame().unlocks;
+  if (typeof g.unlocks.threats === 'undefined') g.unlocks.threats = false;
   if (!g.network) g.network = { stability: 100, lastOverload: 0, anomalyVisualShown: 0 };
-  if (typeof g.network.anomalyVisualShown !== 'number') g.network.anomalyVisualShown = 0;
   if (!g.competitors) g.competitors = [];
   if (!g.upgradesBroken) g.upgradesBroken = {};
   if (!g.ap) g.ap = { current: 3, max: 3 };
@@ -198,24 +229,23 @@ function migrate(s) {
   if (!g.bills) g.bills = [];
   if (!g.billsSeq) g.billsSeq = 1;
   if (!g.family) g.family = { wife: null, kids: [], wifeHappiness: 100, lastFamilyEventDay: 0, crisisShown: false };
-  if (typeof g.family.crisisShown !== 'boolean') g.family.crisisShown = false;
   if (!g.world) g.world = defaultGame().world;
   if (!g.world.newsCooldown) g.world.newsCooldown = {};
   if (!g.world.videoShown) g.world.videoShown = {};
   if (!g.world.storyLines) g.world.storyLines = { neon:0, cynessa:0, corporate:0, family:0 };
-  if (!s.story) s.story = { seenEvents: [], choices: {} };
+  if (typeof g.world.era === 'undefined') g.world.era = 'rivals';
+  if (!g.world.threats) g.world.threats = [];
+  if (typeof g.world.threatSeq === 'undefined') g.world.threatSeq = 0;
+  if (!g.world.competitorQueue) g.world.competitorQueue = [];
+  if (!s.story) s.story = { seenEvents: [], choices: {}, usedTickets: [] };
+  if (!s.story.usedTickets) s.story.usedTickets = [];
   if (!s.onboarded) s.onboarded = { tour: false, views: {} };
   if (!s.onboarded.views) s.onboarded.views = {};
-  if (s.settings) {
-    delete s.settings.reduceAds;
-    delete s.settings.autoTick;
-    delete s.settings.tickMs;
-    delete s.settings.autoNewClients;
-    delete s.settings.autoPayments;
-    delete s.settings.churnChance;
-    delete s.settings.snSpam;
-    delete s.settings.spamEnabled;
-  }
+
+  /* Новые апгрейды */
+  const defaultUp = defaultGame().upgrades;
+  Object.keys(defaultUp).forEach(k => { if (typeof g.upgrades[k] === 'undefined') g.upgrades[k] = 0; });
+
   g.goal = NB.GOAL_CASH;
   return s;
 }
@@ -238,9 +268,11 @@ NB.resetState = function (skipConfirm) {
   location.reload();
 };
 
-NB.ui = { view: 'dashboard', query: '', clientSort: { key:'name', dir:'asc' }, invoiceFilter:'all', invoiceTab:'client', chatThreadId: null, activityFilter: 'all', scrollPositions: {} };
+NB.ui = { view: 'dashboard', query: '', clientSort: { key:'risk', dir:'asc' }, chatThreadId: null, scrollPositions: {} };
 
-/* ============ UNLOCKS ============ */
+/* ============================================================
+   UNLOCKS
+   ============================================================ */
 NB.checkUnlocks = function () {
   const g = NB.state.game;
   const st = NB.state;
@@ -251,8 +283,7 @@ NB.checkUnlocks = function () {
     if (g.unlocks[key]) return;
     if (cond) { g.unlocks[key] = true; changes.push(label); }
   };
-  tryUnlock('activity', day >= 2, 'Журнал активности');
-  tryUnlock('chat', day >= 2 || st.tickets.length > 0, 'Поддержка (чат)');
+  tryUnlock('chat', day >= 2 || st.tickets.length > 0, 'Поддержка');
   tryUnlock('advancedUpgrades', day >= 8, 'Продвинутые улучшения');
   tryUnlock('spam', day >= 5 && g.company.level >= 2, 'Реклама в сети');
   tryUnlock('employees', day >= 5, 'Найм сотрудников');
@@ -266,11 +297,18 @@ NB.checkUnlocks = function () {
   }
 };
 
-/* ============ TRAFFIC ============ */
-/* Base 5000 — комфортно для ~30 средних клиентов. bandwidth +3000. */
+/* ============================================================
+   TRAFFIC
+   ============================================================ */
 NB.traffic.getCapacity = function () {
   const u = NB.state.game.upgrades;
-  return 5000 + u.bandwidth * 3000 + u.fiber * 5000 + u.satellite * 10000 + u.microBooster * 1200;
+  return 5000
+    + (u.bandwidth||0)*3000 + (u.fiber||0)*5000 + (u.satellite||0)*10000
+    + (u.microBooster||0)*1200 + (u.darkFiber||0)*5000
+    + (u.router||0)*800 + (u.switch||0)*500 + (u.caching||0)*1500
+    + (u.cdn||0)*2000 + (u.loadBalancer||0)*1000
+    + (u.compression||0)*1200 + (u.wifi6||0)*400
+    + (u.gpon||0)*3000 + (u.mpls||0)*1500;
 };
 NB.traffic.getUsage = function () {
   return NB.state.clients.filter(c => c.status === 'active')
@@ -292,13 +330,17 @@ NB.traffic.getLoad = function () {
   return { cap, usage, percent, stability, status, roomForClients, freeCapacity };
 };
 
-/* ============ AP ============ */
+/* ============================================================
+   AP
+   ============================================================ */
 NB.canSpendAp = c => NB.state.game.ap.current >= (c || 0);
 NB.spendAp = c => { if (c <= 0) return true; if (NB.state.game.ap.current < c) return false; NB.state.game.ap.current -= c; NB.save(); return true; };
 NB.resetAp = () => { const g = NB.state.game; g.ap.current = g.ap.max; g.employees.forEach(e => { e.ap.current = e.ap.max; }); NB.save(); };
 NB.recomputeApMax = () => { const g = NB.state.game; g.ap.max = 3 + Math.floor(Math.max(0, g.company.level - 1) / 3); if (g.ap.current > g.ap.max) g.ap.current = g.ap.max; };
 
-/* ============ Company XP ============ */
+/* ============================================================
+   COMPANY XP
+   ============================================================ */
 NB.addCompanyXp = function (n) {
   const g = NB.state.game;
   g.company.xp += n;
@@ -315,7 +357,9 @@ NB.addCompanyXp = function (n) {
   NB.save();
 };
 
-/* ============ ЭКОНОМИКА ============ */
+/* ============================================================
+   ECONOMY
+   ============================================================ */
 NB.dailyIncomeEstimate = function () {
   const active = NB.state.clients.filter(c => c.status === 'active');
   let base = 0;
@@ -352,7 +396,9 @@ NB.canAdvanceDay = function () {
   return { ok: true };
 };
 
-/* ============ ВИДЕО ============ */
+/* ============================================================
+   VIDEO
+   ============================================================ */
 NB.playVideo = function (src, title, opts) {
   opts = opts || {};
   const wrap = document.createElement('div');
@@ -371,32 +417,9 @@ NB.playVideo = function (src, title, opts) {
   return { close };
 };
 
-/* ============ ЭФФЕКТЫ ============ */
-const style = document.createElement('style');
-style.textContent = `
-@keyframes shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-4px,0,0)}40%,60%{transform:translate3d(4px,0,0)}}
-@keyframes fadeOutRed{from{opacity:1}to{opacity:0}}
-@keyframes redPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,0,0,.4)}50%{box-shadow:0 0 0 12px rgba(255,0,0,0)}}
-@keyframes typewriter{from{width:0}to{width:100%}}
-@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,107,0,.6)}50%{box-shadow:0 0 0 8px rgba(255,107,0,0)}}
-@keyframes numberPop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
-@keyframes dangerPulse{0%,100%{background:rgba(255,0,0,.08)}50%{background:rgba(255,0,0,.2)}}
-@keyframes shake-horizontal{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
-@keyframes glitchText{0%{text-shadow:2px 0 #ff0000,-2px 0 #00ffff;transform:translate(0)}25%{text-shadow:-2px 0 #ff0000,2px 0 #00ffff;transform:translate(-1px,1px)}50%{text-shadow:2px 0 #00ffff,-2px 0 #ff0000;transform:translate(1px,-1px)}75%{text-shadow:-1px 0 #ff0000,1px 0 #00ffff;transform:translate(-1px,-1px)}100%{text-shadow:0 0 transparent;transform:translate(0)}}
-.cyn-warning{animation:redPulse 2s infinite}
-.typewriter{overflow:hidden;white-space:nowrap;border-right:2px solid var(--primary);animation:typewriter 2s steps(80) both}
-.fade-in{animation:fadein .5s cubic-bezier(.2,.7,.3,1) both}
-.tutorial-pulse{animation:pulseGlow 1.5s infinite;border-radius:10px;position:relative;z-index:999}
-.number-pop{animation:numberPop .3s}
-.glitch-text{animation:glitchText .35s infinite}
-body.cynessa-danger::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;background:rgba(255,0,0,.12);animation:dangerPulse 2s infinite}
-body.anomaly-glitch .view{animation:shake-horizontal .15s infinite}
-body.anomaly-glitch .game-cash, body.anomaly-glitch .stat-value, body.anomaly-glitch .sim-bar, body.anomaly-glitch h1{filter:blur(1.5px) hue-rotate(180deg) contrast(1.4);opacity:.7;animation:glitchText .3s infinite}
-body.anomaly-glitch .sidebar{animation:shake-horizontal .2s infinite reverse}
-`;
-document.head.appendChild(style);
-
+/* ============================================================
+   EFFECTS
+   ============================================================ */
 NB.effects.shake = d => {
   const r = document.getElementById('root'); if (!r) return;
   r.style.animation = 'none'; void r.offsetWidth;
@@ -426,7 +449,9 @@ NB.effects.typewriter = (el, text) => {
   tick();
 };
 
-/* ============ КОНЦОВКИ ============ */
+/* ============================================================
+   ENDINGS
+   ============================================================ */
 NB.showCynessaEnding = function () {
   const g = NB.state.game;
   if (g.world.endingTriggered) return;
@@ -469,7 +494,9 @@ NB.showEndingScreen = function (type) {
     bunker_alone: { icon:'🏚', color:'#64748b', title:'Один под землёй', desc:'Ты выжил. Но все, кого ты знал — исчезли.' },
     drones_win: { icon:'🤖', color:'#0ea5e9', title:'Век дронов', desc:'Людей больше нет. Только дроны. Ты — последний оператор.' },
     family_win: { icon:'👨‍👩‍👧', color:'#22c55e', title:'Семья', desc:'Ты выбрал семью. Не всё в жизни — деньги.' },
-    world_saved: { icon:'🌍', color:'#22c55e', title:'Мир спасён', desc:'Neon и Cynessa ушли. Люди возвращаются. Колонии процветают.' },
+    world_saved: { icon:'🌍', color:'#22c55e', title:'Мир спасён', desc:'Neon и Синесса ушли. Люди возвращаются. Колонии процветают.' },
+    gala_death: { icon:'💀', color:'#ef4444', title:'Резня в поместье', desc:'Ты не спасся с гала-вечера. Синесса смеялась до конца.' },
+    hunted: { icon:'🔴', color:'#ef4444', title:'Охота', desc:'Она нашла тебя. Так закончилась твоя история.' },
     bankrupt: { icon:'💀', color:'#ef4444', title:'Банкротство', desc:'Касса ушла в минус. Компания закрыта.' }
   }[type] || { icon:'❓', color:'#888', title:'Конец', desc:'…' };
   const wrap = document.createElement('div');
@@ -495,7 +522,9 @@ NB.showEndingScreen = function (type) {
   NB.save();
 };
 
-/* ============ NOTIFY ============ */
+/* ============================================================
+   NOTIFY / LOG
+   ============================================================ */
 NB.toast = (msg, type) => {
   const w = document.getElementById('toasts'); if (!w) return;
   const el = document.createElement('div');
@@ -539,6 +568,7 @@ NB.addActivity = (text, type) => {
   if (NB.state.activity.length > 120) NB.state.activity = NB.state.activity.slice(-120);
   NB.save();
 };
+
 NB.addLog = (text, type) => {
   const g = NB.state.game;
   if (!g.daily.log) g.daily.log = [];
@@ -546,7 +576,9 @@ NB.addLog = (text, type) => {
   if (g.daily.log.length > 30) g.daily.log = g.daily.log.slice(-30);
 };
 
-/* ============ НОВОСТИ ============ */
+/* ============================================================
+   NEWS
+   ============================================================ */
 NB.addNews = function (text, opts) {
   opts = opts || {};
   const w = NB.state.game.world;
@@ -565,7 +597,9 @@ NB.addVideoNews = function (src, title, text, cooldown) {
   return NB.addNews(text, { cooldownKey: 'video-' + src, cooldown: cooldown || 30, video: src, videoTitle: title });
 };
 
-/* ============ MODAL / FORMS ============ */
+/* ============================================================
+   MODAL / FORMS
+   ============================================================ */
 let modalHandler = null;
 NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxClass, noSubmit }) => {
   const modal = document.getElementById('modal');
@@ -606,29 +640,9 @@ NB.statCard = (label, value, sub, moneyFmt, color, key) => `<div class="stat" st
 NB.computeStats = () => {
   const active = NB.state.clients.filter(c => c.status === 'active');
   const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
-  const p = NB.period();
   const due = NB.state.game.bills.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0);
   const rev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
   return { clients: NB.state.clients.length, mrr, revenue: rev, due, marketShare: NB.state.game.marketShare };
-};
-
-NB.refreshLive = () => {
-  const stats = NB.computeStats();
-  NB.$$('.stat-value[data-stat]').forEach(el => {
-    const k = el.dataset.stat;
-    if (k && k in stats) el.textContent = el.dataset.money === '1' ? NB.money(stats[k]) : Math.round(stats[k]);
-  });
-  const c = document.getElementById('game-cash');
-  if (c) c.textContent = NB.money(NB.state.game.cash);
-  const p = document.getElementById('pending-revenue');
-  if (p) p.textContent = NB.money(NB.state.game.daily.pendingRevenue);
-  const p2 = document.getElementById('pending-revenue-2');
-  if (p2) p2.textContent = NB.money(NB.state.game.daily.pendingRevenue);
-  const b = document.getElementById('game-goal-bar');
-  if (b) {
-    const pct = Math.max(0, Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100));
-    b.style.width = pct + '%';
-  }
 };
 
 NB.renderApDots = () => {
@@ -647,17 +661,19 @@ NB.renderCompanyXp = () => {
   </div>`;
 };
 
-/* ============ SHELL ============ */
+/* ============================================================
+   SHELL
+   ============================================================ */
 NB.buildShell = (navItems, content) => {
   const unread = NB.state.notifications.filter(n => !n.read).length;
   const g = NB.state.game;
-  const unpaidInvoices = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === NB.period()).length;
-  const overdueBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length;
+  const unpaidBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length;
   const badges = {
     clients: g.pendingClients.length,
     chat: NB.state.tickets.filter(t => t.status === 'open').length,
     dashboard: (g.activeEvent ? 1 : 0) + g.world.storyQueue.length,
-    invoices: unpaidInvoices + overdueBills
+    invoices: unpaidBills,
+    competitors: g.world.era === 'threats' ? g.world.threats.filter(t => t.alive).length : 0
   };
   document.body.dataset.arc = (g.world && g.world.arc) || 'ordinary';
   if (g.world.threat >= 8 && !g.world.flags.worldSaved && !g.stats.won && !g.stats.lost) document.body.classList.add('cynessa-danger');
@@ -668,8 +684,10 @@ NB.buildShell = (navItems, content) => {
       <nav class="nav">
         ${navItems.map(n => {
           const b = badges[n.id] || 0;
+          const label = NB.navLabel(n);
+          const icon = NB.navIcon(n);
           return `<button class="nav-item ${NB.ui.view === n.id ? 'active' : ''}" data-view="${n.id}">
-            <span class="nav-icon">${n.icon}</span><span>${n.label}</span>
+            <span class="nav-icon">${icon}</span><span>${label}</span>
             ${b > 0 ? `<span class="nav-badge">${b}</span>` : ''}
           </button>`;
         }).join('')}
@@ -701,8 +719,8 @@ NB.simBar = () => {
   const netStr = (net.net >= 0 ? '+' : '') + NB.money(net.net);
   const traffic = NB.traffic.getLoad();
   const trafficColor = traffic.percent > 100 ? '#ef4444' : traffic.percent > 80 ? '#f59e0b' : '#22c55e';
-  const dronesCount = g.world.drones.enabled ? g.world.drones.count : 0;
   const trafficPct = Math.max(0, Math.min(100, traffic.percent));
+  const threatCount = g.world.era === 'threats' ? g.world.threats.filter(t => t.alive).length : 0;
   return `<div class="sim-bar">
     <div class="sim-date"><span>📅</span><span>${NB.dayLabel(NB.state.simDate)}</span><span class="sim-day">· Д${g.daily.dayNumber}</span></div>
     ${NB.renderApDots()}
@@ -712,15 +730,15 @@ NB.simBar = () => {
       <span class="econ-mini-item negative">−${NB.money(net.cost)}</span>
       <span class="econ-mini-net ${netClass}">${netStr}</span>
     </div>
-    <div class="traffic-mini" title="Нагрузка: ${traffic.percent}% (${traffic.usage}/${traffic.cap} Мбит/с)">
+    <div class="traffic-mini" title="Нагрузка: ${traffic.percent}%">
       <span class="traffic-mini-label">📶 ${traffic.percent}%</span>
       <div class="traffic-mini-bar"><i style="width:${trafficPct}%;background:${trafficColor}"></i></div>
     </div>
-    ${dronesCount > 0 ? `<div class="traffic-mini" style="border-color:rgba(14,165,233,.4)"><span class="traffic-mini-label" style="color:#7dd3fc">🤖 ${dronesCount}</span></div>` : ''}
     <div class="spacer"></div>
     ${pending > 0 ? `<span class="sim-note">💰 ${NB.money(pending)}</span>` : ''}
     ${openTickets > 0 ? `<span class="sim-note warn">✉ ${openTickets}</span>` : ''}
     ${overdueBills > 0 ? `<span class="sim-note warn">🔥 ${overdueBills}</span>` : ''}
+    ${threatCount > 0 ? `<span class="sim-note warn" style="border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.08)">⚠ ${threatCount}</span>` : ''}
     <button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(canAdv.ok ? 'Завершить день' : canAdv.reason)}">
       ${canAdv.ok ? 'День →' : `⬜ ${canAdv.reason}`}
     </button>

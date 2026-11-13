@@ -1,4 +1,4 @@
-/* isp_billing_actions.js — действия (без клиентских счетов и добавления клиентов) */
+/* isp_billing_actions.js — действия */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -40,10 +40,7 @@ A.openClient = function (id) {
   if (!c) return;
   const t = NB.tariff(c.tariffId) || { name:'—', price:0, speed:0, color:'#7a7a86' };
   const myTickets = NB.state.tickets.filter(x => x.clientId === c.id).slice(0, 3);
-  const riskLabels = {
-    good:'✓ Надёжный', normal:'— Обычный', risky:'⚠ Рискованный',
-    hacker:'⚠ Возможен взлом', spammer:'⚠ Возможен спам', unknown:'❓ Нет данных'
-  };
+  const riskLabels = { good:'✓ Надёжный', normal:'— Обычный', risky:'⚠ Рискованный', hacker:'⚠ Возможен взлом', spammer:'⚠ Возможен спам', unknown:'❓ Нет данных' };
   const html = `
     <div class="detail-section">
       <div class="detail-row"><span>Телефон</span><span>${NB.esc(c.phone)}</span></div>
@@ -59,13 +56,7 @@ A.openClient = function (id) {
       <div class="detail-row"><span>Абонплата</span><span>${NB.money(t.price)}/мес</span></div>
       <div class="detail-row"><span>Ежедневный доход</span><span>${NB.money(Math.round(t.price / NB.INCOME_DIVISOR))}/день</span></div>
     </div>
-    ${myTickets.length ? `<div class="detail-section">
-      <h4>Заявки</h4>
-      ${myTickets.map(tk => `<div class="detail-row">
-        <span>${NB.esc(tk.subject)}</span>
-        <span class="pill ${tk.status === 'open' ? 'wait' : 'ok'}">${tk.status === 'open' ? 'Открыта' : 'Решена'}</span>
-      </div>`).join('')}
-    </div>` : ''}
+    ${myTickets.length ? `<div class="detail-section"><h4>Заявки</h4>${myTickets.map(tk => `<div class="detail-row"><span>${NB.esc(tk.subject)}</span><span class="pill ${tk.status === 'open' ? 'wait' : 'ok'}">${tk.status === 'open' ? 'Открыта' : 'Решена'}</span></div>`).join('')}</div>` : ''}
     <div class="detail-actions">
       <button class="btn ghost small" data-action="edit-client" data-id="${c.id}">Изменить</button>
       <button class="btn ghost small" data-action="toggle" data-id="${c.id}">${c.status === 'active' ? 'Блок' : 'Разблок'}</button>
@@ -111,14 +102,13 @@ A.delClient = function (id) {
 };
 
 /* ============================================================
-   СЧЕТА КОМПАНИИ
+   СЧЕТА / КРЕДИТ
    ============================================================ */
 A.payBill = function (id) { NB.invoices.payBill(Number(id)); };
 
 A.takeLoan = function () {
   NB.openModal({
-    title: 'Кредит',
-    submit: 'Взять',
+    title: 'Кредит', submit: 'Взять',
     html: `<p class="muted" style="margin-bottom:14px">Возврат 130% за 10 месяцев (13% в месяц).</p>` +
       NB.field('Сумма, ₽', 'amount', 'number', '50000', 'min="10000" max="500000" step="10000" required'),
     onSubmit(fd) {
@@ -134,8 +124,7 @@ A.takeLoan = function () {
    ============================================================ */
 A.addTariff = function () {
   NB.openModal({
-    title: 'Новый тариф',
-    html: NB.tariffs.formHtml(null),
+    title: 'Новый тариф', html: NB.tariffs.formHtml(null),
     onSubmit(fd) {
       const name = String(fd.get('name') || '').trim();
       if (!name) return NB.toast('Укажите название', 'err');
@@ -145,9 +134,7 @@ A.addTariff = function () {
       const v = NB.tariffs.validate(speed, price);
       if (!v.ok) return NB.toast(v.reason, 'err');
       const palette = ['#ff6b00','#ff9500','#ffb347','#ff3d00','#ffaa33','#e85d00'];
-      NB.state.tariffs.push({ id: NB.state.seq.tariff++, name,
-        desc: String(fd.get('desc') || '').trim(),
-        speed, price, color: palette[NB.state.tariffs.length % palette.length] });
+      NB.state.tariffs.push({ id: NB.state.seq.tariff++, name, desc: String(fd.get('desc') || '').trim(), speed, price, color: palette[NB.state.tariffs.length % palette.length] });
       NB.save(); NB.closeModal(); NB.render();
       NB.notify(`Создан «${name}»`, 'ok');
     }
@@ -159,8 +146,7 @@ A.editTariff = function (id) {
   const t = NB.tariff(Number(id));
   if (!t) return;
   NB.openModal({
-    title: 'Редактировать тариф',
-    html: NB.tariffs.formHtml(t),
+    title: 'Редактировать тариф', html: NB.tariffs.formHtml(t),
     onSubmit(fd) {
       const r = NB.tariffs.getRange();
       t.name = String(fd.get('name') || '').trim() || t.name;
@@ -200,7 +186,6 @@ A.resolveTicket = function (id) {
   NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 1);
   NB.save(); NB.render();
 };
-
 A.newTicket = function () { NB.toast('Заявки создаются клиентами автоматически', 'info'); };
 
 /* ============================================================
@@ -222,10 +207,7 @@ A.upgradeEmployee = function (id) {
     setTimeout(() => {
       const card = document.querySelector(`.emp-card [data-action="upgrade-employee"][data-id="${id}"]`);
       const parent = card?.closest('.emp-card');
-      if (parent) {
-        parent.classList.add('emp-leveled');
-        setTimeout(() => parent.classList.remove('emp-leveled'), 900);
-      }
+      if (parent) { parent.classList.add('emp-leveled'); setTimeout(() => parent.classList.remove('emp-leveled'), 900); }
     }, 80);
   }
 };
@@ -237,7 +219,7 @@ A.buyUpgrade = function (key) { NB.game.buyUpgrade(key); };
 A.repairUpgrade = function (key) { NB.game.repairUpgrade(key); };
 
 /* ============================================================
-   КОНКУРЕНТЫ
+   КОНКУРЕНТЫ / УГРОЗЫ
    ============================================================ */
 A.competitorAction = function (id, key) {
   if (!NB.competitors || !NB.competitors.action) return NB.toast('Действие недоступно', 'err');
@@ -255,7 +237,11 @@ A.cancelAgreement = function (id, idx) {
   NB.competitors.cancelAgreement(c, Number(idx));
 };
 
-/* Совместимость со старыми data-action */
+A.threatAction = function (id, key) {
+  if (!NB.competitors || !NB.competitors.actionThreat) return NB.toast('Действие недоступно', 'err');
+  NB.competitors.actionThreat(id, key);
+};
+
 A.negotiate = function (id) { A.competitorAction(id, 'negotiate'); };
 A.sabotage  = function (id) { A.competitorAction(id, 'sabotage'); };
 
@@ -274,10 +260,8 @@ A.buildBunker = function () {
     } else return;
   }
   g.cash -= 70000;
-  g.world.bunker.built = true;
-  g.world.bunker.level = 1;
-  g.world.flags.bunkerBlueprints = true;
-  g.world.flags.bunkerBuilt = true;
+  g.world.bunker.built = true; g.world.bunker.level = 1;
+  g.world.flags.bunkerBlueprints = true; g.world.flags.bunkerBuilt = true;
   NB.notify('🏚 Бункер готов', 'ok');
   NB.addLog('Построен бункер', 'success');
   NB.save(); NB.render();
@@ -339,12 +323,6 @@ A.exportData = function () {
   NB.toast('Экспортировано', 'ok');
 };
 
-A.clearActivity = function () {
-  if (!confirm('Очистить?')) return;
-  NB.state.activity = [];
-  NB.save(); NB.render();
-};
-
 A.resetData = function () { NB.resetState(); };
 A.startTour = function () { NB.startTour(); };
 A.resolveEventModal = function () {
@@ -372,8 +350,7 @@ A.showHistory = function () {
   const g = NB.state.game;
   const log = (g.history || []).slice(-20).reverse();
   NB.openModal({
-    title: 'История решений',
-    noSubmit: true,
+    title: 'История решений', noSubmit: true,
     html: log.length
       ? `<div style="max-height:400px;overflow:auto">${log.map(h => `
         <div class="detail-section">
@@ -411,11 +388,7 @@ A.showNotifs = function () {
   requestAnimationFrame(() => panel.classList.add('show'));
   setTimeout(() => {
     const close = e => {
-      if (!panel.contains(e.target)) {
-        panel.classList.remove('show');
-        setTimeout(() => panel.remove(), 220);
-        document.removeEventListener('click', close);
-      }
+      if (!panel.contains(e.target)) { panel.classList.remove('show'); setTimeout(() => panel.remove(), 220); document.removeEventListener('click', close); }
     };
     document.addEventListener('click', close);
   }, 10);
@@ -432,10 +405,8 @@ A.markRead = function () {
    MAP
    ============================================================ */
 A.map = {
-  /* общее */
   'export':                   A.exportData,
   'reset-data':               A.resetData,
-  'clear-activity':           A.clearActivity,
   'advance-day':              A.advanceDay,
   'finish-day':               A.finishDay,
   'show-notifs':              A.showNotifs,
@@ -444,49 +415,34 @@ A.map = {
   'show-history':             A.showHistory,
   'collect-revenue':          A.collectRevenue,
   'resolve-event-modal':      A.resolveEventModal,
-
-  /* апгрейды */
   'buy-upgrade':              d => A.buyUpgrade(d.key),
   'repair-upgrade':           d => A.repairUpgrade(d.key),
-
-  /* сюжет / бункер */
   'open-story':               A.openStory,
   'build-bunker':             A.buildBunker,
   'bunker-order-food':        A.bunkerOrderFood,
   'bunker-recruit':           A.bunkerRecruit,
   'bunker-fortify':           A.bunkerFortify,
   'family-evening':           A.familyEvening,
-
-  /* клиенты */
   'accept-client':            d => A.acceptClient(d.id),
   'reject-client':            d => A.rejectClient(d.id),
   'open-client':              d => A.openClient(d.id),
   'edit-client':              d => A.editClient(d.id),
   'toggle':                   d => A.toggleClient(d.id),
   'del-client':               d => A.delClient(d.id),
-
-  /* тарифы */
   'add-tariff':               A.addTariff,
   'edit-tariff':              d => A.editTariff(d.id),
   'del-tariff':               d => A.delTariff(d.id),
-
-  /* счета компании */
   'pay-bill':                 d => A.payBill(d.id),
   'take-loan':                A.takeLoan,
-
-  /* заявки */
   'resolve-ticket':           d => A.resolveTicket(d.id),
   'new-ticket':               A.newTicket,
-
-  /* сотрудники */
   'hire-employee':            d => A.hireEmployee(d.id),
   'fire-employee':            d => A.fireEmployee(d.id),
   'refresh-employees-pool':   A.refreshEmployeesPool,
   'upgrade-employee':         d => A.upgradeEmployee(d.id),
-
-  /* конкуренты */
   'competitor-action':        d => A.competitorAction(d.id, d.key),
   'cancel-agreement':         d => A.cancelAgreement(d.id, d.idx),
+  'threat-action':            d => A.threatAction(d.id, d.key),
   'negotiate':                d => A.negotiate(d.id),
   'sabotage':                 d => A.sabotage(d.id)
 };
