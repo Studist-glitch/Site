@@ -1,4 +1,4 @@
-/* isp_billing_competitors.js — корпорации → закат → угрозы (рейдеры, бандиты, дроны) */
+/* isp_billing_competitors.js — вариативные переговоры, угрозы, события */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -19,9 +19,9 @@ const COMPANY_POOL = [
 ];
 
 const PERSONALITY = {
-  aggressive:  { label:'Агрессор',  icon:'⚔', desc:'Быстро наращивает агрессию' },
-  cautious:    { label:'Осторожный',icon:'🛡', desc:'Редко атакует первым' },
-  opportunist: { label:'Оппортунист',icon:'🎲',desc:'Действует по ситуации' },
+  aggressive:  { label:'Агрессор',  icon:'⚔', desc:'Наглый, прямой' },
+  cautious:    { label:'Осторожный',icon:'🛡', desc:'Ценит гарантии' },
+  opportunist: { label:'Оппортунист',icon:'🎲',desc:'Ценит выгоду' },
   idealist:    { label:'Идеалист',  icon:'🌱', desc:'Ценит репутацию' }
 };
 
@@ -33,35 +33,251 @@ const AGREEMENT_TYPES = {
   research:       { label:'Совместные R&D',      icon:'🧪', color:'#f97316' },
   alliance:       { label:'Военный союз',        icon:'⚔',  color:'#ef4444' }
 };
-
 C.AGREEMENT_TYPES = AGREEMENT_TYPES;
 
-/* ============================================================
-   УГРОЗЫ
-   ============================================================ */
 const THREAT_TYPES = {
-  raider: {
-    label:'Рейдеры', icon:'⚔', color:'#ef4444',
-    desc:'Крупные вооружённые группы',
-    lootMult: 1.8, powerMult: 1.3,
-    names: ['Клык','Гром','Сталь','Тень','Хищник','Варан','Кобра']
-  },
-  bandit: {
-    label:'Бандиты', icon:'🔪', color:'#f59e0b',
-    desc:'Мелкие банды, крадут припасы',
-    lootMult: 0.7, powerMult: 0.7,
-    names: ['Псы','Вороны','Крысы','Шакалы','Стервятники']
-  },
-  drone: {
-    label:'Дроны', icon:'🤖', color:'#0ea5e9',
-    desc:'Боевые дроны Синессы',
-    lootMult: 1.2, powerMult: 1.0,
-    names: ['охотники','стражи','скауты','убийцы','разведчики']
-  }
+  raider:  { label:'Рейдеры',  icon:'⚔', color:'#ef4444', desc:'Крупные вооружённые группы', lootMult:1.8, powerMult:1.3, names:['Клык','Гром','Сталь','Тень','Хищник','Варан','Кобра'] },
+  bandit:  { label:'Бандиты',  icon:'🔪', color:'#f59e0b', desc:'Мелкие банды, крадут припасы', lootMult:0.7, powerMult:0.7, names:['Псы','Вороны','Крысы','Шакалы','Стервятники'] },
+  drone:   { label:'Дроны',    icon:'🤖', color:'#0ea5e9', desc:'Боевые дроны Синессы', lootMult:1.2, powerMult:1.0, names:['охотники','стражи','скауты','убийцы','разведчики'] }
 };
 
 /* ============================================================
-   ГЕНЕРАЦИЯ КОРПОРАЦИЙ
+   ПУЛЫ ПЕРЕГОВОРОВ
+   Вопрос: q, opts[]
+   Опция: label, score, hint, hidden?, trap?, followUp?
+   ============================================================ */
+C.NEGOTIATE_POOLS = {
+
+  aggressive: {
+    friendly: [
+      { q:`Мне нравится, что ты не сдался. Давай по-честному: чего ты хочешь?`,
+        opts:[
+          { label:'«Равного партнёрства»', score:3, hint:'+дружба' },
+          { label:'«Твоих клиентов»', score:-1, hint:'−дружба', hidden:{ aggression:5 } },
+          { label:'«Чтобы ты ушёл с рынка»', score:-3, hint:'конфронтация' }
+        ]},
+      { q:`Могу отдать тебе 5% рынка. В обмен — скидка на магистраль.`,
+        opts:[
+          { label:'«Согласен»', score:2, hint:'+дружба', hidden:{ cash:-5000 }, trap:true },
+          { label:'«Дай 8%»', score:1, hint:'торг' },
+          { label:'«Не нуждаюсь»', score:-1, hint:'−дружба' }
+        ]},
+      { q:`Хочешь совместный проект? У меня есть идея с демпингом.`,
+        opts:[
+          { label:'«Только если 50/50»', score:2, hint:'+дружба' },
+          { label:'«Не интересно»', score:0, hint:'нейтрально' },
+          { label:'«Ты хочешь войны?»', score:-2, hint:'−дружба' }
+        ]}
+    ],
+    neutral: [
+      { q:`Ты знаешь, что я могу тебя раздавить?`,
+        opts:[
+          { label:'«Попробуй»', score:2, hint:'+дружба (хладнокровие)' },
+          { label:'«Возможно»', score:0, hint:'нейтрально' },
+          { label:'«Я готов уступить»', score:-2, hint:'−дружба (слабость)' }
+        ]},
+      { q:`Мне нужен твой клиент. Иванов. Отдашь?`,
+        opts:[
+          { label:'«За 5000₽»', score:1, hint:'торг', hidden:{ cash:5000 } },
+          { label:'«Да, забирай»', score:-2, hint:'−дружба', hidden:{ relationship:-10 } },
+          { label:'«Никогда»', score:2, hint:'+дружба' }
+        ]},
+      { q:`Что у тебя с сетью? Слышал, у тебя проблемы.`,
+        opts:[
+          { label:'«Всё в порядке»', score:1, hint:'+дружба' },
+          { label:'«Есть небольшие»', score:0, hint:'нейтрально', hidden:{ aggression:5 } },
+          { label:'«Это не твоё дело»', score:-1, hint:'−дружба' }
+        ]}
+    ],
+    hostile: [
+      { q:`Ты пожалеешь, что вообще появился на рынке.`,
+        opts:[
+          { label:'«Уже жалею, что разговариваю»', score:0, hint:'нейтрально' },
+          { label:'«Я не боюсь»', score:2, hint:'+уважение' },
+          { label:'«Пойду на мировую»', score:-3, hint:'−дружба (слабость)' }
+        ]},
+      { q:`Мой последний ультиматум: уходи, или я тебя уничтожу.`,
+        opts:[
+          { label:'«Удачи»', score:1, hint:'хладнокровие' },
+          { label:'«Сколько?»', score:-2, hint:'−дружба', hidden:{ cash:-10000 }, trap:true },
+          { label:'«Хорошо, ухожу»', score:-4, hint:'капитуляция' }
+        ]}
+    ]
+  },
+
+  cautious: {
+    friendly: [
+      { q:`Мне важно быть уверенным в завтрашнем дне. Что ты можешь гарантировать?`,
+        opts:[
+          { label:'«Долгосрочное партнёрство»', score:3, hint:'+дружба' },
+          { label:'«Гарантий нет»', score:-1, hint:'−дружба' },
+          { label:'«Всё, что попросишь»', score:-2, hint:'−дружба (слабость)' }
+        ]},
+      { q:`Мои акционеры нервничают. Как ты предлагаешь сотрудничество?`,
+        opts:[
+          { label:'«Обмен технологиями»', score:2, hint:'+дружба' },
+          { label:'«Совместная защита от угроз»', score:3, hint:'+дружба' },
+          { label:'«Не наше дело»', score:-1, hint:'−дружба' }
+        ]},
+      { q:`Стабильность важнее роста. Согласен?`,
+        opts:[
+          { label:'«Полностью»', score:2, hint:'+дружба' },
+          { label:'«Частично»', score:0, hint:'нейтрально' },
+          { label:'«Рост — это главное»', score:-1, hint:'−дружба' }
+        ]}
+    ],
+    neutral: [
+      { q:`Что ты готов дать, если мы не будем вредить друг другу?`,
+        opts:[
+          { label:'«Ничего не нужно»', score:2, hint:'+дружба' },
+          { label:'«Скидку на магистраль»', score:1, hint:'торг', hidden:{ cash:-3000 }, trap:true },
+          { label:'«Всё, что попросишь»', score:-2, hint:'−дружба' }
+        ]},
+      { q:`У меня есть информация. Но она стоит денег.`,
+        opts:[
+          { label:'«5000₽»', score:0, hidden:{ cash:-5000, insight:true }, trap:true },
+          { label:'«Сначала скажи»', score:1, hint:'+дружба' },
+          { label:'«Не нужно»', score:0, hint:'нейтрально' }
+        ]}
+    ],
+    hostile: [
+      { q:`Мне не о чем с тобой говорить. Но я дам тебе шанс.`,
+        opts:[
+          { label:'«Слушаю»', score:2, hint:'+дружба' },
+          { label:'«Мне не нужен твой шанс»', score:-2, hint:'−дружба' },
+          { label:'«Убирайся»', score:-4, hint:'конфронтация' }
+        ]},
+      { q:`Ты нарушил нашу договорённость. Как это понимать?`,
+        opts:[
+          { label:'«Извини, моя ошибка»', score:1, hint:'+дружба' },
+          { label:'«Не было договорённости»', score:-2, hint:'−дружба' },
+          { label:'«Это бизнес»', score:0, hint:'нейтрально' }
+        ]}
+    ]
+  },
+
+  opportunist: {
+    friendly: [
+      { q:`Слушай, есть дело. Хочешь заработать?`,
+        opts:[
+          { label:'«Говори»', score:2, hint:'+дружба' },
+          { label:'«Сколько?»', score:1, hint:'торг' },
+          { label:'«Не интересно»', score:-1, hint:'−дружба' }
+        ]},
+      { q:`Давай обменяемся: я тебе клиентов, ты мне — скидку.`,
+        opts:[
+          { label:'«Согласен»', score:2, hidden:{ clientsStolen:-1 }, trap:true },
+          { label:'«50/50»', score:2, hint:'+дружба' },
+          { label:'«Мне и так хорошо»', score:0, hint:'нейтрально' }
+        ]},
+      { q:`У меня есть инсайд. Хочешь купить?`,
+        opts:[
+          { label:'«5000₽»', score:1, hidden:{ cash:-5000, insight:true } },
+          { label:'«Поделись бесплатно»', score:-1, hint:'−дружба' },
+          { label:'«Не нужно»', score:0, hint:'нейтрально' }
+        ]}
+    ],
+    neutral: [
+      { q:`Почём продашь свой бизнес?`,
+        opts:[
+          { label:'«Он не продаётся»', score:2, hint:'+уважение' },
+          { label:'«За 100 000₽»', score:0, hint:'нейтрально' },
+          { label:'«Сам у меня купи»', score:-2, hint:'−дружба' }
+        ]},
+      { q:`Я могу уничтожить тебя за неделю. Или мы можем договориться.`,
+        opts:[
+          { label:'«Что предлагаешь?»', score:2, hint:'+дружба' },
+          { label:'«Не пугай»', score:0, hint:'нейтрально' },
+          { label:'«Попробуй»', score:-1, hint:'−дружба' }
+        ]}
+    ],
+    hostile: [
+      { q:`Ты мне надоел. Назови свою цену — и уйди.`,
+        opts:[
+          { label:'«Я не продаюсь»', score:2, hint:'+уважение' },
+          { label:'«20 000₽»', score:-2, hidden:{ cash:20000 }, trap:true },
+          { label:'«Сам уйди»', score:-3, hint:'−дружба' }
+        ]}
+    ]
+  },
+
+  idealist: {
+    friendly: [
+      { q:`Как ты думаешь, зачем мы вообще этим занимаемся?`,
+        opts:[
+          { label:'«Чтобы помогать людям»', score:3, hint:'+дружба' },
+          { label:'«Чтобы зарабатывать»', score:-1, hint:'−дружба' },
+          { label:'«Чтобы изменить мир»', score:2, hint:'+дружба' }
+        ]},
+      { q:`У меня есть проект. Помочь выжившим после катастрофы. Участвуешь?`,
+        opts:[
+          { label:'«Внести 5000₽»', score:3, hidden:{ cash:-5000 } },
+          { label:'«Чем могу — помогу»', score:2, hint:'+дружба' },
+          { label:'«Мне это не интересно»', score:-2, hint:'−дружба' }
+        ]},
+      { q:`Репутация — это всё. Согласен?`,
+        opts:[
+          { label:'«Абсолютно»', score:2, hint:'+дружба' },
+          { label:'«Не всегда»', score:0, hint:'нейтрально' },
+          { label:'«Деньги важнее»', score:-2, hint:'−дружба' }
+        ]}
+    ],
+    neutral: [
+      { q:`Скажи честно: ты не жалеешь о том, что мы делаем?`,
+        opts:[
+          { label:'«Нет»', score:2, hint:'+дружба' },
+          { label:'«Иногда»', score:1, hint:'+дружба' },
+          { label:'«Это просто бизнес»', score:-1, hint:'−дружба' }
+        ]},
+      { q:`Ты веришь в лучшее будущее?`,
+        opts:[
+          { label:'«Верю»', score:2, hint:'+дружба' },
+          { label:'«Не знаю»', score:0, hint:'нейтрально' },
+          { label:'«Нет»', score:-2, hint:'−дружба' }
+        ]}
+    ],
+    hostile: [
+      { q:`Ты разочаровал меня. Я был о тебе лучшего мнения.`,
+        opts:[
+          { label:'«Прости»', score:1, hint:'+дружба' },
+          { label:'«Мне не нужно твоё мнение»', score:-2, hint:'−дружба' },
+          { label:'«Это не твоё дело»', score:-4, hint:'конфронтация' }
+        ]}
+    ]
+  }
+};
+
+/* Особые раунды (25% шанс) */
+C.SPECIAL_ROUNDS = [
+  { q:`Скажи мне — что тебя пугает больше всего?`,
+    opts:[
+      { label:'«Потерять всё»', score:2, hint:'откровенность' },
+      { label:'«Ничего»', score:0, hint:'закрытость' },
+      { label:'«Ты»', score:1, hint:'+уважение' }
+    ]},
+  { q:`У тебя есть семья? Я слышал, есть.`,
+    opts:[
+      { label:'«Да, и я их защищу»', score:3, hint:'+уважение' },
+      { label:'«Не твоё дело»', score:-1, hint:'−дружба' },
+      { label:'«Тебе не достать их»', score:0, hint:'нейтрально', hidden:{ aggression:10 } }
+    ]},
+  { q:`Если бы всё пошло не так — ты бы пошёл против меня?`,
+    opts:[
+      { label:'«Если придётся»', score:2, hint:'честность' },
+      { label:'«Никогда»', score:0, hint:'нейтрально' },
+      { label:'«Уже готовлю план»', score:-2, hint:'−дружба' }
+    ]}
+];
+
+/* Реакции конкурента после раунда (для погружения) */
+C.REACTIONS = {
+  positive: ['(Кивает)', '(Улыбается)', '(Откидывается на спинку)', '«Хорошо»', '«Приятно слышать»'],
+  neutral: ['(Молчит)', '«Продолжай»', '«Понятно»', '(Смотрит в окно)'],
+  negative: ['(Хмурится)', '«Зря ты так»', '(Сжимает кулаки)', '«Это ошибка»', '«Мы ещё поговорим»']
+};
+
+/* ============================================================
+   ГЕНЕРАЦИЯ
    ============================================================ */
 C.generate = function () {
   const g = NB.state.game;
@@ -84,18 +300,14 @@ C.generate = function () {
       name: p.name, color: p.color, desc: p.desc,
       personality: p.personality,
       share: Math.max(3, share),
-      relationship: 0,
-      aggression: aggressionBase,
+      relationship: 0, aggression: aggressionBase,
       financialHealth: 70 + Math.floor(Math.random() * 30),
       techLevel: 2 + Math.floor(Math.random() * 3),
-      mood: 'neutral',
-      alive: true,
+      mood: 'neutral', alive: true,
       founded: g.daily.dayNumber,
       agreements: [],
-      priceWarUntil: 0,
-      takeoverProgress: 0,
-      spyAttempts: 0,
-      sabotageCount: 0,
+      priceWarUntil: 0, takeoverProgress: 0,
+      spyAttempts: 0, sabotageCount: 0,
       history: []
     };
   });
@@ -104,7 +316,7 @@ C.generate = function () {
 };
 
 /* ============================================================
-   ЗАКАТ КОРПОРАЦИЙ (после гала-вечера)
+   ЗАКАТ / ЭРА УГРОЗ
    ============================================================ */
 C.startSunset = function () {
   const g = NB.state.game;
@@ -113,7 +325,6 @@ C.startSunset = function () {
   g.world.flags.corpSunset = true;
   NB.notify('🌇 Рынок рушится: корпорации теряют контроль', 'warn');
   NB.addLog('Закат корпораций начался', 'warn');
-  /* Умирают быстро: финансовое здоровье резко падает */
   g.competitors.forEach(c => {
     if (c.alive) {
       c.financialHealth = Math.max(0, c.financialHealth - 40);
@@ -126,12 +337,9 @@ C.startSunset = function () {
 C.checkSunsetTrigger = function () {
   const g = NB.state.game;
   const day = g.daily.dayNumber;
-  /* Триггер: гала-вечер пройден ИЛИ (день >= 70 и угроза >= 3) */
   const galaPassed = g.world.flags.galaSurvived || g.world.flags.galaFamily || g.world.flags.galaSolo;
   const lateGame = day >= 70 && g.world.threat >= 3;
-  if ((galaPassed || lateGame) && !g.world.transitionStartedDay) {
-    C.startSunset();
-  }
+  if ((galaPassed || lateGame) && !g.world.transitionStartedDay) C.startSunset();
 };
 
 /* ============================================================
@@ -141,21 +349,10 @@ C.tick = function () {
   const g = NB.state.game;
   if (!g.unlocks.competitors) return;
   if (g.competitors.length === 0) C.generate();
-
   C.checkSunsetTrigger();
-
-  /* Тик корпораций */
-  if (g.world.era === 'rivals') {
-    C.tickRivals();
-  }
-  /* Тик угроз */
-  if (g.world.era === 'threats') {
-    C.tickThreats();
-  }
-
-  /* Переход эры */
+  if (g.world.era === 'rivals') C.tickRivals();
+  if (g.world.era === 'threats') C.tickThreats();
   C.maybeSwitchEra();
-
   NB.game.updateMarketShare();
   NB.save();
 };
@@ -168,17 +365,10 @@ C.tickRivals = function () {
 
   g.competitors.forEach(c => {
     if (!c.alive) return;
-
-    /* Закат: умирают по одному за 2-4 дня */
     if (sunset) {
       const deathChance = Math.min(0.5, 0.15 + daysSinceSunset * 0.08);
-      if (Math.random() < deathChance) {
-        C.bankrupt(c);
-        return;
-      }
+      if (Math.random() < deathChance) { C.bankrupt(c); return; }
     }
-
-    /* Соглашения */
     c.agreements.forEach(a => {
       if (a.untilDay && day > a.untilDay) {
         a.expired = true;
@@ -189,14 +379,10 @@ C.tickRivals = function () {
       }
     });
     c.agreements = c.agreements.filter(a => !a.expired);
-
-    /* Дрейф */
     c.relationship += (0 - c.relationship) * 0.02;
     c.relationship = Math.max(-100, Math.min(100, c.relationship));
     c.aggression = Math.max(0, c.aggression - 0.3);
     c.mood = c.relationship >= 30 ? 'friendly' : c.relationship <= -30 ? 'hostile' : 'neutral';
-
-    /* Финансы */
     if (sunset) {
       c.financialHealth = Math.max(0, c.financialHealth - 8);
       c.share = Math.max(0, c.share - 1);
@@ -205,26 +391,18 @@ C.tickRivals = function () {
       else c.share -= NB.rand(0, 0.25);
       c.share = Math.max(0, c.share);
     }
-
-    /* Ценовая война */
     if (c.priceWarUntil > day) {
       c.financialHealth = Math.max(0, c.financialHealth - 1.5);
       c.share = Math.max(0, c.share - 0.3);
       g.cash -= 500;
       g.reputation = Math.max(0, g.reputation - 0.5);
     }
-
-    /* Поглощение */
     if (c.takeoverProgress > 0 && c.takeoverProgress < 100) {
       const inc = Math.round(5 + g.company.level * 2);
       c.takeoverProgress = Math.min(100, c.takeoverProgress + inc);
       if (c.takeoverProgress >= 100) C.completeTakeover(c);
     }
-
-    /* Банкротство */
     if (c.financialHealth < 10 && Math.random() < 0.05) C.bankrupt(c);
-
-    /* Спонтанные действия (только до заката) */
     if (!sunset) C.maybeAct(c);
   });
 };
@@ -239,7 +417,6 @@ C.maybeSwitchEra = function () {
     g.unlocks.threats = true;
     NB.notify('💀 Все корпорации пали. Начинается эпоха угроз.', 'warn');
     NB.addLog('Эпоха корпораций закончилась. Угрозы: рейдеры, бандиты, дроны.', 'warn');
-    /* Зарождаем первые угрозы */
     C.generateThreats();
     C.generateThreats();
     NB.save();
@@ -248,35 +425,22 @@ C.maybeSwitchEra = function () {
 };
 
 /* ============================================================
-   ТИК УГРОЗ
+   УГРОЗЫ
    ============================================================ */
 C.tickThreats = function () {
   const g = NB.state.game;
   const day = g.daily.dayNumber;
   if (!g.world.threats) g.world.threats = [];
-
-  /* Спавн новых угроз с шансом */
   if (Math.random() < 0.35) C.generateThreats();
-
   g.world.threats.forEach(t => {
     if (!t.alive) return;
-
-    /* Агрессия растёт */
     t.aggression = Math.min(100, t.aggression + NB.rand(2, 8));
-
-    /* Атака при высокой агрессии */
-    if (t.aggression >= 70 && Math.random() < 0.3) {
-      C.threatAttack(t);
-    }
-
-    /* Дроп, если давно не видали */
+    if (t.aggression >= 70 && Math.random() < 0.3) C.threatAttack(t);
     if (day - t.seenDay > 5 && t.aggression < 30) {
       t.alive = false;
       NB.addLog(`${t.name} ушли`, 'info');
     }
   });
-
-  /* Очистка мёртвых */
   g.world.threats = g.world.threats.filter(t => t.alive || (t.diedDay && day - t.diedDay < 3));
 };
 
@@ -285,31 +449,21 @@ C.generateThreats = function () {
   if (!g.world.threats) g.world.threats = [];
   const alive = g.world.threats.filter(t => t.alive).length;
   if (alive >= 5) return;
-
-  const typeKeys = Object.keys(THREAT_TYPES);
-  /* В начале только бандиты, потом рейдеры/дроны */
   let pool = ['bandit'];
   if (g.daily.dayNumber > 100) pool.push('raider', 'drone');
   if (g.daily.dayNumber > 130) pool.push('raider', 'drone');
   if (g.world.drones.enabled) pool.push('drone', 'drone');
   const type = NB.pick(pool);
   const meta = THREAT_TYPES[type];
-  const basePower = Math.round(
-    (30 + Math.floor(Math.random() * 30) + Math.floor(g.daily.dayNumber / 4) * 5) * meta.powerMult
-  );
+  const basePower = Math.round((30 + Math.floor(Math.random() * 30) + Math.floor(g.daily.dayNumber / 4) * 5) * meta.powerMult);
   const threat = {
     id: 'th' + (g.world.threatSeq = (g.world.threatSeq || 0) + 1),
     type,
-    name: type === 'drone'
-      ? `Дроны-${NB.pick(meta.names)}`
-      : `${meta.label} «${NB.pick(meta.names)}»`,
-    power: basePower,
-    basePower,
+    name: type === 'drone' ? `Дроны-${NB.pick(meta.names)}` : `${meta.label} «${NB.pick(meta.names)}»`,
+    power: basePower, basePower,
     aggression: 20 + Math.floor(Math.random() * 40),
     loot: Math.round((2000 + Math.floor(g.daily.dayNumber / 2) * 100) * meta.lootMult),
-    alive: true,
-    seenDay: g.daily.dayNumber,
-    history: []
+    alive: true, seenDay: g.daily.dayNumber, history: []
   };
   g.world.threats.push(threat);
   NB.notify(`⚠ Новая угроза: ${threat.name}`, 'warn');
@@ -322,22 +476,17 @@ C.threatAttack = function (t) {
   const combatPower = warriors.reduce((s, e) => s + (e.combat?.attack || 0) + (e.combat?.defense || 0), 0);
   const defenseBonus = NB.game.getUpgradeEffects?.().bunkerDefense || 0;
   const hasBunker = g.world.bunker.built;
-
   let repPenalty = 0, cashLoss = 0, foodLoss = 0, victim = null;
-
   if (combatPower + defenseBonus * 100 >= t.power) {
-    /* Отбито */
     NB.addLog(`⚔ ${t.name} атаковали — отбито`, 'success');
     t.aggression = Math.max(0, t.aggression - 30);
     return;
   }
-
   if (hasBunker && Math.random() < 0.5) {
     NB.addLog(`⚠ ${t.name} не смогли пробиться в бункер`, 'warn');
     t.aggression = Math.max(0, t.aggression - 15);
     return;
   }
-
   if (t.type === 'bandit') {
     cashLoss = Math.min(Math.round(g.cash * 0.1), 5000);
     foodLoss = Math.min(g.world.bunker.food || 0, 3);
@@ -352,10 +501,8 @@ C.threatAttack = function (t) {
     repPenalty = 5;
     g.world.threat = Math.min(10, g.world.threat + 1);
   }
-
   g.cash = Math.max(0, g.cash - cashLoss);
   g.reputation = Math.max(0, g.reputation - repPenalty);
-
   const parts = [];
   if (cashLoss > 0) parts.push(`−${NB.money(cashLoss)}`);
   if (foodLoss > 0) parts.push(`−${foodLoss} еды`);
@@ -366,7 +513,7 @@ C.threatAttack = function (t) {
 };
 
 /* ============================================================
-   ПРИМЕНЕНИЕ СОГЛАШЕНИЙ (для rivals)
+   СОГЛАШЕНИЯ / ДЕЙСТВИЯ КОРПОРАЦИЙ
    ============================================================ */
 C.applyAgreement = function (c, a, day) {
   const g = NB.state.game;
@@ -387,37 +534,19 @@ C.applyAgreement = function (c, a, day) {
   }
 };
 
-C.agreementTrafficBonus = function () {
-  const g = NB.state.game;
-  let bonus = 0;
-  g.competitors.forEach(c => {
-    if (!c.alive) return;
-    c.agreements.forEach(a => {
-      if (a.type === 'sharedBackbone') bonus += 2000;
-    });
-  });
-  return bonus;
-};
-
-/* ============================================================
-   АКТИВНЫЕ ДЕЙСТВИЯ КОРПОРАЦИЙ
-   ============================================================ */
 C.maybeAct = function (c) {
   const g = NB.state.game;
   const roll = Math.random();
-
   if (c.agreements.some(a => a.type === 'alliance' || a.type === 'nonAggression')) return;
-
   const hostiles = c.mood === 'hostile' || c.aggression > 50;
-  if (hostiles && roll < 0.08 * (1 + c.aggression / 100)) {
-    C.queueEvent(c, 'attack');
-    return;
-  }
-  if (hostiles && roll < 0.15) { C.queueEvent(c, 'demand'); return; }
-  if (c.mood === 'friendly' && roll < 0.05) { C.queueEvent(c, 'offer'); return; }
-  if (c.financialHealth < 30 && roll < 0.1) { C.queueEvent(c, 'crisis'); return; }
-  if (c.share < 15 && c.relationship > 20 && roll < 0.03) { C.queueEvent(c, 'merger-offer'); return; }
-  if (c.personality === 'opportunist' && c.aggression > 30 && roll < 0.04) { C.queueEvent(c, 'price-war-threat'); }
+
+  if (hostiles && roll < 0.06) { C.queueEvent(c, NB.pick(['attack','demand','ultimatum'])); return; }
+  if (hostiles && roll < 0.12) { C.queueEvent(c, 'rumor'); return; }
+  if (c.mood === 'friendly' && roll < 0.04) { C.queueEvent(c, NB.pick(['offer','gift','proposal'])); return; }
+  if (c.mood === 'neutral' && roll < 0.03) { C.queueEvent(c, NB.pick(['offer','rumor','proposal'])); return; }
+  if (c.financialHealth < 30 && roll < 0.08) { C.queueEvent(c, 'crisis'); return; }
+  if (c.share < 15 && c.relationship > 20 && roll < 0.02) { C.queueEvent(c, 'merger-offer'); return; }
+  if (c.personality === 'opportunist' && c.aggression > 30 && roll < 0.03) { C.queueEvent(c, 'price-war-threat'); }
 };
 
 C.queueEvent = function (c, type) {
@@ -443,7 +572,7 @@ C.showEvent = function (evt) {
   const g = NB.state.game;
   const c = g.competitors.find(x => x.id === evt.competitorId);
   if (!c || !c.alive) return;
-
+  const pers = PERSONALITY[c.personality] || PERSONALITY.cautious;
   const templates = {
     attack: {
       title:`⚔ ${c.name} атакует`,
@@ -504,22 +633,57 @@ C.showEvent = function (evt) {
         { label:'Ценовой пакт', run:()=>{ C.signAgreement(c, 'pricePact', 20, {}); c.relationship += 15; return 'Пакт подписан'; }},
         { label:'Принять бой', run:()=>{ C.startPriceWar(c); return 'Война'; }}
       ]
+    },
+    ultimatum: {
+      title:`⚡ ${c.name}: ультиматум`,
+      desc:`${c.name} выдвигает жёсткий ультиматум: уходите с рынка или они перейдут к полномасштабной атаке.`,
+      opts:[
+        { label:'Принять бой', run:()=>{ c.aggression += 30; c.relationship -= 30; return 'Они готовы к войне'; }},
+        { label:'Уступить 8%', run:()=>{ c.share = Math.min(60, c.share + 8); c.aggression -= 50; c.relationship += 20; return 'Отдали 8%'; }},
+        { label:'Заплатить 20 000₽', run:()=>{ if (g.cash < 20000) return 'Нет денег'; g.cash -= 20000; c.aggression -= 60; c.relationship += 25; return 'Откупились'; }}
+      ]
+    },
+    rumor: {
+      title:`🕵 ${c.name}: слухи`,
+      desc:`До вас дошли слухи от ${c.name}.`,
+      opts:[
+        { label:'Проверить (1 AP)', ap:1, action:()=>{
+          const roll = Math.random();
+          if (roll < 0.4) { g.cash += 5000; return 'Инсайд принёс 5 000 ₽'; }
+          if (roll < 0.7) { c.aggression = Math.max(0, c.aggression - 15); return 'Готовятся к атаке — можно опередить'; }
+          return 'Пустой слух';
+        }},
+        { label:'Игнорировать', run:()=>'Пропущено' }
+      ]
+    },
+    gift: {
+      title:`🎁 ${c.name} дарит`,
+      desc:`${c.name} неожиданно присылает подарок — ящик элитного оборудования.`,
+      opts:[
+        { label:'Принять', run:()=>{ const g2 = NB.state.game; g2.cash += 3000; c.relationship += 10; return '+3 000 ₽'; }},
+        { label:'Отказаться', run:()=>{ c.relationship += 5; return 'Скромно'; }}
+      ]
+    },
+    proposal: {
+      title:`🧪 ${c.name}: совместный проект`,
+      desc:`${c.name} предлагает совместный технологический проект.`,
+      opts:[
+        { label:'Инвестировать 8 000₽', run:()=>{ if (g.cash < 8000) return 'Нет денег'; g.cash -= 8000; c.technology = (c.techLevel||0); if (Math.random() < 0.6) { g.unlockedTech.push('jointTech'); NB.addCompanyXp(30); return 'Проект удался!'; } return 'Проект провалился'; }},
+        { label:'Отказаться', run:()=>{ c.relationship -= 5; return 'Отказ'; }}
+      ]
     }
   };
-
   const tpl = templates[evt.type];
   if (!tpl) return;
   const opts = tpl.opts.map((o, i) => `<button type="button" class="event-option" data-competitor-opt="${i}">
     <span class="event-option-label">${o.label}</span>
   </button>`).join('');
-
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">${tpl.title}</div>
       <div class="event-desc">${tpl.desc}</div>
       <div class="event-options">${opts}</div>`
   });
-
   setTimeout(() => {
     NB.$$('[data-competitor-opt]').forEach(btn => btn.addEventListener('click', () => {
       const o = tpl.opts[Number(btn.dataset.competitorOpt)];
@@ -535,47 +699,155 @@ C.showEvent = function (evt) {
 };
 
 /* ============================================================
-   СОГЛАШЕНИЯ
+   ПЕРЕГОВОРЫ — вариативные, по характеру и настроению
    ============================================================ */
-C.signAgreement = function (c, type, days, params) {
+C.openNegotiate = function (c) {
   const g = NB.state.game;
-  const agreement = {
-    type, untilDay: g.daily.dayNumber + days,
-    dailyIncome: params.dailyIncome || 0,
-    upfrontCost: params.upfrontCost || 0,
-    startedDay: g.daily.dayNumber
-  };
-  if (agreement.upfrontCost > 0) {
-    if (g.cash < agreement.upfrontCost) return false;
-    g.cash -= agreement.upfrontCost;
-  }
-  c.agreements.push(agreement);
-  c.history.push({ day: g.daily.dayNumber, type, label: `Подписано: ${AGREEMENT_TYPES[type].label}` });
-  NB.addLog(`Подписано с ${c.name}: ${AGREEMENT_TYPES[type].label}`, 'success');
-  NB.save();
-  return true;
-};
+  if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
+  NB.spendAp(1);
 
-C.cancelAgreement = function (c, idx) {
-  const g = NB.state.game;
-  const a = c.agreements[idx];
-  if (!a) return;
-  c.agreements.splice(idx, 1);
-  c.relationship -= 25;
-  g.reputation = Math.max(0, g.reputation - 5);
-  c.history.push({ day: g.daily.dayNumber, type:'broken', label:`Расторгнуто: ${AGREEMENT_TYPES[a.type].label}` });
-  NB.notify(`Расторгнуто: ${AGREEMENT_TYPES[a.type].label} с ${c.name}`, 'warn');
-  NB.save(); NB.render();
+  const pers = PERSONALITY[c.personality] || PERSONALITY.cautious;
+  const pool = C.NEGOTIATE_POOLS[c.personality]?.[c.mood];
+  if (!pool || !pool.length) return NB.toast('Не о чем говорить', 'err');
+
+  /* Берём 4 уникальных вопроса из пула */
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const rounds = shuffled.slice(0, Math.min(4, shuffled.length));
+
+  /* 30% шанс вставить особый раунд на 2-3 позицию */
+  if (Math.random() < 0.3) {
+    const special = NB.pick(C.SPECIAL_ROUNDS);
+    rounds.splice(1 + Math.floor(Math.random() * 2), 0, special);
+  }
+
+  let idx = 0, score = 0, cashDelta = 0, insight = false;
+
+  const finish = () => {
+    /* Применяем score к отношениям */
+    c.relationship += score * 8;
+    c.aggression = Math.max(0, c.aggression - score * 5);
+    c.relationship = Math.max(-100, Math.min(100, c.relationship));
+    g.cash = Math.max(0, g.cash + cashDelta);
+
+    let result = '', color = 'info', extra = '';
+
+    if (score >= 10) {
+      if (!c.agreements.some(a => a.type === 'alliance')) {
+        C.signAgreement(c, 'alliance', 60, {});
+        c.relationship += 20;
+        g.cash += 10000;
+        result = 'Союз заключён!';
+        extra = '+10 000 ₽, +дружба';
+        color = 'ok';
+      } else {
+        g.cash += 5000;
+        result = 'Тёплая встреча';
+        extra = '+5 000 ₽';
+        color = 'ok';
+      }
+    } else if (score >= 5) {
+      if (!c.agreements.some(a => a.type === 'tradeDeal')) {
+        C.signAgreement(c, 'tradeDeal', 30, { dailyIncome: 400 });
+        g.cash += 5000;
+        result = 'Торговое соглашение подписано!';
+        extra = '+400₽/день, +5 000 ₽';
+        color = 'ok';
+      } else {
+        g.cash += 5000;
+        result = 'Приятная встреча';
+        extra = '+5 000 ₽';
+        color = 'ok';
+      }
+    } else if (score >= 2) {
+      g.cash += 2000;
+      result = 'Дружеская встреча';
+      extra = '+2 000 ₽';
+      color = 'ok';
+    } else if (score <= -4) {
+      c.aggression += 15;
+      result = 'Отношения испорчены';
+      extra = '+агрессия';
+      color = 'err';
+    } else {
+      result = 'Ничего не решили';
+    }
+
+    c.history.push({
+      day: g.daily.dayNumber, type:'negotiate',
+      label:`Переговоры (score ${score})`, result
+    });
+    NB.closeModal();
+    NB.notify(`${pers.icon} ${c.name}: ${result}${extra ? ' · ' + extra : ''}`, color === 'err' ? 'warn' : 'info');
+    NB.save(); NB.render();
+  };
+
+  const showReaction = (reactionScore, cb) => {
+    const key = reactionScore > 0 ? 'positive' : reactionScore < 0 ? 'negative' : 'neutral';
+    const reactionText = NB.pick(C.REACTIONS[key]);
+    /* Мини-пауза с реакцией */
+    NB.openModal({
+      title:'', noSubmit:true, boxClass:'event-modal-box',
+      html:`<div class="event-title">${pers.icon} ${c.name}</div>
+        <div class="event-desc" style="font-size:16px;font-style:italic;color:var(--primary-3);text-align:center;padding:20px 0">${reactionText}</div>
+        <div class="event-options"><button type="button" class="event-option" data-reaction-next><span class="event-option-label">Продолжить →</span></button></div>`
+    });
+    setTimeout(() => {
+      const btn = document.querySelector('[data-reaction-next]');
+      if (btn) btn.addEventListener('click', () => cb());
+    }, 30);
+  };
+
+  const render = () => {
+    if (idx >= rounds.length) return finish();
+    const r = rounds[idx];
+    const opts = r.opts.map((o, i) => `<button type="button" class="event-option" data-negotiate-opt="${i}">
+      <span class="event-option-label">${o.label}</span>
+      <span class="event-option-hint">${o.hint || ''}</span>
+    </button>`).join('');
+    NB.openModal({
+      title:'', noSubmit:true, boxClass:'event-modal-box',
+      html:`<div class="event-title">🤝 Переговоры · ${c.name} <span style="font-size:12px;color:var(--muted);font-weight:400">· ${pers.icon} ${pers.label} · раунд ${idx+1}/${rounds.length}</span></div>
+        <div class="event-desc">${r.q}</div>
+        <div class="event-options">${opts}</div>
+        <div style="margin-top:14px;text-align:center;font-size:11px;color:var(--muted)">Очки: <b style="color:var(--primary-3)">${score}</b> · деньги: <b style="color:${cashDelta >= 0 ? '#4ade80' : '#f87171'}">${cashDelta >= 0 ? '+' : ''}${NB.money(cashDelta)}</b></div>`
+    });
+    setTimeout(() => {
+      NB.$$('[data-negotiate-opt]').forEach(btn => btn.addEventListener('click', () => {
+        const opt = r.opts[Number(btn.dataset.negotiateOpt)];
+        score += opt.score || 0;
+        if (opt.hidden) {
+          if (opt.hidden.cash) cashDelta += opt.hidden.cash;
+          if (opt.hidden.aggression) c.aggression = Math.max(0, c.aggression + opt.hidden.aggression);
+          if (opt.hidden.relationship) c.relationship += opt.hidden.relationship;
+          if (opt.hidden.insight) insight = true;
+          if (opt.hidden.clientsStolen) {
+            /* У вас крадут клиента */
+            const victim = NB.pick(NB.state.clients.filter(x => x.status === 'active'));
+            if (victim) {
+              NB.state.clients = NB.state.clients.filter(x => x.id !== victim.id);
+              c.share = Math.min(60, c.share + 0.5);
+            }
+          }
+        }
+        if (opt.trap) {
+          /* Ловушка: даже при положительном score есть скрытый штраф (уже применён) */
+        }
+        idx++;
+        showReaction(opt.score || 0, render);
+      }));
+    }, 30);
+  };
+
+  render();
 };
 
 /* ============================================================
-   ДЕЙСТВИЯ ИГРОКА (rivals)
+   ОСТАЛЬНЫЕ ДЕЙСТВИЯ (с вариативностью)
    ============================================================ */
 C.action = function (id, key) {
   const g = NB.state.game;
   const c = g.competitors.find(x => x.id === id);
   if (!c || !c.alive) return;
-
   switch (key) {
     case 'negotiate':       return C.openNegotiate(c);
     case 'trade-deal':      return C.openTradeDeal(c);
@@ -592,75 +864,17 @@ C.action = function (id, key) {
   }
 };
 
-C.openNegotiate = function (c) {
-  const g = NB.state.game;
-  if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
-  const rounds = [
-    { q:`${c.name}: Чего ты хочешь?`, opts:[
-      { label:'«Мир и сотрудничество»', score:3, hint:'+дружба' },
-      { label:'«Просто поговорить»', score:1, hint:'нейтрально' },
-      { label:'«Убирайся с моего рынка»', score:-2, hint:'−дружба' }
-    ]},
-    { q:`${c.name}: У тебя есть что предложить?`, opts:[
-      { label:'«Скидка на магистраль»', score:2, hint:'+выгода' },
-      { label:'«Ничего»', score:0, hint:'пусто' },
-      { label:'«Сам заплати»', score:-1, hint:'−дружба' }
-    ]},
-    { q:`${c.name}: Договорились?`, opts:[
-      { label:'«Да, до встречи»', score:1, hint:'закрыть' },
-      { label:'«Ещё раз подумаю»', score:0, hint:'отложить' }
-    ]}
-  ];
-  let idx = 0, score = 0;
-  NB.spendAp(1);
-
-  const render = () => {
-    if (idx >= rounds.length) return finish();
-    const r = rounds[idx];
-    const opts = r.opts.map((o, i) => `<button type="button" class="event-option" data-negotiate-opt="${i}">
-      <span class="event-option-label">${o.label}</span>
-      <span class="event-option-hint">${o.hint}</span>
-    </button>`).join('');
-    NB.openModal({
-      title:'', noSubmit:true, boxClass:'event-modal-box',
-      html:`<div class="event-title">🤝 Переговоры · ${c.name}</div>
-        <div class="event-desc">${r.q}</div>
-        <div class="event-options">${opts}</div>`
-    });
-    setTimeout(() => {
-      NB.$$('[data-negotiate-opt]').forEach(btn => btn.addEventListener('click', () => {
-        score += r.opts[Number(btn.dataset.negotiateOpt)].score;
-        idx++;
-        render();
-      }));
-    }, 30);
-  };
-
-  const finish = () => {
-    c.relationship += score * 8;
-    c.aggression = Math.max(0, c.aggression - score * 5);
-    let result = '';
-    if (score >= 5) { g.cash += 5000; c.relationship += 10; result = '+5 000 ₽ и дружба'; }
-    else if (score >= 2) { result = 'Тёплая встреча'; }
-    else if (score <= -3) { c.aggression += 10; result = 'Испортили отношения'; }
-    else result = 'Ничего не решили';
-    c.history.push({ day: g.daily.dayNumber, type:'negotiate', label:'Переговоры', result });
-    NB.closeModal();
-    NB.notify(`${c.name}: ${result}`, score >= 2 ? 'ok' : 'info');
-    NB.save(); NB.render();
-  };
-
-  render();
-};
-
 C.openTradeDeal = function (c) {
   const g = NB.state.game;
-  const upfront = 10000;
-  const daily = 300 + Math.round(c.share * 5);
+  /* Разные условия в зависимости от личности */
+  const pers = c.personality;
+  const upfront = pers === 'opportunist' ? 12000 : pers === 'cautious' ? 8000 : 10000;
+  const daily = pers === 'aggressive' ? 400 + Math.round(c.share * 6) : 300 + Math.round(c.share * 5);
+  const days = pers === 'cautious' ? 40 : 30;
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">📦 Торговое соглашение</div>
-      <div class="event-desc">${c.name} готов подписать договор: <b>${NB.money(upfront)}</b> сейчас за <b>${NB.money(daily)}</b>/день на 30 дней.
+      <div class="event-desc">${c.name} готов подписать договор: <b>${NB.money(upfront)}</b> сейчас за <b>${NB.money(daily)}</b>/день на ${days} дней.
       ${g.cash < upfront ? '<br><span style="color:#f87171">Не хватает денег</span>' : ''}</div>
       <div class="event-options">
         <button type="button" class="event-option" data-deal="sign"><span class="event-option-label">Подписать (${NB.money(upfront)})</span></button>
@@ -671,7 +885,7 @@ C.openTradeDeal = function (c) {
     document.querySelectorAll('[data-deal]').forEach(btn => btn.addEventListener('click', () => {
       if (btn.dataset.deal === 'sign') {
         if (g.cash < upfront) { NB.toast('Не хватает', 'err'); return; }
-        C.signAgreement(c, 'tradeDeal', 30, { dailyIncome: daily, upfrontCost: upfront });
+        C.signAgreement(c, 'tradeDeal', days, { dailyIncome: daily, upfrontCost: upfront });
         c.relationship += 10;
         NB.notify(`${c.name}: +${NB.money(daily)}/день`, 'ok');
       }
@@ -682,11 +896,17 @@ C.openTradeDeal = function (c) {
 
 C.openNonAggression = function (c) {
   const g = NB.state.game;
-  const cost = 5000;
+  /* Цена зависит от личности и отношений */
+  let cost = 5000;
+  if (c.personality === 'aggressive') cost = 8000;
+  if (c.personality === 'idealist') cost = 3000;
+  if (c.relationship < -30) cost = Math.round(cost * 1.5);
+  if (c.relationship > 40) cost = Math.round(cost * 0.7);
+  const days = c.personality === 'cautious' ? 50 : 30;
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">🕊 Пакт о ненападении</div>
-      <div class="event-desc">${c.name} обещает не атаковать. Стоимость: <b>${NB.money(cost)}</b>. Срок: 30 дней.</div>
+      <div class="event-desc">${c.name} обещает не атаковать. Стоимость: <b>${NB.money(cost)}</b>. Срок: ${days} дней.</div>
       <div class="event-options">
         <button type="button" class="event-option" data-pact="sign"><span class="event-option-label">Подписать</span></button>
         <button type="button" class="event-option" data-pact="close"><span class="event-option-label">Отмена</span></button>
@@ -696,7 +916,7 @@ C.openNonAggression = function (c) {
     document.querySelectorAll('[data-pact]').forEach(btn => btn.addEventListener('click', () => {
       if (btn.dataset.pact === 'sign') {
         if (g.cash < cost) { NB.toast('Не хватает', 'err'); return; }
-        C.signAgreement(c, 'nonAggression', 30, { upfrontCost: cost });
+        C.signAgreement(c, 'nonAggression', days, { upfrontCost: cost });
         c.aggression = 0; c.relationship += 20;
         NB.notify(`Пакт с ${c.name}`, 'ok');
       }
@@ -707,11 +927,12 @@ C.openNonAggression = function (c) {
 
 C.openSharedBackbone = function (c) {
   const g = NB.state.game;
-  const cost = 8000;
+  const cost = c.personality === 'aggressive' ? 12000 : c.personality === 'cautious' ? 10000 : 8000;
+  const bonus = c.personality === 'cautious' ? 3000 : 2000;
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">🔗 Общая магистраль</div>
-      <div class="event-desc">Доступ к магистрали ${c.name}: <b>+2 000 Мбит/с</b> на 20 дней. Стоимость: <b>${NB.money(cost)}</b>.</div>
+      <div class="event-desc">Доступ к магистрали ${c.name}: <b>+${bonus} Мбит/с</b> на 20 дней. Стоимость: <b>${NB.money(cost)}</b>.</div>
       <div class="event-options">
         <button type="button" class="event-option" data-bb="sign"><span class="event-option-label">Подписать</span></button>
         <button type="button" class="event-option" data-bb="close"><span class="event-option-label">Отмена</span></button>
@@ -721,9 +942,9 @@ C.openSharedBackbone = function (c) {
     document.querySelectorAll('[data-bb]').forEach(btn => btn.addEventListener('click', () => {
       if (btn.dataset.bb === 'sign') {
         if (g.cash < cost) { NB.toast('Не хватает', 'err'); return; }
-        C.signAgreement(c, 'sharedBackbone', 20, { upfrontCost: cost });
+        C.signAgreement(c, 'sharedBackbone', 20, { upfrontCost: cost, bonus });
         c.relationship += 15;
-        NB.notify(`Магистраль открыта`, 'ok');
+        NB.notify(`Магистраль открыта (+${bonus})`, 'ok');
       }
       NB.closeModal(); NB.render();
     }));
@@ -732,11 +953,11 @@ C.openSharedBackbone = function (c) {
 
 C.openResearch = function (c) {
   const g = NB.state.game;
-  const cost = 15000;
+  const cost = c.personality === 'cautious' ? 18000 : 15000;
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">🧪 Совместные R&D</div>
-      <div class="event-desc">Инвестировать в разработку с ${c.name}: <b>${NB.money(cost)}</b>.</div>
+      <div class="event-desc">Инвестировать в разработку с ${c.name}: <b>${NB.money(cost)}</b>. Шанс получить технологию — 60%.</div>
       <div class="event-options">
         <button type="button" class="event-option" data-rd="sign"><span class="event-option-label">Инвестировать</span></button>
         <button type="button" class="event-option" data-rd="close"><span class="event-option-label">Отмена</span></button>
@@ -748,7 +969,13 @@ C.openResearch = function (c) {
         if (g.cash < cost) { NB.toast('Не хватает', 'err'); return; }
         C.signAgreement(c, 'research', 30, { upfrontCost: cost });
         c.relationship += 20;
-        NB.notify(`Совместные R&D с ${c.name}`, 'ok');
+        if (Math.random() < 0.6) {
+          c.techLevel = Math.min(5, c.techLevel + 1);
+          NB.addCompanyXp(25);
+          NB.notify(`R&D с ${c.name}: успех!`, 'ok');
+        } else {
+          NB.notify(`R&D с ${c.name}: провал`, 'warn');
+        }
       }
       NB.closeModal(); NB.render();
     }));
@@ -757,7 +984,9 @@ C.openResearch = function (c) {
 
 C.proposeAlliance = function (c) {
   const g = NB.state.game;
-  if (c.relationship < 40) return NB.toast(`Нужны отношения ≥ 40 (сейчас ${Math.round(c.relationship)})`, 'err');
+  /* Для идеалистов — порог ниже */
+  const threshold = c.personality === 'idealist' ? 30 : 40;
+  if (c.relationship < threshold) return NB.toast(`Нужны отношения ≥ ${threshold} (сейчас ${Math.round(c.relationship)})`, 'err');
   if (c.agreements.some(a => a.type === 'alliance')) return NB.toast('Уже в союзе', 'err');
   NB.openModal({
     title:'', noSubmit:true, boxClass:'event-modal-box',
@@ -786,11 +1015,9 @@ C.startPriceWar = function (c) {
   if (g.cash < 20000) return NB.toast('Нужно 20 000 ₽', 'err');
   g.cash -= 20000;
   c.priceWarUntil = g.daily.dayNumber + 10;
-  c.aggression += 30;
-  c.relationship -= 30;
+  c.aggression += 30; c.relationship -= 30;
   c.history.push({ day: g.daily.dayNumber, type:'price-war', label:'Ценовая война' });
   NB.notify(`💰 Ценовая война с ${c.name}`, 'warn');
-  NB.addLog(`Ценовая война: 10 дней`, 'warn');
   NB.save(); NB.render();
 };
 
@@ -800,13 +1027,14 @@ C.tryEspionage = function (c) {
   if (g.cash < 15000) return NB.toast('Нужно 15 000 ₽', 'err');
   NB.spendAp(2); g.cash -= 15000;
   c.spyAttempts++;
-  const success = Math.random() < 0.4 + g.company.level * 0.03 - c.techLevel * 0.05;
+  /* Шанс зависит от techLevel, personality, отношений */
+  const baseChance = c.personality === 'cautious' ? 0.25 : c.personality === 'aggressive' ? 0.5 : 0.4;
+  const success = Math.random() < baseChance + g.company.level * 0.03 - c.techLevel * 0.05;
   if (success) {
     c.techLevel = Math.max(1, c.techLevel - 1);
     g.world.flags.stolenTechs = (g.world.flags.stolenTechs || 0) + 1;
     NB.addCompanyXp(20);
     NB.notify(`🕵 Шпионаж удался: -1 тех. ур. ${c.name}`, 'ok');
-    NB.addLog(`Шпионаж: украли технологию ${c.name}`, 'success');
   } else {
     c.relationship -= 40; c.aggression += 25;
     g.reputation = Math.max(0, g.reputation - 5);
@@ -818,9 +1046,9 @@ C.tryEspionage = function (c) {
 
 C.tryBuyout = function (c) {
   const g = NB.state.game;
-  if (c.share > 15) return NB.toast(`Поглощение возможно при доле < 15% (сейчас ${Math.round(c.share)}%)`, 'err');
-  if (c.takeoverProgress > 0) return NB.toast(`Поглощение идёт: ${c.takeoverProgress}%`, 'info');
-  const cost = 60000;
+  if (c.share > 15) return NB.toast(`Доля должна быть < 15% (сейчас ${Math.round(c.share)}%)`, 'err');
+  if (c.takeoverProgress > 0) return NB.toast(`Идёт: ${c.takeoverProgress}%`, 'info');
+  const cost = c.personality === 'cautious' ? 70000 : c.personality === 'aggressive' ? 80000 : 60000;
   if (g.cash < cost) return NB.toast(`Нужно ${NB.money(cost)}`, 'err');
   g.cash -= cost;
   c.takeoverProgress = 10;
@@ -833,9 +1061,7 @@ C.completeTakeover = function (c) {
   const g = NB.state.game;
   const gained = Math.round(c.share);
   g.marketShare = Math.min(70, g.marketShare + gained);
-  c.alive = false;
-  c.share = 0;
-  c.takeoverProgress = 100;
+  c.alive = false; c.share = 0; c.takeoverProgress = 100;
   NB.confetti();
   NB.notify(`🏆 ${c.name} поглощён: +${gained}% рынка`, 'ok');
   NB.addLog(`Поглощён конкурент: ${c.name}`, 'success');
@@ -847,23 +1073,22 @@ C.tryPoach = function (c) {
   const g = NB.state.game;
   if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
   NB.spendAp(1);
-  const success = Math.random() < 0.4 + c.relationship / 200;
+  /* У идеалистов переманить сложнее (верны компании) */
+  const baseChance = c.personality === 'idealist' ? 0.3 : c.personality === 'opportunist' ? 0.55 : 0.4;
+  const success = Math.random() < baseChance + c.relationship / 200;
   if (success) {
     const stolen = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < stolen; i++) {
       const t = NB.pick(NB.state.tariffs);
       NB.state.clients.push({
-        id: NB.state.seq.client++,
-        name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
-        tariffId: t.id, balance: 0, status: 'active',
-        createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
-        isDrone: false, risk: 'normal', revealed: true
+        id: NB.state.seq.client++, name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
+        tariffId: t.id, balance: 0, status: 'active', createdAt: new Date().toISOString(),
+        password: NB.DEFAULT_PASS, isDrone: false, risk: 'normal', revealed: true
       });
     }
     c.share = Math.max(0, c.share - stolen * 0.5);
     c.relationship -= 15; c.aggression += 10;
     NB.notify(`🕵 Переманили ${stolen} клиентов`, 'ok');
-    NB.addLog(`Переманено ${stolen} клиентов у ${c.name}`, 'success');
   } else {
     c.relationship -= 10; c.aggression += 5;
     NB.notify(`🕵 Не удалось переманить`, 'warn');
@@ -877,10 +1102,12 @@ C.runPropaganda = function (c) {
   if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
   if (g.cash < 10000) return NB.toast('Нужно 10 000 ₽', 'err');
   NB.spendAp(1); g.cash -= 10000;
-  c.share = Math.max(0, c.share - 2);
-  g.marketShare = Math.min(70, g.marketShare + 1);
+  /* Идеалисты теряют больше (репутация важна) */
+  const loss = c.personality === 'idealist' ? 3 : c.personality === 'cautious' ? 1.5 : 2;
+  c.share = Math.max(0, c.share - loss);
+  g.marketShare = Math.min(70, g.marketShare + loss * 0.5);
   c.relationship -= 25; c.aggression += 15;
-  NB.notify(`📢 Пропаганда: ${c.name} теряет позиции`, 'ok');
+  NB.notify(`📢 Пропаганда: ${c.name} теряет ${loss}% рынка`, 'ok');
   NB.game.updateMarketShare();
   NB.save(); NB.render();
 };
@@ -891,13 +1118,14 @@ C.sabotage = function (c) {
   if (g.cash < 10000) return NB.toast('Нужно 10 000 ₽', 'err');
   NB.spendAp(2); g.cash -= 10000;
   c.sabotageCount++;
-  const success = Math.random() < 0.5 - c.relationship / 200;
+  /* Осторожные защищены лучше */
+  const baseChance = c.personality === 'cautious' ? 0.35 : 0.5;
+  const success = Math.random() < baseChance - c.relationship / 200;
   if (success) {
     c.financialHealth = Math.max(0, c.financialHealth - 25);
     c.share = Math.max(0, c.share - 3);
     c.relationship -= 30; c.aggression += 20;
     NB.notify(`💀 Саботаж удался: -3% рынка`, 'ok');
-    NB.addLog(`Саботаж: ${c.name} повреждён`, 'success');
   } else {
     c.relationship -= 50; c.aggression += 30;
     g.reputation = Math.max(0, g.reputation - 10);
@@ -909,8 +1137,7 @@ C.sabotage = function (c) {
 };
 
 C.bankrupt = function (c) {
-  c.alive = false;
-  c.share = 0;
+  c.alive = false; c.share = 0;
   c.diedDay = NB.state.game.daily.dayNumber;
   NB.notify(`📉 ${c.name} обанкротился`, 'warn');
   NB.addLog(`${c.name} обанкротился`, 'info');
@@ -919,19 +1146,19 @@ C.bankrupt = function (c) {
 };
 
 /* ============================================================
-   ДЕЙСТВИЯ С УГРОЗАМИ
+   ДЕЙСТВИЯ С УГРОЗАМИ — с вариативностью
    ============================================================ */
 C.actionThreat = function (id, key) {
   const g = NB.state.game;
   const t = g.world.threats.find(x => x.id === id);
   if (!t || !t.alive) return;
-
   switch (key) {
     case 'fight':      return C.fightThreat(t);
     case 'pay':        return C.payThreat(t);
     case 'negotiate':  return C.negotiateThreat(t);
     case 'ambush':     return C.ambushThreat(t);
     case 'ignore':     return C.ignoreThreat(t);
+    case 'distract':   return C.distractThreat(t);
   }
 };
 
@@ -946,23 +1173,18 @@ C.fightThreat = function (t) {
   if (warriors.length === 0) return NB.toast('Нет доступных воинов', 'err');
   const power = C.combatPower();
   const chance = Math.min(0.9, power / (t.power + power));
-
   warriors.forEach(w => NB.employees.spendAp(w.id, 1));
-
   if (Math.random() < chance) {
-    t.alive = false;
-    t.diedDay = g.daily.dayNumber;
+    t.alive = false; t.diedDay = g.daily.dayNumber;
     g.cash += t.loot;
     g.reputation = Math.min(100, g.reputation + 5);
     warriors.forEach(w => NB.employees.levelUp(w.id));
     NB.notify(`⚔ ${t.name} разбиты. +${NB.money(t.loot)}`, 'ok');
-    NB.addLog(`Отбита угроза: ${t.name} (+${NB.money(t.loot)})`, 'success');
   } else {
     const losses = Math.min(warriors.length, 1 + Math.floor(Math.random() * 2));
     for (let i = 0; i < losses; i++) {
       const w = warriors[i];
       g.employees = g.employees.filter(e => e.id !== w.id);
-      NB.addLog(`Воин ${w.name} погиб в бою с ${t.name}`, 'warn');
     }
     g.reputation = Math.max(0, g.reputation - 3);
     t.aggression = Math.min(100, t.aggression + 20);
@@ -973,14 +1195,14 @@ C.fightThreat = function (t) {
 
 C.payThreat = function (t) {
   const g = NB.state.game;
+  /* Дроны не берут деньги */
+  if (t.type === 'drone') return NB.toast('Дроны не берут деньги', 'err');
   const cost = Math.round(t.loot * 0.6);
   if (g.cash < cost) return NB.toast(`Нужно ${NB.money(cost)}`, 'err');
   g.cash -= cost;
-  t.alive = false;
-  t.diedDay = g.daily.dayNumber;
+  t.alive = false; t.diedDay = g.daily.dayNumber;
   t.aggression = 0;
   NB.notify(`💰 Откупились от ${t.name} (${NB.money(cost)})`, 'info');
-  NB.addLog(`Откуп: ${t.name}`, 'info');
   NB.save(); NB.render();
 };
 
@@ -988,12 +1210,11 @@ C.negotiateThreat = function (t) {
   const g = NB.state.game;
   if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
   NB.spendAp(1);
-  const chance = t.type === 'bandit' ? 0.55 : t.type === 'raider' ? 0.3 : 0.15;
+  const chance = t.type === 'bandit' ? 0.55 : t.type === 'raider' ? 0.3 : 0.1;
   if (Math.random() < chance) {
     t.aggression = Math.max(0, t.aggression - 40);
     g.reputation = Math.min(100, g.reputation + 2);
-    NB.notify(`🤝 Удалось договориться с ${t.name}`, 'ok');
-    NB.addLog(`Переговоры: ${t.name} отступили`, 'success');
+    NB.notify(`🤝 Договорились с ${t.name}`, 'ok');
   } else {
     t.aggression = Math.min(100, t.aggression + 25);
     NB.notify(`❌ ${t.name} не идут на контакт`, 'warn');
@@ -1004,7 +1225,7 @@ C.negotiateThreat = function (t) {
 C.ambushThreat = function (t) {
   const g = NB.state.game;
   if (g.ap.current < 2) return NB.toast('Нужно 2 AP', 'err');
-  if (C.combatPower() < t.power * 0.5) return NB.toast('Слишком слабый отряд для засады', 'err');
+  if (C.combatPower() < t.power * 0.5) return NB.toast('Слишком слабый отряд', 'err');
   NB.spendAp(2);
   const chance = 0.5 + (C.combatPower() - t.power) / 200;
   if (Math.random() < chance) {
@@ -1013,13 +1234,11 @@ C.ambushThreat = function (t) {
     g.reputation = Math.min(100, g.reputation + 8);
     t.alive = false; t.diedDay = g.daily.dayNumber;
     NB.notify(`🎯 Засада удалась! +${NB.money(loot)}`, 'ok');
-    NB.addLog(`Засада: ${t.name} уничтожены (+${NB.money(loot)})`, 'success');
   } else {
     const warriors = g.employees.filter(e => e.spec === 'warrior');
     if (warriors.length > 0) {
       const w = NB.pick(warriors);
       g.employees = g.employees.filter(e => e.id !== w.id);
-      NB.addLog(`Засада провалена. ${w.name} погиб`, 'warn');
     }
     t.aggression = Math.min(100, t.aggression + 30);
     NB.notify(`⚠ Засада провалилась`, 'warn');
@@ -1032,6 +1251,22 @@ C.ignoreThreat = function (t) {
   t.aggression = Math.min(100, t.aggression + 10);
   g.reputation = Math.max(0, g.reputation - 1);
   NB.toast(`${t.name} проигнорированы. Агрессия растёт.`, 'info');
+  NB.save(); NB.render();
+};
+
+C.distractThreat = function (t) {
+  const g = NB.state.game;
+  if (g.ap.current < 1) return NB.toast('Нужен 1 AP', 'err');
+  NB.spendAp(1);
+  /* Шанс зависит от типа: дронов легко отвлечь, рейдеров — сложно */
+  const chance = t.type === 'drone' ? 0.7 : t.type === 'bandit' ? 0.5 : 0.25;
+  if (Math.random() < chance) {
+    t.aggression = Math.max(0, t.aggression - 20);
+    NB.notify(`🎭 ${t.name} отвлечены`, 'ok');
+  } else {
+    t.aggression = Math.min(100, t.aggression + 10);
+    NB.notify(`${t.name} не отвлеклись`, 'warn');
+  }
   NB.save(); NB.render();
 };
 
@@ -1052,11 +1287,10 @@ C.renderRivals = function () {
   const activeAgreements = [];
   alive.forEach(c => c.agreements.forEach((a, i) => activeAgreements.push({ c, a, idx: i })));
   const sunset = !!g.world.transitionStartedDay;
-
   return `<div class="page-head">
     <div><h1>Конкуренты</h1><p class="muted">${sunset ? '🌇 Рынок рушится — корпорации падают одна за другой' : 'Рынок, отношения и сделки'}</p></div>
   </div>
-  ${sunset ? '<div class="ultimatum-banner" style="border-color:#f59e0b;background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(120,80,0,.2))"><h3 style="color:#fbbf24">🌇 Закат корпораций</h3><p style="color:#fbbf24">После гала-вечера рынок рушится. Корпорации гибнут одна за другой. Скоро их место займут рейдеры, бандиты и дроны.</p></div>' : ''}
+  ${sunset ? '<div class="ultimatum-banner" style="border-color:#f59e0b;background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(120,80,0,.2))"><h3 style="color:#fbbf24">🌇 Закат корпораций</h3><p style="color:#fbbf24">После гала-вечера рынок рушится. Скоро их место займут рейдеры, бандиты и дроны.</p></div>' : ''}
   <div class="panel" style="margin-bottom:12px">
     <div class="panel-head"><h2>Доля рынка</h2><span class="muted small">${alive.length} активных</span></div>
     <div class="market-bar">
@@ -1076,10 +1310,7 @@ C.renderRivals = function () {
         const left = a.untilDay ? Math.max(0, a.untilDay - g.daily.dayNumber) : '∞';
         return `<div class="agreement-row">
           <span class="agreement-icon" style="color:${meta.color}">${meta.icon}</span>
-          <div class="agreement-info">
-            <b>${NB.esc(c.name)}</b>
-            <small>${meta.label} · ${left} дн.${a.dailyIncome ? ` · +${NB.money(a.dailyIncome)}/день` : ''}</small>
-          </div>
+          <div class="agreement-info"><b>${NB.esc(c.name)}</b><small>${meta.label} · ${left} дн.${a.dailyIncome ? ` · +${NB.money(a.dailyIncome)}/день` : ''}</small></div>
           <button class="btn danger small" data-action="cancel-agreement" data-id="${c.id}" data-idx="${idx}">Расторгнуть</button>
         </div>`;
       }).join('')}
@@ -1098,9 +1329,7 @@ C.renderRow = function (c) {
   const relBarWidth = Math.round((c.relationship + 100) / 2);
   const relColor = c.relationship > 20 ? '#4ade80' : c.relationship < -20 ? '#f87171' : '#fbbf24';
   const inPriceWar = c.priceWarUntil > g.daily.dayNumber;
-  const agreementsCount = c.agreements.length;
   const sunset = !!g.world.transitionStartedDay;
-
   if (!c.alive) {
     return `<div class="comp-row dead">
       <div class="comp-logo" style="background:${c.color}">${NB.initials(c.name)}</div>
@@ -1108,7 +1337,6 @@ C.renderRow = function (c) {
       <div class="comp-share">0%<small>доля</small></div>
     </div>`;
   }
-
   return `<div class="comp-row ${inPriceWar ? 'price-war' : ''} ${sunset ? 'declining' : ''}">
     <div class="comp-logo" style="background:${c.color}">${NB.initials(c.name)}</div>
     <div class="comp-body">
@@ -1117,7 +1345,7 @@ C.renderRow = function (c) {
       <div class="comp-mood-row">
         <span class="comp-mood ${mood}">${moodLabel}</span>
         <div class="rel-bar" title="Отношения: ${Math.round(c.relationship)}"><i style="width:${relBarWidth}%;background:${relColor}"></i></div>
-        ${agreementsCount > 0 ? `<span class="comp-badge">${agreementsCount} согл.</span>` : ''}
+        ${c.agreements.length > 0 ? `<span class="comp-badge">${c.agreements.length} согл.</span>` : ''}
       </div>
     </div>
     <div class="comp-share">${Math.round(c.share*10)/10}%<small>доля</small></div>
@@ -1127,12 +1355,12 @@ C.renderRow = function (c) {
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="non-aggression" title="Пакт о ненападении">🕊</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="shared-backbone" title="Общая магистраль">🔗</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="research" title="Совместные R&D">🧪</button>
-      <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="alliance" title="Военный союз" ${c.relationship < 40 ? 'disabled' : ''}>⚔</button>
+      <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="alliance" title="Военный союз" ${c.relationship < (c.personality === 'idealist' ? 30 : 40) ? 'disabled' : ''}>⚔</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="price-war" title="Ценовая война (20k)">💰</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="espionage" title="Шпионаж (2 AP, 15k)">🕵</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="poach" title="Переманить клиентов (1 AP)">👥</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="propaganda" title="Пропаганда (1 AP, 10k)">📢</button>
-      <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="buyout" title="Поглотить (60k, доля &lt; 15%)" ${c.share > 15 ? 'disabled' : ''}>💼</button>
+      <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="buyout" title="Поглотить (доля &lt; 15%)" ${c.share > 15 ? 'disabled' : ''}>💼</button>
       <button class="btn ghost small" data-action="competitor-action" data-id="${c.id}" data-key="sabotage" title="Саботаж (2 AP, 10k)" style="color:#f87171">💀</button>
     </div>
   </div>`;
@@ -1143,7 +1371,6 @@ C.renderThreats = function () {
   const threats = (g.world.threats || []).filter(t => t.alive);
   const warriors = g.employees.filter(e => e.spec === 'warrior');
   const combatPower = C.combatPower();
-
   return `<div class="page-head">
     <div><h1>Угрозы</h1><p class="muted">${threats.length} активных · ⚔ Боевая мощь: ${combatPower}</p></div>
   </div>
@@ -1169,21 +1396,16 @@ C.renderThreat = function (t) {
       <b>${NB.esc(t.name)}</b>
       <small>${meta.desc} · Сила: ${t.power} · Лут: ${NB.money(t.loot)}</small>
       <div class="threat-bars">
-        <div class="threat-bar" title="Агрессия: ${t.aggression}">
-          <span>Агрессия</span>
-          <div class="threat-bar-track"><i style="width:${t.aggression}%;background:${t.aggression>=70?'#ef4444':t.aggression>=40?'#f59e0b':'#4ade80'}"></i></div>
-        </div>
-        <div class="threat-bar" title="Ваша мощь vs угроза: ${powerRatio}%">
-          <span>Мощь</span>
-          <div class="threat-bar-track"><i style="width:${Math.min(100,powerRatio)}%;background:#3b82f6"></i></div>
-        </div>
+        <div class="threat-bar" title="Агрессия: ${t.aggression}"><span>Агрессия</span><div class="threat-bar-track"><i style="width:${t.aggression}%;background:${t.aggression>=70?'#ef4444':t.aggression>=40?'#f59e0b':'#4ade80'}"></i></div></div>
+        <div class="threat-bar" title="Ваша мощь vs угроза: ${powerRatio}%"><span>Мощь</span><div class="threat-bar-track"><i style="width:${Math.min(100,powerRatio)}%;background:#3b82f6"></i></div></div>
       </div>
     </div>
     <div class="threat-actions">
       <button class="btn primary small" data-action="threat-action" data-id="${t.id}" data-key="fight" title="Отбить (нужны воины)">⚔ Бой</button>
       <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="ambush" title="Засада (2 AP, мощь ≥ 50%)">🎯</button>
       <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="negotiate" title="Переговоры (1 AP)">🤝</button>
-      <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="pay" title="Откупиться (${NB.money(Math.round(t.loot*0.6))})">💰</button>
+      <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="distract" title="Отвлечь (1 AP)">🎭</button>
+      <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="pay" title="Откупиться (${NB.money(Math.round(t.loot*0.6))})" ${t.type==='drone'?'disabled':''}>💰</button>
       <button class="btn ghost small" data-action="threat-action" data-id="${t.id}" data-key="ignore" title="Игнорировать">👀</button>
     </div>
   </div>`;
