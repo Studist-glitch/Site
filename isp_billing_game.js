@@ -1,66 +1,35 @@
-/* isp_billing_game.js — апгрейды, все события, экшен-сцены, атаки Синессы */
+/* isp_billing_game.js — апгрейды, события, экшен-сцены */
 (function (global) {
 'use strict';
 const NB = global.NB;
 const G = NB.game = NB.game || {};
 
 /* ============================================================
-   АПГРЕЙДЫ (полный набор + сюжетные)
+   АПГРЕЙДЫ (без упоминаний Синессы)
    ============================================================ */
 G.UPGRADES = {
-  /* --- базовые --- */
-  ddos:           { icon:'🛡', name:'DDoS-защита',            desc:'Отбивает атаки Синессы и хакеров.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN','Автоблок'], minDay:3,
-                    effect: lvl => `−${lvl*5}% шанс атаки` },
-  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'+3000 Мбит/с за уровень.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+3000','+6000','+9000'],
-                    effect: lvl => `+${lvl*3000} Мбит/с` },
-  support:        { icon:'💬', name:'Поддержка',              desc:'Меньше оттока, быстрее оплата.', costs:[6000,15000,30000], upkeep:[15,40,80], levels:['2 оператора','24/7','Менеджеры'], minDay:5,
-                    effect: lvl => `−${lvl*15}% отток, +${lvl*5}% автоплатёж` },
-  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше новых клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1','+2','+3'], minDay:4,
-                    effect: lvl => `+${lvl} клиент/день` },
-  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. +5000 Мбит/с.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade:'bandwidth',
-                    effect: lvl => `+${lvl*5000} Мбит/с` },
-  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие. +10000 Мбит/с.', costs:[50000], upkeep:[80], levels:['Резерв'], minDay:20,
-                    effect: lvl => `+${lvl*10000} Мбит/с` },
-  ai:             { icon:'🤖', name:'AI-автоматизация',       desc:'Автоматически решает заявки.', costs:[70000,120000], upkeep:[120,200], levels:['AI-оператор','AI-менеджер'], minDay:30,
-                    effect: lvl => `Авторешение ${lvl} заявок/день` },
-  firewall:       { icon:'🧱', name:'Firewall',               desc:'Снижает взломы и атаки.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay:15,
-                    effect: lvl => `−${lvl*2}% взлом, −${lvl*3}% атаки` },
-  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Буст канала. +1200 Мбит/с.', costs:[4000,12000], upkeep:[10,25], levels:['+1200','+2400'],
-                    effect: lvl => `+${lvl*1200} Мбит/с` },
-  darkFiber:      { icon:'🌑', name:'Тёмное волокно',          desc:'Скрытый канал, сложнее отследить.', costs:[80000], upkeep:[150], levels:['Скрытая магистраль'], minDay:40,
-                    effect: lvl => `+5000 Мбит/с, +${lvl*10}% скрытность` },
-  autoCollect:    { icon:'💰', name:'Автосбор выручки',        desc:'Собирает автоматически.', costs:[6000,15000], upkeep:[10,25], levels:['100%','+5%'], minDay:6,
-                    effect: lvl => `Автосбор${lvl>1?' +5%':''}` },
-  autoClean:      { icon:'🧹', name:'Автоочистка спама',       desc:'Убирает спам.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay:8,
-                    effect: lvl => `−${lvl*5}% спам` },
-  salesBoost:     { icon:'📈', name:'Буст продаж',             desc:'Шанс подключения, меньше отток.', costs:[8000,20000], upkeep:[15,40], levels:['+10%','+20%'], minDay:10,
-                    effect: lvl => `+${lvl*0.5} клиентов, −${lvl*5}% отток` },
-  anomalyScanner: { icon:'📡', name:'Аномальный сканер',       desc:'Рано предупреждает об атаках.', costs:[20000,45000], upkeep:[20,50], levels:['Первый','Полный'], minDay:12,
-                    effect: lvl => `−${lvl*10}% урон от атак, предупреждение` },
-
-  /* --- бункер / ковчег --- */
-  bunker:         { icon:'🏚', name:'Бункер',                 desc:'Укрытие от угрозы.', costs:[70000,130000,250000], upkeep:[80,200,400], levels:['Базовый','Укреплённый','Крепость'], requiresFlag:'bunkerBlueprints',
-                    effect: lvl => `Укрытие ур.${lvl}` },
-  bunkerFood:     { icon:'🍖', name:'Запасы еды',             desc:'Продовольствие для бункера.', costs:[15000,30000], upkeep:[0,0], levels:['+5 ед./день','+10 ед./день'], requiresFlag:'bunkerBuilt',
-                    effect: lvl => `+${lvl*5} еды/день` },
-  bunkerDefense:  { icon:'🔫', name:'Турели',                 desc:'Защита периметра.', costs:[25000,55000], upkeep:[30,70], levels:['Авто-турель','Лазерная сеть'], requiresFlag:'bunkerBuilt',
-                    effect: lvl => `−${lvl*15}% жертв атаки` },
-  bunkerMed:      { icon:'🏥', name:'Медотсек',               desc:'Лечит выживших.', costs:[20000,40000], upkeep:[25,60], levels:['Аптечка','Операционная'], requiresFlag:'bunkerBuilt',
-                    effect: lvl => `${lvl*10}% шанс спасти при атаке` },
-  bunkerVent:     { icon:'🌀', name:'Вентиляция',              desc:'Фильтры и изолированные отсеки.', costs:[18000,38000], upkeep:[20,50], levels:['Фильтры','Изоляция'], requiresFlag:'bunkerBuilt',
-                    effect: lvl => `−${lvl*15}% заражённых гостей` },
-  ark:            { icon:'🏛', name:'Ковчег',                 desc:'Подземный город.', costs:[50000], upkeep:[200], levels:['Первый уровень'], requiresFlag:'arkBuilt',
-                    effect: lvl => `+50 мест в бункере` },
-  arkSecurity:    { icon:'🛡', name:'Служба безопасности',     desc:'Охрана ковчега.', costs:[30000,70000], upkeep:[50,120], levels:['Отряд','Дивизия'], requiresFlag:'arkBuilt',
-                    effect: lvl => `−${lvl*10}% бунтов` },
-  soldier:        { icon:'🎖', name:'Солдаты',                desc:'Добровольцы для вылазок.', costs:[10000,25000,50000], upkeep:[20,50,100], levels:['5 бойцов','15 бойцов','30 бойцов'], requiresFlag:'arkBuilt',
-                    effect: lvl => `+${lvl*10}% успех вылазок` },
-
-  /* --- сюжет --- */
-  quantum:        { icon:'⚛', name:'Квантовый шифр',          desc:'Скрывает сигналы.', costs:[180000], upkeep:[200], levels:['Квантовая сеть'], requiresFlag:'quantumUnlocked',
-                    effect: lvl => `+${lvl*20}% скрытность` },
-  neonTrace:      { icon:'🕸', name:'Сеть Неона',             desc:'Отслеживание Синессы.', costs:[40000,90000], upkeep:[0,0], levels:['Паутина','Глубокое сканирование'], requiresFlag:'neonAlliance',
-                    effect: lvl => `+${lvl*15}% к поиску Синессы` }
+  ddos:           { icon:'🛡', name:'DDoS-защита',            desc:'Отбивает DDoS-атаки и взломы.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN','Автоблок'], minDay:3 },
+  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'+3000 Мбит/с за уровень.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+3000','+6000','+9000'] },
+  support:        { icon:'💬', name:'Поддержка',              desc:'Меньше оттока, быстрее оплата.', costs:[6000,15000,30000], upkeep:[15,40,80], levels:['2 оператора','24/7','Менеджеры'], minDay:5 },
+  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше новых клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1','+2','+3'], minDay:4 },
+  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. +5000 Мбит/с.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade:'bandwidth' },
+  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие. +10000 Мбит/с.', costs:[50000], upkeep:[80], levels:['Резерв'], minDay:20 },
+  ai:             { icon:'🤖', name:'AI-автоматизация',       desc:'Автоматически решает заявки.', costs:[70000,120000], upkeep:[120,200], levels:['AI-оператор','AI-менеджер'], minDay:30 },
+  firewall:       { icon:'🧱', name:'Firewall',               desc:'Снижает взломы.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay:15 },
+  autoCollect:    { icon:'💰', name:'Автосбор выручки',        desc:'Собирает автоматически.', costs:[6000,15000], upkeep:[10,25], levels:['100%','+5%'], minDay:6 },
+  autoClean:      { icon:'🧹', name:'Автоочистка спама',       desc:'Убирает спам.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay:8 },
+  salesBoost:     { icon:'📈', name:'Буст продаж',             desc:'Шанс подключения, меньше отток.', costs:[8000,20000], upkeep:[15,40], levels:['+10%','+20%'], minDay:10 },
+  anomalyScanner: { icon:'📡', name:'Аномальный сканер',       desc:'Рано предупреждает об атаках.', costs:[20000,45000], upkeep:[20,50], levels:['Первый','Полный'], minDay:12 },
+  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Буст канала. +1200 Мбит/с.', costs:[4000,12000], upkeep:[10,25], levels:['+1200','+2400'] },
+  darkFiber:      { icon:'🌑', name:'Тёмное волокно',          desc:'Скрытый канал.', costs:[80000], upkeep:[150], levels:['Скрытая магистраль'], minDay:40 },
+  bunker:         { icon:'🏚', name:'Бункер',                 desc:'Укрытие от угрозы.', costs:[70000,130000,250000], upkeep:[80,200,400], levels:['Базовый','Укреплённый','Крепость'], requiresFlag:'bunkerBlueprints' },
+  bunkerFood:     { icon:'🍖', name:'Запасы еды',             desc:'Продовольствие для бункера.', costs:[15000,30000], upkeep:[0,0], levels:['+5','+10'], requiresFlag:'bunkerBuilt' },
+  bunkerDefense:  { icon:'🔫', name:'Турели',                 desc:'Защита периметра.', costs:[25000,55000], upkeep:[30,70], levels:['Авто-турель','Лазерная сеть'], requiresFlag:'bunkerBuilt' },
+  bunkerMed:      { icon:'🏥', name:'Медотсек',               desc:'Лечит выживших.', costs:[20000,40000], upkeep:[25,60], levels:['Аптечка','Операционная'], requiresFlag:'bunkerBuilt' },
+  bunkerVent:     { icon:'🌀', name:'Вентиляция',              desc:'Фильтры и изолированные отсеки.', costs:[18000,38000], upkeep:[20,50], levels:['Фильтры','Изоляция'], requiresFlag:'bunkerBuilt' },
+  ark:            { icon:'🏛', name:'Ковчег',                 desc:'Подземный город.', costs:[50000], upkeep:[200], levels:['Первый уровень'], requiresFlag:'arkBuilt' },
+  arkSecurity:    { icon:'🛡', name:'Служба безопасности',     desc:'Охрана ковчега.', costs:[30000,70000], upkeep:[50,120], levels:['Отряд','Дивизия'], requiresFlag:'arkBuilt' },
+  soldier:        { icon:'🎖', name:'Солдаты',                desc:'Добровольцы для вылазок.', costs:[10000,25000,50000], upkeep:[20,50,100], levels:['5','15','30'], requiresFlag:'arkBuilt' }
 };
 
 G.upgradeVisible = function (key) {
@@ -91,9 +60,6 @@ G.dailyUpkeep = function () {
 
 G.isBroken = key => !!NB.state.game.upgradesBroken[key];
 
-/* ============================================================
-   АГРЕГАЦИЯ ЭФФЕКТОВ — используется в daily.js
-   ============================================================ */
 G.getUpgradeEffects = function () {
   const u = NB.state.game.upgrades;
   return {
@@ -112,8 +78,7 @@ G.getUpgradeEffects = function () {
     bunkerVentChance:  (u.bunkerVent||0)*0.15,
     arkSecurity:       (u.arkSecurity||0)*0.10,
     soldierRunBonus:   (u.soldier||0)*0.10,
-    stealthBonus:      (u.quantum||0)*0.2 + (u.darkFiber||0)*0.1,
-    neonTraceBonus:    (u.neonTrace||0)*0.15,
+    stealthBonus:      (u.darkFiber||0)*0.1,
     scannerWarn:       (u.anomalyScanner||0) > 0
   };
 };
@@ -128,20 +93,11 @@ G.buyUpgrade = function (key) {
   g.upgrades[key] = (g.upgrades[key] || 0) + 1;
   g.stats.totalExpenses += cost;
   if (g.upgradesBroken[key]) delete g.upgradesBroken[key];
-  /* сюжетные разблокировки */
   if (key === 'bunker')   { g.world.flags.bunkerBuilt = true; g.world.bunker.built = true; g.world.bunker.level = g.upgrades.bunker; }
   if (key === 'ark')      { g.world.flags.arkBuilt = true; g.world.bunker.level = Math.max(g.world.bunker.level, 2); }
   NB.notify(`${G.UPGRADES[key].name} ур.${g.upgrades[key]}`, 'ok');
   NB.addLog(`Куплено: ${G.UPGRADES[key].name}`, 'success');
-  NB.addCompanyXp(5); NB.save();
-  setTimeout(() => {
-    NB.render();
-    document.querySelectorAll('.upgrade').forEach(c => {
-      if (c.querySelector('h3')?.textContent === G.UPGRADES[key].name) {
-        c.classList.add('just-bought'); setTimeout(() => c.classList.remove('just-bought'), 600);
-      }
-    });
-  }, 50);
+  NB.addCompanyXp(5); NB.save(); NB.render();
 };
 
 G.repairUpgrade = function (key) {
@@ -198,7 +154,7 @@ G.startActionScene = function (config, callback) {
 };
 
 /* ============================================================
-   АТАКА СИНЕССЫ (учитывает ddos/firewall/scanner/bunkerDefense/med)
+   АТАКА (без имени)
    ============================================================ */
 G.triggerSolverAttack = function () {
   const g = NB.state.game;
@@ -219,7 +175,7 @@ G.triggerSolverAttack = function () {
       NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
       NB.state.invoices = NB.state.invoices.filter(x => x.clientId !== v.id);
       NB.state.tickets = NB.state.tickets.filter(t => t.clientId !== v.id);
-      NB.addLog(`⚠ Синесса забрала «${v.name}»`, 'warn');
+      NB.addLog(`⚠ Атака: потерян клиент «${v.name}»`, 'warn');
     }
   }
 
@@ -227,7 +183,7 @@ G.triggerSolverAttack = function () {
     const bunkerLvl = g.world.bunker.level || 0;
     const safe = (bunkerLvl >= 2 || Math.random() > 0.35);
     if (!safe && Math.random() > eff.bunkerMedChance) {
-      NB.notify(`💀 Синесса добралась до семьи. ${g.family.wife.name} погибла.`, 'err');
+      NB.notify(`💀 Атака добралась до семьи. ${g.family.wife.name} погибла.`, 'err');
       g.family.wife = null; g.family.kids = [];
       g.reputation = Math.max(0, g.reputation - 30);
       document.body.classList.add('corpse-flash');
@@ -261,10 +217,9 @@ G.startNightRaid = function () {
 };
 
 /* ============================================================
-   СОБЫТИЯ — ВСЕ (восстановлены + новые)
+   СОБЫТИЯ (полный набор, без упоминаний Синессы)
    ============================================================ */
 G.EVENTS = [
-  /* --- повседневные --- */
   { id:'coffee', title:'☕ Кофе', desc:'Сотрудники просят кофе.', weight:1.2,
     condition:()=>NB.state.game.employees.length>0,
     opts:[
@@ -479,13 +434,12 @@ G.EVENTS = [
       { label:'Удалить', run:()=>'Удалено' }
     ]
   },
-  /* --- новые: сюжетные --- */
-  { id:'solver_attack', title:'⚠ Атака Синессы', desc:'Жёлтая вспышка. Она пришла.', weight:1.8,
+  { id:'solver_attack', title:'⚠ Атака', desc:'Жёлтая вспышка. Сеть под ударом.', weight:1.8,
     condition:()=>NB.state.game.world.threat>=3,
     opts:[
-      { label:'Спрятаться (1 AP)', action:()=>{ NB.game.startActionScene({ title:'Спрятаться', desc:'Вы слышите её шаги.', timeLimit:6,
+      { label:'Спрятаться (1 AP)', action:()=>{ NB.game.startActionScene({ title:'Спрятаться', desc:'Вы слышите шаги.', timeLimit:6,
         options:[
-          { label:'В вентиляцию', chance:0.7, success:()=>NB.notify('Вы спрятались.','ok'), fail:()=>NB.notify('Она нашла вас. Удар.','err') },
+          { label:'В вентиляцию', chance:0.7, success:()=>NB.notify('Вы спрятались.','ok'), fail:()=>NB.notify('Вас нашли. Удар.','err') },
           { label:'За серверы', chance:0.5, success:()=>NB.notify('Серверы скрыли вас.','ok'), fail:()=>NB.notify('«Ку-ку».','err') }
         ]}, ok=>{ if(!ok) NB.effects.shake(600); }); return 'Действие'; }},
       { label:'Притвориться мёртвым', run:()=>{ if(Math.random()<0.4) return 'Прошла мимо. Смех.'; NB.state.game.reputation=Math.max(0,NB.state.game.reputation-10); return 'Почуяла ложь. Удар.'; }},
