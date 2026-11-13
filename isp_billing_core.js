@@ -1,23 +1,29 @@
-/* isp_billing_core.js — состояние, утилиты, эффекты, UI */
 (function (global) {
 'use strict';
 const NB = global.NB = global.NB || {};
-NB.views   = NB.views   || { staff: {}, client: {} };
-NB.charts  = NB.charts  || {};
+NB.views = NB.views || { staff: {} };
+NB.charts = NB.charts || {};
 NB.actions = NB.actions || {};
-NB.auth    = NB.auth    || {};
-NB.game    = NB.game    || {};
-NB.story   = NB.story   || {};
+NB.game = NB.game || {};
+NB.story = NB.story || {};
 NB.effects = NB.effects || {};
+NB.employees = NB.employees || {};
+NB.minigames = NB.minigames || {};
+NB.chat = NB.chat || {};
+NB.tariffs = NB.tariffs || {};
+NB.competitors = NB.competitors || {};
+NB.invoices = NB.invoices || {};
+NB.daily = NB.daily || {};
+NB.traffic = NB.traffic || {};
 
 NB.$ = (s, r = document) => r.querySelector(s);
+NB.$$ = (s, r = document) => [...r.querySelectorAll(s)];
 NB.esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 NB.money = n => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ₽';
 NB.fmtDate = iso => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
 NB.fmtDateTime = iso => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 NB.period = () => new Date().toISOString().slice(0, 7);
-NB.periodLabel = p => { const [y, m] = p.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }); };
+NB.periodLabel = p => { const [y, m] = p.split('-').map(Number); return new Date(y, m - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }); };
 NB.initials = n => String(n).replace(/[«»"]/g, '').split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
 NB.rand = (a, b) => a + Math.random() * (b - a);
 NB.randInt = (a, b) => Math.floor(NB.rand(a, b + 1));
@@ -25,208 +31,150 @@ NB.pick = arr => arr[Math.floor(Math.random() * arr.length)];
 NB.parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 NB.toISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 NB.addDays = (iso, n) => { const d = NB.parseDate(iso); d.setDate(d.getDate() + n); return NB.toISO(d); };
-NB.dayLabel = iso => { const d = NB.parseDate(iso);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' }); };
+NB.dayLabel = iso => NB.parseDate(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' });
 NB.timeAgo = iso => {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return 'только что';
-  if (diff < 3600) return `${Math.floor(diff/60)} мин назад`;
-  if (diff < 86400) return `${Math.floor(diff/3600)} ч назад`;
-  if (diff < 86400 * 7) return `${Math.floor(diff/86400)} дн назад`;
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 60) return 'только что';
+  if (d < 3600) return `${Math.floor(d/60)} мин`;
+  if (d < 86400) return `${Math.floor(d/3600)} ч`;
+  if (d < 86400 * 7) return `${Math.floor(d/86400)} дн`;
   return NB.fmtDate(iso);
 };
 
-const FIRST_NAMES = ['Иван','Алексей','Дмитрий','Мария','Анна','Ольга','Павел','Екатерина','Сергей','Наталья','Владимир','Юлия','Андрей','Татьяна','Михаил','Елена','Артём','Ксения','Максим','Вера'];
-const LAST_NAMES = ['Иванов','Петров','Сидоров','Кузнецов','Смирнов','Волков','Морозов','Новиков','Фёдоров','Соколов','Попов','Лебедев','Козлов','Некрасов','Орлов','Зайцев','Павлов','Семёнов','Голубев','Виноградов'];
-const STREETS = ['Ленина','Мира','Гагарина','Садовая','Северная','Речная','Пушкина','Гоголя','Лермонтова','Советская','Молодёжная','Центральная','Школьная','Лесная','Солнечная','Тихая','Октябрьская','Победы'];
-const ORGS = ['ООО «Вектор»','ООО «Логистик»','ООО «ТехноПлюс»','ООО «Смарт»','ООО «СтройГрад»','ООО «Оптима»','ИП Соколов','ООО «ДатаЛайн»','АО «Северсталь»','ООО «Кибердом»'];
-const DRONE_NAMES = ['UNIT','DR','NX','HR','MX','QX','VX','AX'];
-const DRONE_ROLES = ['рабочий','курьер','инженер','оператор','охранник','техник','медик','пилот','строитель'];
+const FIRST = ['Иван','Алексей','Дмитрий','Мария','Анна','Ольга','Павел','Екатерина','Сергей','Наталья','Владимир','Юлия','Андрей','Татьяна','Михаил','Елена','Артём','Ксения','Максим','Вера','Роман','Светлана','Глеб','Полина','Игорь','Алиса'];
+const LAST = ['Иванов','Петров','Сидоров','Кузнецов','Смирнов','Волков','Морозов','Новиков','Фёдоров','Соколов','Попов','Лебедев','Козлов','Некрасов','Орлов','Зайцев','Павлов','Семёнов','Голубев','Виноградов'];
+const STREETS = ['Ленина','Мира','Гагарина','Садовая','Северная','Речная','Пушкина','Гоголя','Лермонтова','Советская','Молодёжная','Центральная','Школьная','Лесная','Солнечная','Тихая','Октябрьская','Победы','Космонавтов','Строителей'];
+const ORGS = ['ООО «Вектор»','ООО «Логистик»','ООО «ТехноПлюс»','ООО «Смарт»','ООО «СтройГрад»','ООО «Оптима»','ИП Соколов','ООО «ДатаЛайн»','АО «Северсталь»','ООО «Кибердом»','ООО «Ромашка»'];
+const DRONES = ['UNIT','DR','NX','HR','MX','QX','VX','AX','ZX','KS'];
+const DROLES = ['рабочий','курьер','инженер','оператор','охранник','техник','медик','пилот','строитель','грузчик'];
+const KIDS = ['Миша','Соня','Ваня','Настя','Тёма','Алиса','Лёша','Даша','Никита','Маша','Стёпа','Варя'];
+const WIVES = ['Анна','Мария','Елена','Ольга','Дарья','Алина','Виктория','Ксения','Полина','Наталья','Юлия','Ирина'];
 
-NB.genName = () => Math.random() < 0.15 ? NB.pick(ORGS) : `${NB.pick(LAST_NAMES)} ${NB.pick(FIRST_NAMES)}`;
-NB.genDroneName = () => `${NB.pick(DRONE_NAMES)}-${NB.randInt(100, 9999)} · ${NB.pick(DRONE_ROLES)}`;
+NB.genName = () => Math.random() < 0.15 ? NB.pick(ORGS) : `${NB.pick(LAST)} ${NB.pick(FIRST)}`;
+NB.genDroneName = () => `${NB.pick(DRONES)}-${NB.randInt(100, 9999)} · ${NB.pick(DROLES)}`;
 NB.genAddress = () => `ул. ${NB.pick(STREETS)}, ${NB.randInt(1, 120)}–${NB.randInt(1, 99)}`;
 NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.randInt(10, 99)}-${NB.randInt(10, 99)}`;
-NB.genTicketSubject = () => NB.pick([
-  'Медленная скорость вечером','Не работает интернет','Пропадает Wi-Fi',
-  'Хочу сменить тариф','Не приходит счёт','Сгорел роутер',
-  'Не могу дозвониться','Прошу перерасчёт','Странные помехи в сети',
-  'Нужен статический IP'
-]);
+NB.genKid = () => NB.pick(KIDS);
+NB.genWife = () => NB.pick(WIVES);
 
-NB.LS_KEY = 'netbill_neon_v12';
+NB.LS_KEY = 'netbill_v17';
 NB.DEFAULT_PASS = '1234';
-
-/* ============================================================
-   КОНСТАНТЫ ДНЕВНОГО ЦИКЛА
-   ============================================================ */
 NB.BASE_DAILY_COST = 30;
 NB.COST_PER_CLIENT = 2;
 NB.INCOME_DIVISOR = 20;
+NB.GOAL_CASH = 1000000;
 
-/* ============================================================
-   defaultGame()
-   ============================================================ */
+NB.NAV_ITEMS = [
+  { id: 'dashboard',   label: 'Дашборд',    icon: '◧', always: true },
+  { id: 'clients',     label: 'Клиенты',    icon: '◔', always: true },
+  { id: 'chat',        label: 'Поддержка',  icon: '💬', unlock: 'chat' },
+  { id: 'invoices',    label: 'Счета',      icon: '▤', always: true },
+  { id: 'tariffs',     label: 'Тарифы',     icon: '◆', always: true },
+  { id: 'employees',   label: 'Сотрудники', icon: '👥', unlock: 'employees' },
+  { id: 'upgrades',    label: 'Магазин',    icon: '⚙', always: true },
+  { id: 'competitors', label: 'Конкуренты', icon: '🏢', unlock: 'competitors' },
+  { id: 'activity',    label: 'Активность', icon: '◷', unlock: 'activity' },
+  { id: 'settings',    label: 'Настройки',  icon: '🛠', always: true }
+];
+
+NB.getVisibleNav = function () {
+  const g = NB.state.game;
+  return NB.NAV_ITEMS.filter(n => n.always || g.unlocks[n.unlock]);
+};
+
 function defaultGame() {
   return {
-    cash: 100000,
-    goal: 500000,
-    reputation: 100,
-    level: 1,
-    upgrades: {
-      ddos: 0, bandwidth: 0, support: 0, marketing: 0,
-      fiber: 0, satellite: 0, ai: 0, quantum: 0,
-      firewall: 0, microBooster: 0, darkFiber: 0,
-      autoCollect: 0, autoClean: 0, salesBoost: 0,
-      bunker: 0, anomalyScanner: 0
-    },
+    cash: 100000, goal: NB.GOAL_CASH, reputation: 100, level: 1,
+    ap: { current: 3, max: 3 },
+    company: { level: 1, xp: 0, xpNext: 100 },
     unlockedTech: [],
-    activeEvent: null,
-    history: [],
+    upgrades: {
+      ddos:0, bandwidth:0, support:0, marketing:0, fiber:0, satellite:0, ai:0, quantum:0,
+      firewall:0, microBooster:0, darkFiber:0, autoCollect:0, autoClean:0, salesBoost:0,
+      bunker:0, anomalyScanner:0
+    },
+    upgradesBroken: {},
+    employees: [], employeesPool: [],
+    activeEvent: null, history: [],
     marketShare: 12,
-    competitors: [
-      { name: 'Starlink',   share: 34, color: '#3b82f6', desc: 'Спутниковый гигант' },
-      { name: 'МТС',         share: 28, color: '#ef4444', desc: 'Мобильный оператор' },
-      { name: 'Ростелеком', share: 18, color: '#22c55e', desc: 'Национальный провайдер' },
-      { name: 'Малые ISP',  share:  8, color: '#7a7a86', desc: 'Локальные сети' }
-    ],
-    /* Дневной цикл */
-    daily: {
-      pendingRevenue: 0,
-      collectedToday: 0,
-      lastDayRevenue: 0,
-      dayNumber: 1,
-      log: [] /* журнал что произошло сегодня */
+    competitors: [],
+    unlocks: {
+      chat: false, employees: false, competitors: false, marketShare: false,
+      advancedUpgrades: false, drones: false, spam: false, loans: false, activity: false
     },
-    /* Очередь новых клиентов на одобрение */
-    pendingClients: [],
-    pendingClientSeq: 1,
-    /* Статистика */
-    stats: {
-      totalRevenue: 0, totalExpenses: 0, daysPlayed: 1,
-      eventsResolved: 0, won: false, lost: false, endings: []
-    },
-    /* Мир */
+    network: { stability: 100, lastOverload: 0 },
+    daily: { pendingRevenue:0, collectedToday:0, lastDayRevenue:0, dayNumber:1, log: [] },
+    pendingClients: [], pendingClientSeq: 1,
+    bills: [], billsSeq: 1,
+    family: { wife: null, kids: [], wifeHappiness: 100, lastFamilyEventDay: 0, crisisShown: false },
+    stats: { totalRevenue:0, totalExpenses:0, daysPlayed:1, eventsResolved:0, won:false, lost:false, endings:[] },
     world: {
-      arc: 'ordinary',
-      storyQueue: [],
-      flags: {},
-      news: [],
-      threat: 0,
-      neon: { met: false, trust: 0, helped: 0, state: 'active', lastContactDay: 0 },
-      drones: { enabled: false, count: 0, replaced: 0, droneClients: 0 },
-      bunker: { built: false, level: 0 },
-      lastNewsDay: 0,
-      attacksSurvived: 0,
-      family: { wife: null, kids: 0, safe: true }
+      arc: 'ordinary', storyQueue: [], flags: {}, news: [], threat: 0,
+      neon: { met:false, trust:0, helped:0, state:'active', lastContactDay:0 },
+      drones: { enabled:false, count:0, replaced:0, droneClients:0 },
+      bunker: { built:false, level:0, ultimatumDay:0 },
+      lastNewsDay: 0, attacksSurvived: 0,
+      storyLines: { neon: 0, cynessa: 0, corporate: 0, family: 0 },
+      endingTriggered: false
     }
   };
 }
 
-/* ============================================================
-   seed()
-   ВАЖНО: НЕ использует NB.price/NB.tariff — они будут доступны позже
-   ============================================================ */
 function seed() {
   const tariffs = [
-    { id: 1, name: 'Старт',        speed: 100,  price: 450,  color: '#ff6b00', desc: 'Базовый доступ для дома' },
-    { id: 2, name: 'Оптимальный',  speed: 300,  price: 650,  color: '#ff9500', desc: 'Для стриминга и учёбы' },
-    { id: 3, name: 'Гигабит',      speed: 1000, price: 990,  color: '#ffb347', desc: 'Максимальная скорость' },
-    { id: 4, name: 'Бизнес',       speed: 500,  price: 1500, color: '#ff3d00', desc: 'Для офиса и команды' }
+    { id:1, name:'Старт',  speed:50,  price:350,  color:'#ff6b00', desc:'Базовый доступ' },
+    { id:2, name:'Оптимальный', speed:100, price:500, color:'#ff9500', desc:'Для дома' },
+    { id:3, name:'Комфорт', speed:200, price:750, color:'#ffb347', desc:'Для семьи' },
+    { id:4, name:'Бизнес', speed:300, price:1200, color:'#ff3d00', desc:'Для офиса' }
   ];
   const named = ['Иванов Алексей','Петрова Мария','Сидоров Дмитрий','Кузнецова Анна','ООО «Вектор»','Смирнов Павел','Волкова Ольга','ООО «Логистик»'];
-
   const clients = Array.from({ length: 8 }, (_, i) => {
     const t = NB.pick(tariffs);
-    const balance = NB.randInt(-500, 3000);
-    return {
-      id: i + 1,
-      name: i < named.length ? named[i] : NB.genName(),
-      address: NB.genAddress(),
-      phone: NB.genPhone(),
-      tariffId: t.id,
-      balance,
-      status: balance < 0 ? 'blocked' : 'active',
-      createdAt: new Date(Date.now() - NB.randInt(5, 400) * 864e5).toISOString(),
-      password: NB.DEFAULT_PASS,
-      isDrone: false,
-      risk: 'normal'
-    };
+    const b = NB.randInt(-500, 3000);
+    return { id: i+1, name: i < named.length ? named[i] : NB.genName(),
+      address: NB.genAddress(), phone: NB.genPhone(), tariffId: t.id,
+      balance: b, status: b < 0 ? 'blocked' : 'active',
+      createdAt: new Date(Date.now() - NB.randInt(5,400)*864e5).toISOString(),
+      password: NB.DEFAULT_PASS, isDrone: false, risk: 'normal', revealed: true };
   });
-
   const p = NB.period();
   const invoices = clients.map((c, i) => {
     const t = tariffs.find(x => x.id === c.tariffId);
     const paid = i % 3 !== 0;
-    return { id: i + 1, clientId: c.id, period: p, amount: t.price,
+    return { id: i+1, clientId: c.id, period: p, amount: t.price,
       status: paid ? 'paid' : 'unpaid',
-      paidAt: paid ? new Date(Date.now() - NB.randInt(1, 20) * 864e5).toISOString() : null };
+      paidAt: paid ? new Date(Date.now() - NB.randInt(1,20)*864e5).toISOString() : null };
   });
-
-  const tickets = [
-    { id: 1, clientId: 2, subject: 'Медленная скорость вечером', status: 'open', createdAt: new Date(Date.now() - 2 * 864e5).toISOString() }
-  ];
-
   const today = NB.toISO(new Date());
-  const revenue = Array.from({ length: 14 }, (_, i) => ({
-    date: NB.addDays(today, -(13 - i)),
-    amount: NB.randInt(200, 400)
-  }));
-  const growth = Array.from({ length: 14 }, (_, i) => ({
-    date: NB.addDays(today, -(13 - i)),
-    count: 8 + i + NB.randInt(-1, 2)
-  }));
+  const revenue = Array.from({ length: 14 }, (_, i) => ({ date: NB.addDays(today, -(13-i)), amount: NB.randInt(200,400) }));
+  const growth = Array.from({ length: 14 }, (_, i) => ({ date: NB.addDays(today, -(13-i)), count: 8+i+NB.randInt(-1,2) }));
 
   const g = defaultGame();
-
-  /* Стартовая выручка для сегодняшнего дня — локально, БЕЗ NB.price */
-  const startIncome = Math.round(
-    clients.filter(c => c.status === 'active')
-      .reduce((s, c) => {
-        const t = tariffs.find(x => x.id === c.tariffId);
-        return s + (t ? t.price / NB.INCOME_DIVISOR : 0);
-      }, 0)
-  );
-  g.daily.pendingRevenue = startIncome;
-  g.daily.log = [
-    { text: `День 1 начался. Клиенты уже ждут.`, type: 'info' },
-    { text: `Пришли 2 новых клиента — обработайте их.`, type: 'info' }
+  g.daily.pendingRevenue = Math.round(clients.filter(c => c.status === 'active')
+    .reduce((s, c) => { const t = tariffs.find(x => x.id === c.tariffId); return s + (t ? t.price / NB.INCOME_DIVISOR : 0); }, 0));
+  g.daily.log = [{ text: 'День 1 начался', type: 'info' }];
+  g.pendingClients = [
+    { id:1, name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(), tariffId: 2, risk: 'good', revealed: true },
+    { id:2, name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(), tariffId: 1, risk: 'normal', revealed: true }
   ];
-
-  /* Стартовые pending-клиенты для туториала */
-  const startPending = [
-    {
-      id: 1,
-      name: NB.genName(),
-      address: NB.genAddress(),
-      phone: NB.genPhone(),
-      tariffId: 2,
-      risk: 'good'
-    },
-    {
-      id: 2,
-      name: NB.genName(),
-      address: NB.genAddress(),
-      phone: NB.genPhone(),
-      tariffId: 1,
-      risk: 'normal'
-    }
-  ];
-  g.pendingClients = startPending;
   g.pendingClientSeq = 3;
+  g.family.wife = { name: NB.genWife(), happiness: 100 };
+  g.family.kids = [{ name: NB.genKid(), age: 5 }];
+  g.employeesPool = [];
+  g.bills = [
+    { id:1, type:'salary', label:'Зарплаты', amount:0, dueDay:7, createdAtDay:1, status:'pending', growRate:0, overdueDays:0 },
+    { id:2, type:'family', label:'Семья: продукты и нужды', amount:400, dueDay:4, createdAtDay:1, status:'pending', growRate:0.02, overdueDays:0 },
+    { id:3, type:'utility', label:'Электричество и офис', amount:800, dueDay:10, createdAtDay:1, status:'pending', growRate:0.03, overdueDays:0 }
+  ];
+  g.billsSeq = 4;
 
   return {
-    tariffs, clients, invoices, tickets,
-    activity: [{ id: 1, text: 'Система биллинга запущена', type: 'sys', at: new Date().toISOString() }],
-    notifications: [],
-    revenue, growth,
-    seq: { tariff: 5, client: clients.length + 1, invoice: invoices.length + 1, ticket: 2, activity: 2, notif: 1, story: 1 },
-    session: null,
-    simDate: today,
-    settings: { reduceAds: false }, /* только визуал */
-    favorites: { clients: [], staff: [] },
-    staffAccounts: [{ username: 'admin', password: 'admin', name: 'Администратор' }],
-    onboarded: { staff: false, clients: [] },
+    tariffs, clients, invoices, tickets: [],
+    activity: [{ id: 1, text: 'Биллинг запущен', type: 'sys', at: new Date().toISOString() }],
+    notifications: [], revenue, growth,
+    seq: { tariff:5, client: clients.length+1, invoice: invoices.length+1, ticket:1, activity:2, notif:1, story:1, emp:1 },
+    simDate: today, settings: { reduceAds: false },
+    onboarded: { tour: false, views: {} },
     game: g,
     story: { seenEvents: [], choices: {} }
   };
@@ -235,74 +183,114 @@ function seed() {
 function migrate(s) {
   if (!s.game) s.game = defaultGame();
   const g = s.game;
-  if (!g.upgrades) g.upgrades = defaultGame().upgrades;
-  const keys = ['ddos','bandwidth','support','marketing','fiber','satellite','ai','quantum','firewall','microBooster','darkFiber','autoCollect','autoClean','salesBoost','bunker','anomalyScanner'];
-  keys.forEach(k => { if (typeof g.upgrades[k] !== 'number') g.upgrades[k] = 0; });
+  if (!g.unlockedTech) g.unlockedTech = [];
+  if (!g.unlocks) g.unlocks = defaultGame().unlocks;
+  if (!g.network) g.network = { stability: 100, lastOverload: 0 };
+  if (!g.competitors) g.competitors = [];
+  if (!g.upgradesBroken) g.upgradesBroken = {};
+  if (!g.ap) g.ap = { current: 3, max: 3 };
+  if (!g.company) g.company = { level: 1, xp: 0, xpNext: 100 };
   if (!g.daily) g.daily = defaultGame().daily;
   if (!g.daily.log) g.daily.log = [];
-  if (!g.daily.dayNumber) g.daily.dayNumber = 1;
-  if (!g.pendingClients) g.pendingClients = [];
-  if (!g.pendingClientSeq) g.pendingClientSeq = 1;
+  if (!g.bills) g.bills = [];
+  if (!g.billsSeq) g.billsSeq = 1;
+  if (!g.family) g.family = { wife: null, kids: [], wifeHappiness: 100, lastFamilyEventDay: 0, crisisShown: false };
+  if (typeof g.family.crisisShown !== 'boolean') g.family.crisisShown = false;
   if (!g.world) g.world = defaultGame().world;
-  if (!g.world.family) g.world.family = { wife: null, kids: 0, safe: true };
+  if (!g.world.storyLines) g.world.storyLines = { neon:0, cynessa:0, corporate:0, family:0 };
   if (!s.story) s.story = { seenEvents: [], choices: {} };
-  if (!s.story.seenEvents) s.story.seenEvents = [];
-  if (!s.story.choices) s.story.choices = {};
-  /* Настройки: удаляем влияющие на геймплей */
-  if (s.settings) {
-    delete s.settings.autoTick;
-    delete s.settings.tickMs;
-    delete s.settings.autoNewClients;
-    delete s.settings.autoPayments;
-    delete s.settings.churnChance;
-    delete s.settings.snSpam;
-    delete s.settings.spamEnabled;
-    if (typeof s.settings.reduceAds !== 'boolean') s.settings.reduceAds = false;
-  }
-  if (!s.seq.story) s.seq.story = 1;
+  if (!s.onboarded) s.onboarded = { tour: false, views: {} };
+  if (!s.onboarded.views) s.onboarded.views = {};
+  g.goal = NB.GOAL_CASH;
   return s;
 }
 
 function load() {
-  try { const raw = localStorage.getItem(NB.LS_KEY); if (raw) return migrate(JSON.parse(raw)); } catch (e) {}
+  try { const raw = localStorage.getItem(NB.LS_KEY); if (raw) return migrate(JSON.parse(raw)); } catch(e){}
   const s = seed(); localStorage.setItem(NB.LS_KEY, JSON.stringify(s)); return s;
 }
 
-/* ============================================================
-   ВАЖНО: определяем lookup-функции ДО load(),
-   но они толерантны к отсутствию NB.state
-   ============================================================ */
-NB.tariff = function (id) {
-  if (!NB.state || !NB.state.tariffs) return undefined;
-  return NB.state.tariffs.find(t => t.id === id);
-};
-NB.client = function (id) {
-  if (!NB.state || !NB.state.clients) return undefined;
-  return NB.state.clients.find(c => c.id === id);
-};
-NB.price = function (id) {
-  const t = NB.tariff(id);
-  return t ? t.price : 0;
-};
-
+NB.tariff = id => NB.state && NB.state.tariffs ? NB.state.tariffs.find(t => t.id === id) : undefined;
+NB.client = id => NB.state && NB.state.clients ? NB.state.clients.find(c => c.id === id) : undefined;
+NB.price = id => { const t = NB.tariff(id); return t ? t.price : 0; };
 NB.state = load();
 NB.save = () => localStorage.setItem(NB.LS_KEY, JSON.stringify(NB.state));
-NB.resetState = function () {
-  if (!confirm('Сбросить все данные к началу? Прогресс потерян.')) return;
-  NB.state = seed(); NB.save(); NB.render();
-  NB.toast('Данные сброшены', 'ok');
+
+NB.resetState = function (skipConfirm) {
+  if (!skipConfirm && !confirm('Сбросить всё? Прогресс потерян.')) return;
+  NB.state = seed();
+  NB.save();
+  location.reload();
 };
 
-NB.ui = {
-  view: 'dashboard',
-  query: '',
-  clientSort: { key: 'name', dir: 'asc' },
-  invoiceFilter: 'all'
+NB.ui = { view: 'dashboard', query: '', clientSort: { key:'name', dir:'asc' }, invoiceFilter:'all', invoiceTab:'client', chatThreadId: null };
+
+NB.checkUnlocks = function () {
+  const g = NB.state.game;
+  const st = NB.state;
+  const day = g.daily.dayNumber;
+  const activeClients = st.clients.filter(c => c.status === 'active').length;
+  const changes = [];
+  const tryUnlock = (key, cond, label) => {
+    if (g.unlocks[key]) return;
+    if (cond) { g.unlocks[key] = true; changes.push(label); }
+  };
+  tryUnlock('activity', day >= 2, 'Журнал активности');
+  tryUnlock('chat', day >= 2 || st.tickets.length > 0, 'Поддержка (чат)');
+  tryUnlock('advancedUpgrades', day >= 8, 'Продвинутые улучшения');
+  tryUnlock('spam', day >= 5 && g.company.level >= 2, 'Реклама в сети');
+  tryUnlock('employees', day >= 5, 'Найм сотрудников');
+  tryUnlock('loans', g.company.level >= 2, 'Кредиты');
+  tryUnlock('competitors', activeClients >= 12 && day >= 15 && g.reputation >= 50, 'Конкуренты на рынке');
+  tryUnlock('marketShare', g.unlocks.competitors, 'Доля рынка');
+  if (changes.length > 0) {
+    changes.forEach(ch => NB.notify(`🔓 Открыто: ${ch}`, 'ok'));
+    NB.save();
+    setTimeout(() => { if (NB.renderView) NB.renderView(); }, 150);
+  }
 };
 
-/* ============================================================
-   ОЦЕНКИ ЭКОНОМИКИ
-   ============================================================ */
+NB.traffic.getCapacity = function () {
+  const u = NB.state.game.upgrades;
+  return 500 + u.bandwidth * 400 + u.fiber * 800 + u.satellite * 1500 + u.microBooster * 150;
+};
+NB.traffic.getUsage = function () {
+  return NB.state.clients.filter(c => c.status === 'active')
+    .reduce((s, c) => { const t = NB.tariff(c.tariffId); return s + (t ? t.speed : 0); }, 0);
+};
+NB.traffic.getLoad = function () {
+  const cap = NB.traffic.getCapacity();
+  const usage = NB.traffic.getUsage();
+  const percent = cap > 0 ? Math.round((usage / cap) * 100) : 0;
+  const stability = NB.state.game.network.stability;
+  let status = 'ok';
+  if (percent > 100) status = 'overload';
+  else if (percent > 80) status = 'warning';
+  else if (percent > 60) status = 'elevated';
+  return { cap, usage, percent, stability, status };
+};
+
+NB.canSpendAp = c => NB.state.game.ap.current >= (c || 0);
+NB.spendAp = c => { if (c <= 0) return true; if (NB.state.game.ap.current < c) return false; NB.state.game.ap.current -= c; NB.save(); return true; };
+NB.resetAp = () => { const g = NB.state.game; g.ap.current = g.ap.max; g.employees.forEach(e => { e.ap.current = e.ap.max; }); NB.save(); };
+NB.recomputeApMax = () => { const g = NB.state.game; g.ap.max = 3 + Math.floor(Math.max(0, g.company.level - 1) / 3); if (g.ap.current > g.ap.max) g.ap.current = g.ap.max; };
+
+NB.addCompanyXp = function (n) {
+  const g = NB.state.game;
+  g.company.xp += n;
+  let leveled = false;
+  while (g.company.xp >= g.company.xpNext) {
+    g.company.xp -= g.company.xpNext;
+    g.company.level++;
+    g.company.xpNext = Math.round(g.company.xpNext * 1.4);
+    NB.recomputeApMax();
+    NB.notify(`🏢 Уровень компании ${g.company.level}`, 'ok');
+    leveled = true;
+  }
+  if (leveled) NB.checkUnlocks();
+  NB.save();
+};
+
 NB.dailyIncomeEstimate = function () {
   const active = NB.state.clients.filter(c => c.status === 'active');
   let base = 0;
@@ -320,85 +308,164 @@ NB.dailyCostEstimate = function () {
   const active = NB.state.clients.filter(c => c.status === 'active').length;
   const base = NB.BASE_DAILY_COST + NB.COST_PER_CLIENT * active;
   const upkeep = NB.game.dailyUpkeep();
-  return { base, upkeep, total: base + upkeep };
+  const salary = NB.state.game.employees.reduce((s, e) => s + e.salary, 0);
+  return { base, upkeep, salary, total: base + upkeep + salary };
 };
 
-NB.netDailyEstimate = function () {
-  const inc = NB.dailyIncomeEstimate();
-  const cost = NB.dailyCostEstimate();
-  return { income: inc.total, cost: cost.total, net: inc.total - cost.total };
+NB.netDailyEstimate = () => {
+  const i = NB.dailyIncomeEstimate();
+  const c = NB.dailyCostEstimate();
+  return { income: i.total, cost: c.total, net: i.total - c.total };
 };
 
 NB.canAdvanceDay = function () {
   const g = NB.state.game;
-  if (g.activeEvent) return { ok: false, reason: 'Сначала решите событие' };
-  if (g.pendingClients.length > 0) return { ok: false, reason: `Обработайте ${g.pendingClients.length} новых клиентов` };
-  if (g.daily.pendingRevenue > 0 && g.upgrades.autoCollect === 0) return { ok: false, reason: 'Соберите выручку' };
+  if (g.activeEvent) return { ok: false, reason: 'Решить событие' };
+  if (g.pendingClients.length > 0) return { ok: false, reason: `Принять клиентов (${g.pendingClients.length})` };
   return { ok: true };
 };
 
-/* ============================================================
-   ЭФФЕКТЫ
-   ============================================================ */
+NB.playVideo = function (src, title, opts) {
+  opts = opts || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'video-overlay';
+  wrap.innerHTML = `<div class="video-box">
+    <button class="video-close" type="button">✕</button>
+    <video src="${src}" autoplay playsinline ${opts.muted ? 'muted' : ''} ${opts.loop ? 'loop' : ''}></video>
+    ${title ? `<div class="video-title">${NB.esc(title)}</div>` : ''}
+  </div>`;
+  document.body.appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add('show'));
+  const close = () => { wrap.classList.remove('show'); setTimeout(() => wrap.remove(), 300); if (opts.onClose) opts.onClose(); };
+  wrap.querySelector('.video-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  if (opts.autoClose) setTimeout(close, opts.autoClose);
+  return { close };
+};
+
 const style = document.createElement('style');
 style.textContent = `
 @keyframes shake{10%,90%{transform:translate3d(-1px,0,0)}20%,80%{transform:translate3d(2px,0,0)}30%,50%,70%{transform:translate3d(-4px,0,0)}40%,60%{transform:translate3d(4px,0,0)}}
 @keyframes fadeOutRed{from{opacity:1}to{opacity:0}}
-@keyframes glitch{0%{transform:translate(0)}20%{transform:translate(-2px,2px)}40%{transform:translate(-2px,-2px)}60%{transform:translate(2px,2px)}80%{transform:translate(2px,-2px)}100%{transform:translate(0)}}
 @keyframes redPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,0,0,.4)}50%{box-shadow:0 0 0 12px rgba(255,0,0,0)}}
 @keyframes typewriter{from{width:0}to{width:100%}}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,107,0,.6)}50%{box-shadow:0 0 0 8px rgba(255,107,0,0)}}
-.glitch-text{animation:glitch .25s infinite;text-shadow:2px 0 #ff0000,-2px 0 #00ffff}
+@keyframes numberPop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes dangerPulse{0%,100%{background:rgba(255,0,0,.1)}50%{background:rgba(255,0,0,.25)}}
 .cyn-warning{animation:redPulse 2s infinite}
 .typewriter{overflow:hidden;white-space:nowrap;border-right:2px solid var(--primary);animation:typewriter 2s steps(80) both}
 .fade-in{animation:fadein .5s cubic-bezier(.2,.7,.3,1) both}
 .tutorial-pulse{animation:pulseGlow 1.5s infinite;border-radius:10px;position:relative;z-index:999}
+.number-pop{animation:numberPop .3s}
+body.cynessa-danger::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;background:rgba(255,0,0,.12);animation:dangerPulse 2s infinite}
 `;
 document.head.appendChild(style);
 
-NB.effects.shake = function (d = 500) {
-  const root = document.getElementById('root'); if (!root) return;
-  root.style.animation = 'none'; void root.offsetWidth;
-  root.style.animation = `shake ${d}ms cubic-bezier(.36,.07,.19,.97) both`;
-  setTimeout(() => { root.style.animation = ''; }, d + 50);
+NB.effects.shake = d => {
+  const r = document.getElementById('root'); if (!r) return;
+  r.style.animation = 'none'; void r.offsetWidth;
+  r.style.animation = `shake ${d || 500}ms cubic-bezier(.36,.07,.19,.97) both`;
+  setTimeout(() => { r.style.animation = ''; }, (d || 500) + 50);
 };
-NB.effects.redFlash = function () {
+NB.effects.redFlash = () => {
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;inset:0;background:rgba(255,0,0,.35);z-index:200;pointer-events:none;animation:fadeOutRed .7s forwards';
   document.body.appendChild(el); setTimeout(() => el.remove(), 800);
 };
-NB.effects.glitch = function (el) {
+NB.effects.glitch = el => {
   if (!el) return;
   const orig = el.textContent; const chars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  let i = 0;
-  const iv = setInterval(() => {
+  let i = 0; const iv = setInterval(() => {
     el.textContent = orig.split('').map(c => Math.random() < 0.3 ? chars[Math.floor(Math.random()*chars.length)] : c).join('');
     if (++i > 12) { clearInterval(iv); el.textContent = orig; }
   }, 50);
 };
-NB.effects.typewriter = function (el, text) {
-  if (!el) return;
-  el.textContent = ''; el.classList.add('typewriter');
+NB.effects.typewriter = (el, text) => {
+  if (!el) return; el.textContent = ''; el.classList.add('typewriter');
   let i = 0;
-  const tick = () => { if (i <= text.length) { el.textContent = text.slice(0, i); i++; setTimeout(tick, 22); } else el.classList.remove('typewriter'); };
+  const tick = () => { if (i <= text.length) { el.textContent = text.slice(0, i); i++; setTimeout(tick, 18); } else el.classList.remove('typewriter'); };
   tick();
 };
 
-/* ============================================================
-   TOAST / NOTIFY
-   ============================================================ */
-NB.toast = function (msg, type) {
-  const wrap = document.getElementById('toasts'); if (!wrap) return;
+NB.showCynessaEnding = function () {
+  const g = NB.state.game;
+  if (g.world.endingTriggered) return;
+  g.world.endingTriggered = true;
+  g.stats.lost = true;
+  g.stats.endings.push('cynessa');
+  NB.save();
+  document.body.classList.remove('cynessa-danger');
+  const root = document.getElementById('root');
+  if (root) root.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;background:#000;z-index:99999';
+  wrap.innerHTML = `<video src="images/404.webm" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>`;
+  document.body.appendChild(wrap);
+  const video = wrap.querySelector('video');
+  let ended = false;
+  const finish = () => {
+    if (ended) return; ended = true;
+    wrap.innerHTML = `<div style="background:#000;color:#ff2222;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;font-family:Inter,sans-serif">
+      <div style="font-size:clamp(28px,6vw,56px);margin-bottom:24px;letter-spacing:.15em;font-weight:800">АБСОЛЮТНЫЙ РЕШАТЕЛЬ</div>
+      <div style="color:#888;font-size:clamp(13px,2vw,16px);max-width:560px;line-height:1.6">
+        Синесса добралась до тебя.${g.world.bunker.built ? '<br>Даже бункер не спас.' : ''}<br>
+        Твой биллинг стал частью её сингулярности.<br><br>
+        <span style="color:#666;font-size:12px">Дней: ${g.stats.daysPlayed} · Угроза: ${g.world.threat}/10 · Касса: ${NB.money(g.cash)}</span>
+      </div>
+      <button onclick="NB.resetState(true)" style="margin-top:40px;padding:14px 40px;background:#ff2222;color:#000;border:0;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:.1em;font-family:inherit">НАЧАТЬ ЗАНОВО</button>
+    </div>`;
+  };
+  video.addEventListener('ended', finish);
+  video.addEventListener('error', () => setTimeout(finish, 1500));
+  setTimeout(() => { if (!ended && video.currentTime === 0) finish(); }, 6000);
+};
+
+NB.showEndingScreen = function (type) {
+  const g = NB.state.game;
+  const data = {
+    corporate_win: { icon:'🏢', color:'#3b82f6', title:'Корпоративный гигант', desc:'Ты поглотил всех конкурентов. NetBill — единственный провайдер в стране.' },
+    neon_merge: { icon:'🌟', color:'#ffb347', title:'Слияние', desc:'Neon Shadow предложил тебе стать частью нового мира. Ты согласился.' },
+    bunker_alone: { icon:'🏚', color:'#64748b', title:'Один под землёй', desc:'Ты выжил. Но все, кого ты знал — исчезли.' },
+    drones_win: { icon:'🤖', color:'#0ea5e9', title:'Век дронов', desc:'Людей больше нет. Только дроны. Ты — последний оператор.' },
+    family_win: { icon:'👨‍👩‍👧', color:'#22c55e', title:'Семья', desc:'Ты выбрал семью. Не всё в жизни — деньги.' },
+    world_saved: { icon:'🌍', color:'#22c55e', title:'Мир спасён', desc:'Neon и Cynessa ушли. Люди возвращаются. Колонии процветают.' },
+    bankrupt: { icon:'💀', color:'#ef4444', title:'Банкротство', desc:'Касса ушла в минус. Компания закрыта.' }
+  }[type] || { icon:'❓', color:'#888', title:'Конец', desc:'…' };
+  const wrap = document.createElement('div');
+  wrap.className = 'ending-screen';
+  wrap.innerHTML = `<div class="ending-card" style="border-color:${data.color}">
+    <div class="ending-icon">${data.icon}</div>
+    <div class="ending-title" style="color:${data.color}">${data.title}</div>
+    <div class="ending-desc">${data.desc}</div>
+    <div class="ending-stats">
+      <div><b>${g.stats.daysPlayed}</b><span>дней</span></div>
+      <div><b>${NB.money(g.cash)}</b><span>касса</span></div>
+      <div><b>${NB.state.clients.length}</b><span>клиентов</span></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn ghost" id="ending-close">Продолжить</button>
+      <button class="btn primary" onclick="NB.resetState(true)">Начать заново</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add('show'));
+  wrap.querySelector('#ending-close').addEventListener('click', () => wrap.remove());
+  if (!g.stats.endings.includes(type)) g.stats.endings.push(type);
+  NB.save();
+};
+
+NB.toast = (msg, type) => {
+  const w = document.getElementById('toasts'); if (!w) return;
   const el = document.createElement('div');
   el.className = 'toast' + (type === 'err' ? ' err' : type === 'ok' ? ' ok' : '');
   el.textContent = msg;
-  wrap.appendChild(el);
+  w.appendChild(el);
   requestAnimationFrame(() => el.classList.add('in'));
   setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 320); }, 2600);
 };
 
-NB.notify = function (text, type, opts) {
+NB.notify = (text, type, opts) => {
   opts = opts || {};
   NB.state.notifications.unshift({ id: NB.state.seq.notif++, text, type: type || 'info', at: new Date().toISOString(), read: false });
   if (NB.state.notifications.length > 40) NB.state.notifications = NB.state.notifications.slice(0, 40);
@@ -407,44 +474,39 @@ NB.notify = function (text, type, opts) {
 };
 function updateNotifBadge() {
   const u = NB.state.notifications.filter(n => !n.read).length;
-  document.querySelectorAll('.notif-badge').forEach(el => {
-    if (u > 0) { el.textContent = u; el.style.display = ''; } else el.style.display = 'none';
-  });
+  NB.$$('.notif-badge').forEach(el => { if (u > 0) { el.textContent = u; el.style.display = ''; } else el.style.display = 'none'; });
 }
-NB.unreadNotifs = () => NB.state.notifications.filter(n => !n.read).length;
 
-NB.confetti = function () {
+NB.confetti = () => {
   const wrap = document.createElement('div'); wrap.className = 'confetti';
   const colors = ['#ff6b00','#ff9500','#ffb347','#ff3d00','#ffaa33'];
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 40; i++) {
     const p = document.createElement('i');
     p.style.left = NB.rand(0,100) + '%';
     p.style.background = colors[i % colors.length];
     p.style.color = colors[i % colors.length];
     p.style.animationDelay = NB.rand(0,.3) + 's';
-    p.style.animationDuration = NB.rand(1.2,2) + 's';
+    p.style.animationDuration = NB.rand(1.2,2.2) + 's';
     wrap.appendChild(p);
   }
   document.body.appendChild(wrap);
   setTimeout(() => wrap.remove(), 2500);
 };
 
-NB.addActivity = function (text, type) {
+NB.addActivity = (text, type) => {
   NB.state.activity.push({ id: NB.state.seq.activity++, text, type: type || 'sys', at: new Date().toISOString() });
   if (NB.state.activity.length > 120) NB.state.activity = NB.state.activity.slice(-120);
   NB.save();
 };
-NB.addLog = function (text, type) {
+NB.addLog = (text, type) => {
   const g = NB.state.game;
   if (!g.daily.log) g.daily.log = [];
   g.daily.log.push({ text, type: type || 'info', at: Date.now() });
+  if (g.daily.log.length > 30) g.daily.log = g.daily.log.slice(-30);
 };
 
-/* ============================================================
-   MODAL / FORMS
-   ============================================================ */
 let modalHandler = null;
-NB.openModal = function ({ title, html, submit = 'Сохранить', onSubmit, wide, boxClass, noSubmit }) {
+NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxClass, noSubmit }) => {
   const modal = document.getElementById('modal');
   modal.innerHTML = `<div class="modal-box ${boxClass || ''}"${wide ? ' style="width:min(560px,100%)"' : ''}>
     <h3>${title}</h3>
@@ -464,77 +526,73 @@ NB.openModal = function ({ title, html, submit = 'Сохранить', onSubmit,
   if (cb) cb.addEventListener('click', NB.closeModal);
   setTimeout(() => { const f = form.querySelector('input:not([type=range]),select,textarea,button'); if (f) f.focus(); }, 70);
 };
-NB.closeModal = function () {
+NB.closeModal = () => {
   const m = document.getElementById('modal'); if (!m) return;
   m.classList.remove('show');
   setTimeout(() => m.classList.add('hidden'), 220);
 };
 
-NB.field = (label, name, type = 'text', value = '', extra = '') =>
-  `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${NB.esc(value)}" ${extra}></label>`;
-NB.textareaField = (label, name, value = '') =>
-  `<label class="field"><span>${label}</span><textarea name="${name}">${NB.esc(value)}</textarea></label>`;
-NB.selectField = (label, name, opts) =>
-  `<label class="field"><span>${label}</span><select name="${name}">${opts.map(o => `<option value="${o.v}">${NB.esc(o.l)}</option>`).join('')}</select></label>`;
+NB.field = (label, name, type='text', value='', extra='') => `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${NB.esc(value)}" ${extra}></label>`;
+NB.textareaField = (label, name, value='') => `<label class="field"><span>${label}</span><textarea name="${name}">${NB.esc(value)}</textarea></label>`;
+NB.selectField = (label, name, opts) => `<label class="field"><span>${label}</span><select name="${name}">${opts.map(o => `<option value="${o.v}">${NB.esc(o.l)}</option>`).join('')}</select></label>`;
 
-/* ============================================================
-   STATS
-   ============================================================ */
-NB.statCard = function (label, value, sub, moneyFmt, color, key) {
-  return `<div class="stat" style="--c:${color}">
-    <div class="stat-top"><span>${label}</span><i></i></div>
-    <div class="stat-value" data-stat="${key || ''}" data-count="${value}" data-money="${moneyFmt ? 1 : 0}">0</div>
-    <div class="stat-sub">${sub}</div>
+NB.statCard = (label, value, sub, moneyFmt, color, key) => `<div class="stat" style="--c:${color}">
+  <div class="stat-top"><span>${label}</span><i></i></div>
+  <div class="stat-value" data-stat="${key || ''}" data-count="${value}" data-money="${moneyFmt ? 1 : 0}">0</div>
+  <div class="stat-sub">${sub}</div>
+</div>`;
+
+NB.computeStats = () => {
+  const active = NB.state.clients.filter(c => c.status === 'active');
+  const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
+  const p = NB.period();
+  const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
+  const rev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
+  return { clients: NB.state.clients.length, mrr, revenue: rev, due, marketShare: NB.state.game.marketShare };
+};
+
+NB.refreshLive = () => {
+  const stats = NB.computeStats();
+  NB.$$('.stat-value[data-stat]').forEach(el => {
+    const k = el.dataset.stat;
+    if (k && k in stats) el.textContent = el.dataset.money === '1' ? NB.money(stats[k]) : Math.round(stats[k]);
+  });
+  const c = document.getElementById('game-cash');
+  if (c) c.textContent = NB.money(NB.state.game.cash);
+  const p = document.getElementById('pending-revenue');
+  if (p) p.textContent = NB.money(NB.state.game.daily.pendingRevenue);
+  const b = document.getElementById('game-goal-bar');
+  if (b) b.style.width = Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100) + '%';
+};
+
+NB.renderApDots = () => {
+  const g = NB.state.game;
+  const dots = [];
+  for (let i = 0; i < g.ap.max; i++) dots.push(`<div class="ap-dot ${i < g.ap.current ? 'filled' : ''}"></div>`);
+  return `<div class="ap-bar" title="Очки действий">${dots.join('')}<span class="ap-label"><b>${g.ap.current}</b>/${g.ap.max}</span></div>`;
+};
+
+NB.renderCompanyXp = () => {
+  const c = NB.state.game.company;
+  const pct = (c.xp / c.xpNext) * 100;
+  return `<div class="company-xp-mini" title="Опыт компании">
+    <span>Ур. <b>${c.level}</b></span>
+    <div class="cxp-bar"><i style="width:${pct}%"></i></div>
   </div>`;
 };
 
-NB.computeStats = function () {
-  if (!NB.state.session) return {};
-  if (NB.state.session.role === 'staff') {
-    const active = NB.state.clients.filter(c => c.status === 'active');
-    const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
-    const p = NB.period();
-    const due = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === p).reduce((s, i) => s + i.amount, 0);
-    const rev = NB.state.revenue.slice(-14).reduce((s, r) => s + r.amount, 0);
-    return { clients: NB.state.clients.length, mrr, revenue: rev, due, marketShare: NB.state.game.marketShare };
-  } else {
-    const c = NB.client(NB.state.session.id); if (!c) return {};
-    const myInv = NB.state.invoices.filter(i => i.clientId === c.id);
-    const due = myInv.filter(i => i.status === 'unpaid').reduce((s, i) => s + i.amount, 0);
-    const paid = myInv.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
-    const t = NB.tariff(c.tariffId) || { speed: 0 };
-    return { balance: c.balance, speed: t.speed, due, totalPaid: paid };
-  }
-};
-
-NB.refreshLive = function () {
-  const stats = NB.computeStats();
-  document.querySelectorAll('.stat-value[data-stat]').forEach(el => {
-    const key = el.dataset.stat;
-    if (key && key in stats) el.textContent = el.dataset.money === '1' ? NB.money(stats[key]) : Math.round(stats[key]);
-  });
-  const cashEl = document.getElementById('game-cash');
-  if (cashEl) cashEl.textContent = NB.money(NB.state.game.cash);
-  const pendEl = document.getElementById('pending-revenue');
-  if (pendEl) pendEl.textContent = NB.money(NB.state.game.daily.pendingRevenue);
-  const barEl = document.getElementById('game-goal-bar');
-  if (barEl) barEl.style.width = Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100) + '%';
-  updateNotifBadge();
-};
-
-/* ============================================================
-   SHELL
-   ============================================================ */
-NB.buildShell = function (navItems, userName, userMeta, content, opts) {
-  opts = opts || {};
-  const unread = NB.unreadNotifs();
+NB.buildShell = (navItems, content) => {
+  const unread = NB.state.notifications.filter(n => !n.read).length;
   const g = NB.state.game;
   const badges = {
     clients: g.pendingClients.length,
-    tickets: NB.state.tickets.filter(t => t.status === 'open').length,
-    dashboard: (g.activeEvent ? 1 : 0) + g.world.storyQueue.length
+    chat: NB.state.tickets.filter(t => t.status === 'open').length,
+    dashboard: (g.activeEvent ? 1 : 0) + g.world.storyQueue.length,
+    invoices: g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length
   };
   document.body.dataset.arc = (g.world && g.world.arc) || 'ordinary';
+  if (g.world.threat >= 8 && !g.stats.won && !g.stats.lost) document.body.classList.add('cynessa-danger');
+  else document.body.classList.remove('cynessa-danger');
   return `<div class="app">
     <aside class="sidebar">
       <div class="brand"><span class="brand-logo">◉</span><span>NetBill</span></div>
@@ -549,48 +607,50 @@ NB.buildShell = function (navItems, userName, userMeta, content, opts) {
       </nav>
       <div class="sidebar-foot">
         <div class="user-card">
-          <div class="user-ava">${NB.esc(NB.initials(userName))}</div>
-          <div class="user-info"><b>${NB.esc(userName)}</b><small>${NB.esc(userMeta)}</small></div>
+          <div class="user-ava">ВЛ</div>
+          <div class="user-info"><b>Владелец</b><small>NetBill</small></div>
         </div>
-        <button class="btn ghost small bell" data-action="show-notifs">🔔 Уведомления${unread ? ` <span class="notif-badge">${unread}</span>` : ''}</button>
+        <button class="btn ghost small bell" data-action="show-notifs">🔔${unread ? ` <span class="notif-badge">${unread}</span>` : ''}</button>
         <button class="btn ghost small" data-action="start-tour">❔ Гид</button>
-        <button class="btn ghost small" data-action="logout">Выйти</button>
       </div>
     </aside>
     <main class="main">
-      ${opts.isStaff ? NB.simBar() : ''}
+      ${NB.simBar()}
       <div class="view" id="view">${content}</div>
     </main>
   </div>`;
 };
 
-NB.simBar = function () {
-  const st = NB.state;
-  const g = st.game;
+NB.simBar = () => {
+  const g = NB.state.game;
   const pending = g.daily.pendingRevenue;
   const net = NB.netDailyEstimate();
   const canAdv = NB.canAdvanceDay();
-  const pendingClients = g.pendingClients.length;
-  const openTickets = st.tickets.filter(t => t.status === 'open').length;
-
+  const openTickets = NB.state.tickets.filter(t => t.status === 'open').length;
+  const overdueBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length;
   const netClass = net.net >= 0 ? 'positive' : 'negative';
   const netStr = (net.net >= 0 ? '+' : '') + NB.money(net.net);
-
-  const tooltip = canAdv.ok ? 'Завершить день' : canAdv.reason;
-
+  const traffic = NB.traffic.getLoad();
+  const trafficColor = traffic.percent > 100 ? '#ef4444' : traffic.percent > 80 ? '#f59e0b' : '#22c55e';
   return `<div class="sim-bar">
-    <div class="sim-date"><span>📅</span><span>${NB.dayLabel(st.simDate)}</span><span class="sim-day">· День ${g.daily.dayNumber}</span></div>
+    <div class="sim-date"><span>📅</span><span>${NB.dayLabel(NB.state.simDate)}</span><span class="sim-day">· Д${g.daily.dayNumber}</span></div>
+    ${NB.renderApDots()}
+    ${NB.renderCompanyXp()}
     <div class="sim-econ-mini">
       <span class="econ-mini-item positive">+${NB.money(net.income)}</span>
       <span class="econ-mini-item negative">−${NB.money(net.cost)}</span>
-      <span class="econ-mini-net ${netClass}">${netStr}/день</span>
+      <span class="econ-mini-net ${netClass}">${netStr}</span>
+    </div>
+    <div class="traffic-mini" title="Нагрузка: ${traffic.percent}%">
+      <span class="traffic-mini-label">📶 ${traffic.percent}%</span>
+      <div class="traffic-mini-bar"><i style="width:${Math.min(100,traffic.percent)}%;background:${trafficColor}"></i></div>
     </div>
     <div class="spacer"></div>
     ${pending > 0 ? `<span class="sim-note">💰 ${NB.money(pending)}</span>` : ''}
-    ${pendingClients > 0 ? `<span class="sim-note story">🆕 ${pendingClients}</span>` : ''}
     ${openTickets > 0 ? `<span class="sim-note warn">✉ ${openTickets}</span>` : ''}
-    <button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(tooltip)}">
-      ${canAdv.ok ? 'Следующий день →' : '⬜ Есть задачи'}
+    ${overdueBills > 0 ? `<span class="sim-note warn">🔥 ${overdueBills}</span>` : ''}
+    <button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(canAdv.ok ? 'Завершить день' : canAdv.reason)}">
+      ${canAdv.ok ? 'День →' : '⬜'}
     </button>
   </div>`;
 };
