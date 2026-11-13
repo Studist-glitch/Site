@@ -905,3 +905,126 @@ body[data-mood="bunker"] .brand-logo {
   background: repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(234,179,8,.04) 10px, rgba(234,179,8,.04) 12px);
   pointer-events: none;
 }
+
+/* ============================================================
+   ATMOSPHERE: PANEL DECOR
+   ============================================================ */
+
+/* Панель становится контейнером для декора */
+[data-atm-applied] {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Эмодзи-силуэт: чёрный → белый → средний серый → тонировка → оттенок */
+.atm-decor {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  filter: brightness(0) invert(1) brightness(0.55) sepia(1) saturate(5) hue-rotate(var(--hue, 0deg));
+  opacity: var(--opacity, 0.1);
+  will-change: filter, opacity;
+}
+
+@keyframes atmFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33%      { transform: translate(6px, -8px) rotate(4deg); }
+  66%      { transform: translate(-6px, 6px) rotate(-4deg); }
+}
+
+/* --- Спецдекор --- */
+.atm-special {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  z-index: -1;
+}
+
+/* Паутина (бункер) */
+.atm-cobweb {
+  background:
+    repeating-conic-gradient(from 0deg at 0 0,
+      rgba(220, 220, 230, 0.18) 0deg 1.5deg,
+      transparent 1.5deg 30deg),
+    radial-gradient(circle at 0 0,
+      transparent 14%, rgba(220, 220, 230, 0.12) 14.5%, transparent 15%,
+      transparent 28%, rgba(220, 220, 230, 0.12) 28.5%, transparent 29%,
+      transparent 42%, rgba(220, 220, 230, 0.12) 42.5%, transparent 43%);
+  opacity: 0.6;
+}
+
+/* Кровь (ужас) */
+.atm-blood {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 55%;
+  background: linear-gradient(180deg, transparent 0%, rgba(180, 0, 0, 0.04) 50%, rgba(180, 0, 0, 0.12) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+.atm-blood::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle 1.5px at 8% 60%, rgba(180, 0, 0, 0.35), transparent 2px),
+    radial-gradient(circle 2.5px at 22% 80%, rgba(180, 0, 0, 0.30), transparent 3px),
+    radial-gradient(circle 1.5px at 45% 70%, rgba(180, 0, 0, 0.40), transparent 2px),
+    radial-gradient(circle 2px   at 68% 90%, rgba(180, 0, 0, 0.30), transparent 2.5px),
+    radial-gradient(circle 1.5px at 85% 75%, rgba(180, 0, 0, 0.35), transparent 2px);
+  background-repeat: no-repeat;
+  animation: atmBloodDrip 6s ease-in-out infinite;
+}
+@keyframes atmBloodDrip {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50%      { transform: translateY(6px); opacity: 0.85; }
+}
+
+/* Шестерни (дроны) */
+.atm-gear {
+  filter: brightness(0) invert(1) brightness(0.55) sepia(1) saturate(5) hue-rotate(182deg);
+  opacity: 0.06;
+  z-index: -1;
+}
+@keyframes atmRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Звёзды (ковчег) */
+.atm-star {
+  width: 2px; height: 2px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: atmTwinkle 3s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes atmTwinkle {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%      { opacity: 0.5;  transform: scale(1.4); }
+}
+
+/* Глитч (Синесса) */
+.atm-glitch-active { animation: atmGlitchPanel 0.5s infinite; }
+@keyframes atmGlitchPanel {
+  0%, 100% { filter: none; }
+  50%      { filter: hue-rotate(8deg) saturate(1.08) brightness(1.02); }
+}
+
+/* Угловатые волны (сюжетная панель) */
+.story-panel[data-atm-applied]::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 30px;
+  background: repeating-linear-gradient(135deg,
+    transparent, transparent 12px,
+    rgba(234, 179, 8, 0.035) 12px, rgba(234, 179, 8, 0.035) 14px);
+  pointer-events: none;
+  z-index: -1;
+}

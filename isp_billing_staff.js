@@ -117,7 +117,7 @@ S.dashboard = function () {
   let bunkerHtml = '';
   if (w.bunker.built) {
     const food = w.bunker.food||0, pop = w.bunker.population||0;
-    bunkerHtml = `<div class="panel" style="margin-bottom:12px;border-left:3px solid #eab308"><div class="panel-head"><h2>🏚 Бункер</h2><button class="btn tiny" data-view="bunker">Управление →</button></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><div class="traffic-stat ${food>5?'ok':'bad'}"><b>${food}</b><small>еда</small></div><div class="traffic-stat ok"><b>${pop}</b><small>выживших</small></div><div class="traffic-stat ${w.threat>5?'bad':'warn'}"><b>${w.threat}</b><small>угроза</small></div></div></div>`;
+    bunkerHtml = `<div class="panel bunker-widget" style="margin-bottom:12px;border-left:3px solid #eab308"><div class="panel-head"><h2>🏚 Бункер</h2><button class="btn tiny" data-view="bunker">Управление →</button></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><div class="traffic-stat ${food>5?'ok':'bad'}"><b>${food}</b><small>еда</small></div><div class="traffic-stat ok"><b>${pop}</b><small>выживших</small></div><div class="traffic-stat ${w.threat>5?'bad':'warn'}"><b>${w.threat}</b><small>угроза</small></div></div></div>`;
   }
 
   let marketHtml = '';
