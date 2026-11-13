@@ -775,3 +775,215 @@ body[data-arc="resolution"]   { --primary:#22c55e; --primary-2:#4ade80; --primar
   .sim-econ-mini { display:none; }
   .traffic-mini { display:none; }
 }
+/* ============================================================
+   EMPLOYEE UPGRADES — навыки, воины, анимации
+   ============================================================ */
+.emp-card.warrior {
+  border-color: rgba(239, 68, 68, .4);
+  background: linear-gradient(135deg, var(--surface), rgba(239, 68, 68, .04));
+}
+.emp-card.warrior::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 100% 0%, rgba(239, 68, 68, .08), transparent 60%);
+  pointer-events: none;
+  border-radius: var(--r);
+}
+.emp-spec-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+.emp-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+  min-height: 20px;
+}
+.emp-skill-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, .06);
+  color: var(--text-2);
+  border: 1px solid rgba(255, 255, 255, .08);
+  transition: all .15s var(--ease);
+}
+.emp-card.warrior .emp-skill-badge {
+  background: rgba(239, 68, 68, .12);
+  border-color: rgba(239, 68, 68, .25);
+  color: #fca5a5;
+}
+.emp-skill-badge:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 107, 0, .15);
+  color: var(--primary-3);
+}
+.emp-upgrade-btn {
+  position: relative;
+  overflow: hidden;
+}
+.emp-upgrade-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+  transition: left .5s var(--ease);
+}
+.emp-upgrade-btn:hover::before { left: 100%; }
+.emp-upgrade-btn.just-leveled {
+  animation: empLevelUp .8s var(--ease);
+}
+@keyframes empLevelUp {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.15); box-shadow: 0 0 30px rgba(255, 200, 0, .8); }
+  60%  { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 200, 0, .5); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+/* Прокачка: пульс уровня */
+.emp-card.emp-leveled {
+  animation: cardLevelPulse .9s var(--ease);
+}
+@keyframes cardLevelPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 200, 0, .6); border-color: rgba(255, 200, 0, .8); }
+  50%  { box-shadow: 0 0 40px 8px rgba(255, 200, 0, .3); border-color: rgba(255, 200, 0, 1); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0); border-color: var(--line); }
+}
+/* Воины: огненная аура */
+.emp-card.warrior.hired:hover {
+  box-shadow: 0 0 30px -10px rgba(239, 68, 68, .6);
+  border-color: rgba(239, 68, 68, .7);
+}
+.emp-card.warrior .emp-avatar {
+  animation: warriorPulse 3s ease-in-out infinite;
+}
+@keyframes warriorPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .4); }
+  50%      { box-shadow: 0 0 20px 2px rgba(239, 68, 68, .5); }
+}
+/* Боевые статы — воин */
+.emp-stat.warrior-stat b { color: #f87171 !important; }
+/* Обновить пул — иконка вращения */
+.btn[data-action="refresh-employees-pool"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -10px rgba(255, 107, 0, .9);
+}
+/* ============================================================
+   COMPETITORS — расширенные
+   ============================================================ */
+.comp-row.price-war {
+  border-color: rgba(239, 68, 68, .5);
+  background: linear-gradient(90deg, var(--surface), rgba(239, 68, 68, .04));
+  animation: priceWarPulse 2s ease-in-out infinite;
+}
+@keyframes priceWarPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .2); }
+  50%      { box-shadow: 0 0 20px -6px rgba(239, 68, 68, .5); }
+}
+.comp-personality {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, .06);
+  color: var(--text-2);
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: .02em;
+}
+.comp-mood-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.rel-bar {
+  width: 80px;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.rel-bar::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--line-2);
+  z-index: 1;
+}
+.rel-bar i {
+  display: block;
+  height: 100%;
+  transition: width .4s var(--ease), background .3s;
+}
+.comp-badge {
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(34, 197, 94, .15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, .25);
+}
+.comp-actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 420px;
+}
+.comp-actions .btn {
+  padding: 4px 7px;
+  font-size: 13px;
+  min-width: 30px;
+  transition: transform .15s var(--ease), background .15s;
+}
+.comp-actions .btn:hover:not([disabled]) {
+  transform: translateY(-1px) scale(1.1);
+}
+.comp-actions .btn[disabled] { opacity: .25; }
+
+/* Активные соглашения */
+.agreements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agreement-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border-left: 3px solid rgba(34, 197, 94, .4);
+}
+.agreement-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.agreement-info {
+  flex: 1;
+  min-width: 0;
+}
+.agreement-info b {
+  display: block;
+  font-size: 13px;
+  color: #fff;
+}
+.agreement-info small {
+  font-size: 11px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}

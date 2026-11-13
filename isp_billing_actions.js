@@ -4,7 +4,9 @@
 const NB = global.NB;
 const A = NB.actions = NB.actions || {};
 
-/* ============ КЛИЕНТЫ ============ */
+/* ============================================================
+   КЛИЕНТЫ
+   ============================================================ */
 A.acceptClient = function (id) {
   const g = NB.state.game;
   const pc = g.pendingClients.find(c => c.id === Number(id));
@@ -108,7 +110,9 @@ A.delClient = function (id) {
   NB.save(); NB.closeModal(); NB.render();
 };
 
-/* ============ СЧЕТА КОМПАНИИ ============ */
+/* ============================================================
+   СЧЕТА КОМПАНИИ
+   ============================================================ */
 A.payBill = function (id) { NB.invoices.payBill(Number(id)); };
 
 A.takeLoan = function () {
@@ -125,7 +129,9 @@ A.takeLoan = function () {
   });
 };
 
-/* ============ ТАРИФЫ ============ */
+/* ============================================================
+   ТАРИФЫ
+   ============================================================ */
 A.addTariff = function () {
   NB.openModal({
     title: 'Новый тариф',
@@ -184,7 +190,9 @@ A.delTariff = function (id) {
   NB.save(); NB.render();
 };
 
-/* ============ ЗАЯВКИ ============ */
+/* ============================================================
+   ЗАЯВКИ
+   ============================================================ */
 A.resolveTicket = function (id) {
   const t = NB.state.tickets.find(x => x.id === Number(id));
   if (!t) return;
@@ -195,21 +203,66 @@ A.resolveTicket = function (id) {
 
 A.newTicket = function () { NB.toast('Заявки создаются клиентами автоматически', 'info'); };
 
-/* ============ СОТРУДНИКИ ============ */
+/* ============================================================
+   СОТРУДНИКИ
+   ============================================================ */
 A.hireEmployee = function (id) { NB.employees.hire(Number(id)); };
 A.fireEmployee = function (id) { NB.employees.fire(Number(id)); };
 A.refreshEmployeesPool = function () { NB.employees.refreshPool(); };
 
-/* ============ АПГРЕЙДЫ ============ */
+A.upgradeEmployee = function (id) {
+  if (!NB.employees || !NB.employees.upgrade) return NB.toast('Прокачка недоступна', 'err');
+  const g = NB.state.game;
+  const emp = g.employees.find(e => e.id === Number(id));
+  if (!emp) return;
+  const cost = NB.employees.upgradeCost(emp);
+  if (g.cash < cost) return NB.toast(`Нужно ${NB.money(cost)}`, 'err');
+  const ok = NB.employees.upgrade(Number(id));
+  if (ok) {
+    setTimeout(() => {
+      const card = document.querySelector(`.emp-card [data-action="upgrade-employee"][data-id="${id}"]`);
+      const parent = card?.closest('.emp-card');
+      if (parent) {
+        parent.classList.add('emp-leveled');
+        setTimeout(() => parent.classList.remove('emp-leveled'), 900);
+      }
+    }, 80);
+  }
+};
+
+/* ============================================================
+   АПГРЕЙДЫ
+   ============================================================ */
 A.buyUpgrade = function (key) { NB.game.buyUpgrade(key); };
 A.repairUpgrade = function (key) { NB.game.repairUpgrade(key); };
 
-/* ============ КОНКУРЕНТЫ ============ */
-A.negotiate = function (id) { NB.competitors.negotiate(id); };
-A.sabotage = function (id) { NB.competitors.sabotage(id); };
+/* ============================================================
+   КОНКУРЕНТЫ
+   ============================================================ */
+A.competitorAction = function (id, key) {
+  if (!NB.competitors || !NB.competitors.action) return NB.toast('Действие недоступно', 'err');
+  NB.competitors.action(id, key);
+};
 
-/* ============ СЮЖЕТ ============ */
-A.openStory = function () { NB.story.showNextInQueue(); };
+A.cancelAgreement = function (id, idx) {
+  const g = NB.state.game;
+  const c = g.competitors.find(x => x.id === id);
+  if (!c) return;
+  const agreement = c.agreements[Number(idx)];
+  if (!agreement) return;
+  const label = NB.competitors?.AGREEMENT_TYPES?.[agreement.type]?.label || 'соглашение';
+  if (!confirm(`Расторгнуть «${label}» с ${c.name}? Это ударит по отношениям.`)) return;
+  NB.competitors.cancelAgreement(c, Number(idx));
+};
+
+/* Совместимость со старыми data-action */
+A.negotiate = function (id) { A.competitorAction(id, 'negotiate'); };
+A.sabotage  = function (id) { A.competitorAction(id, 'sabotage'); };
+
+/* ============================================================
+   СЮЖЕТ / БУНКЕР
+   ============================================================ */
+A.openStory = function () { if (NB.story && NB.story.showNextInQueue) NB.story.showNextInQueue(); };
 
 A.buildBunker = function () {
   const g = NB.state.game;
@@ -230,7 +283,6 @@ A.buildBunker = function () {
   NB.save(); NB.render();
 };
 
-/* ============ БУНКЕР ============ */
 A.bunkerOrderFood = function () {
   const g = NB.state.game;
   if (g.cash < 15000) return NB.toast('Нужно 15 000 ₽', 'err');
@@ -258,7 +310,9 @@ A.bunkerFortify = function () {
   NB.save(); NB.render();
 };
 
-/* ============ ОБЩЕЕ ============ */
+/* ============================================================
+   ОБЩЕЕ
+   ============================================================ */
 A.advanceDay = function () { NB.advanceDay(); };
 A.finishDay = function () { NB.advanceDay(); };
 
@@ -297,7 +351,9 @@ A.resolveEventModal = function () {
   if (NB.state.game.activeEvent) NB.game.showEventModal();
 };
 
-/* ============ СЕМЬЯ ============ */
+/* ============================================================
+   СЕМЬЯ
+   ============================================================ */
 A.familyEvening = function () {
   const g = NB.state.game;
   if (!g.family.wife) return NB.toast('Нет семьи', 'err');
@@ -309,7 +365,9 @@ A.familyEvening = function () {
   NB.save(); NB.render();
 };
 
-/* ============ ИСТОРИЯ ============ */
+/* ============================================================
+   ИСТОРИЯ
+   ============================================================ */
 A.showHistory = function () {
   const g = NB.state.game;
   const log = (g.history || []).slice(-20).reverse();
@@ -326,7 +384,9 @@ A.showHistory = function () {
   });
 };
 
-/* ============ NOTIFS ============ */
+/* ============================================================
+   NOTIFS
+   ============================================================ */
 A.showNotifs = function () {
   const existing = document.getElementById('notif-panel');
   if (existing) { existing.classList.remove('show'); setTimeout(() => existing.remove(), 220); return; }
@@ -368,8 +428,11 @@ A.markRead = function () {
   if (p) { p.classList.remove('show'); setTimeout(() => p.remove(), 200); }
 };
 
-/* ============ MAP ============ */
+/* ============================================================
+   MAP
+   ============================================================ */
 A.map = {
+  /* общее */
   'export':                   A.exportData,
   'reset-data':               A.resetData,
   'clear-activity':           A.clearActivity,
@@ -379,34 +442,53 @@ A.map = {
   'mark-read':                A.markRead,
   'start-tour':               A.startTour,
   'show-history':             A.showHistory,
+  'collect-revenue':          A.collectRevenue,
+  'resolve-event-modal':      A.resolveEventModal,
+
+  /* апгрейды */
   'buy-upgrade':              d => A.buyUpgrade(d.key),
   'repair-upgrade':           d => A.repairUpgrade(d.key),
-  'resolve-event-modal':      A.resolveEventModal,
+
+  /* сюжет / бункер */
   'open-story':               A.openStory,
   'build-bunker':             A.buildBunker,
   'bunker-order-food':        A.bunkerOrderFood,
   'bunker-recruit':           A.bunkerRecruit,
   'bunker-fortify':           A.bunkerFortify,
   'family-evening':           A.familyEvening,
+
+  /* клиенты */
   'accept-client':            d => A.acceptClient(d.id),
   'reject-client':            d => A.rejectClient(d.id),
   'open-client':              d => A.openClient(d.id),
   'edit-client':              d => A.editClient(d.id),
   'toggle':                   d => A.toggleClient(d.id),
   'del-client':               d => A.delClient(d.id),
+
+  /* тарифы */
   'add-tariff':               A.addTariff,
   'edit-tariff':              d => A.editTariff(d.id),
   'del-tariff':               d => A.delTariff(d.id),
+
+  /* счета компании */
   'pay-bill':                 d => A.payBill(d.id),
   'take-loan':                A.takeLoan,
+
+  /* заявки */
   'resolve-ticket':           d => A.resolveTicket(d.id),
   'new-ticket':               A.newTicket,
+
+  /* сотрудники */
   'hire-employee':            d => A.hireEmployee(d.id),
   'fire-employee':            d => A.fireEmployee(d.id),
   'refresh-employees-pool':   A.refreshEmployeesPool,
+  'upgrade-employee':         d => A.upgradeEmployee(d.id),
+
+  /* конкуренты */
+  'competitor-action':        d => A.competitorAction(d.id, d.key),
+  'cancel-agreement':         d => A.cancelAgreement(d.id, d.idx),
   'negotiate':                d => A.negotiate(d.id),
-  'sabotage':                 d => A.sabotage(d.id),
-  'collect-revenue':          A.collectRevenue
+  'sabotage':                 d => A.sabotage(d.id)
 };
 
 })(window);

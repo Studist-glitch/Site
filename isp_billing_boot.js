@@ -1,9 +1,11 @@
-/* isp_billing_boot.js — рендер и обработчики */
+/* isp_billing_boot.js — рендер, обработчики, хуки */
 (function (global) {
 'use strict';
 const NB = global.NB;
 
-/* === UI STATE === */
+/* ============================================================
+   UI STATE
+   ============================================================ */
 if (!NB.ui) NB.ui = {};
 if (typeof NB.ui.view === 'undefined') NB.ui.view = 'dashboard';
 if (typeof NB.ui.query === 'undefined') NB.ui.query = '';
@@ -12,6 +14,9 @@ if (typeof NB.ui.chatThreadId === 'undefined') NB.ui.chatThreadId = null;
 if (typeof NB.ui.activityFilter === 'undefined') NB.ui.activityFilter = 'all';
 if (!NB.ui.scrollPositions) NB.ui.scrollPositions = {};
 
+/* ============================================================
+   RENDER
+   ============================================================ */
 NB.render = function () {
   const root = document.getElementById('root');
   if (!root) return;
@@ -27,6 +32,13 @@ NB.render = function () {
 
   if (NB.state.game.activeEvent) setTimeout(() => NB.game.showEventModal(), 300);
   if (NB.state.game.world.storyQueue.length) setTimeout(() => NB.story.showNextInQueue(), 600);
+
+  /* Очередь событий от конкурентов */
+  setTimeout(() => {
+    if (NB.competitors && NB.competitors.processQueue) NB.competitors.processQueue();
+  }, 2000);
+
+  /* Туры */
   if (!NB.state.onboarded.tour) setTimeout(() => NB.game.startTour(), 800);
   else if (!NB.state.onboarded.views[NB.ui.view] && NB.game.TOURS_BY_VIEW[NB.ui.view]) {
     setTimeout(() => NB.game.startViewTour(NB.ui.view), 900);
@@ -62,6 +74,11 @@ NB.renderView = function () {
   const savedScroll = NB.ui.scrollPositions[NB.ui.view];
   if (savedScroll) window.scrollTo(0, savedScroll);
 
+  /* Очередь событий от конкурентов */
+  setTimeout(() => {
+    if (NB.competitors && NB.competitors.processQueue) NB.competitors.processQueue();
+  }, 1500);
+
   setTimeout(() => {
     if (!NB.state.onboarded.views[NB.ui.view] && NB.game.TOURS_BY_VIEW[NB.ui.view]) {
       if (!document.querySelector('.tour-overlay')) NB.game.startViewTour(NB.ui.view);
@@ -73,19 +90,25 @@ function afterRender() {
   if (NB.ui.view === 'dashboard') NB.charts.startTraffic();
   else NB.charts.stopTraffic();
   NB.charts.animateCounters();
+
   setTimeout(() => {
     const rv = document.getElementById('revenue-chart');
     if (rv) NB.charts.drawRevenue(rv, NB.state.revenue);
   }, 50);
-  if (NB.atmosphere) setTimeout(() => NB.atmosphere.scan(), 60);
+
+  if (NB.atmosphere && NB.atmosphere.scan) {
+    setTimeout(() => NB.atmosphere.scan(), 60);
+  }
 }
 
-/* SIM-BAR AUTO REFRESH */
+/* ============================================================
+   SIM-BAR AUTO REFRESH
+   ============================================================ */
 let autoRefreshTimer = null;
 function startAutoRefresh() {
   if (autoRefreshTimer) return;
   autoRefreshTimer = setInterval(() => {
-    if (!document.getElementById('modal').classList.contains('hidden')) return;
+    if (!document.getElementById('modal')?.classList.contains('hidden')) return;
     if (document.querySelector('.tour-overlay')) return;
     if (NB.ui._booting) return;
     const bar = document.querySelector('.sim-bar');
@@ -97,17 +120,26 @@ function startAutoRefresh() {
   }, 15000);
 }
 
-/* CLICK HANDLER */
+/* ============================================================
+   CLICK HANDLER
+   ============================================================ */
 document.addEventListener('click', e => {
+
+  /* 1. Action */
   const t = e.target.closest('[data-action]');
   if (t) {
     const name = t.dataset.action;
     const fn = (NB.actions.map || {})[name];
-    if (!fn) { console.warn('[NetBill] Unknown action:', name); NB.toast(`Неизвестное действие: ${name}`, 'err'); return; }
+    if (!fn) {
+      console.warn('[NetBill] Unknown action:', name);
+      NB.toast(`Неизвестное действие: ${name}`, 'err');
+      return;
+    }
     try { fn(t.dataset); } catch (err) { console.error('[NetBill] action error:', name, err); NB.toast('Ошибка действия', 'err'); }
     return;
   }
 
+  /* 2. View */
   const v = e.target.closest('[data-view]');
   if (v) {
     const targetView = v.dataset.view;
@@ -121,6 +153,7 @@ document.addEventListener('click', e => {
     return;
   }
 
+  /* 3. Scroll to */
   const st = e.target.closest('[data-scroll-to]');
   if (st) {
     const target = document.querySelector(st.dataset.scrollTo);
@@ -128,19 +161,23 @@ document.addEventListener('click', e => {
     return;
   }
 
+  /* 4. Activity filters */
   const af = e.target.closest('[data-activity-filter]');
   if (af) { NB.ui.activityFilter = af.dataset.activityFilter; NB.renderView(); return; }
 
+  /* 5. Chat thread */
   const ct = e.target.closest('[data-chat-thread]');
   if (ct) { NB.ui.chatThreadId = Number(ct.dataset.chatThread); NB.renderView(); return; }
 
+  /* 6. Chat reply */
   const cr = e.target.closest('[data-chat-reply]');
   if (cr) {
     const thread = NB.state.tickets.find(x => x.id === NB.ui.chatThreadId);
-    if (thread) NB.chat.handleReply(thread.id, Number(cr.dataset.chatReply));
+    if (thread && NB.chat && NB.chat.handleReply) NB.chat.handleReply(thread.id, Number(cr.dataset.chatReply));
     return;
   }
 
+  /* 7. Sort (клиенты) */
   const s = e.target.closest('[data-sort]');
   if (s) {
     const key = s.dataset.sort;
@@ -150,16 +187,24 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (e.target.id === 'start-speed') { NB.charts.runSpeedTest(); return; }
+  /* 8. Speed test */
+  if (e.target.id === 'start-speed' && NB.charts.runSpeedTest) { NB.charts.runSpeedTest(); return; }
 
+  /* 9. Видео (устаревшее — оставлено для совместимости) */
   const pv = e.target.closest('[data-news-video]');
-  if (pv) { NB.playVideo(pv.dataset.newsVideo, pv.dataset.newsVideoTitle || '', { autoClose: 15000 }); return; }
+  if (pv && NB.playVideo) {
+    NB.playVideo(pv.dataset.newsVideo, pv.dataset.newsVideoTitle || '', { autoClose: 15000 });
+    return;
+  }
 
+  /* 10. Modal close */
   if (e.target.id === 'modal') { NB.closeModal(); return; }
   if (e.target.closest('[data-close]')) { NB.closeModal(); return; }
 });
 
-/* INPUT */
+/* ============================================================
+   INPUT — поиск клиентов
+   ============================================================ */
 let rafPending = false;
 document.addEventListener('input', e => {
   if (e.target.id !== 'client-search') return;
@@ -175,20 +220,25 @@ document.addEventListener('input', e => {
   });
 });
 
-/* CHANGE */
+/* ============================================================
+   CHANGE — настройки
+   ============================================================ */
 document.addEventListener('change', e => {
   const key = e.target.dataset.setting;
   if (!key) return;
   if (e.target.type === 'checkbox') { NB.state.settings[key] = e.target.checked; NB.save(); }
 });
 
-/* KEYBOARD */
+/* ============================================================
+   KEYBOARD
+   ============================================================ */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const modal = document.getElementById('modal');
     if (modal && !modal.classList.contains('hidden')) { NB.closeModal(); return; }
   }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
   if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const idx = Number(e.key) - 1;
     const nav = NB.getVisibleNav();
@@ -203,7 +253,9 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* RESIZE */
+/* ============================================================
+   RESIZE
+   ============================================================ */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (resizeTimer) clearTimeout(resizeTimer);
@@ -215,14 +267,21 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-window.addEventListener('beforeunload', () => { try { NB.save(); } catch (err) {} });
+/* ============================================================
+   BEFORE UNLOAD
+   ============================================================ */
+window.addEventListener('beforeunload', () => {
+  try { NB.save(); } catch (err) {}
+});
 
-/* START */
+/* ============================================================
+   START
+   ============================================================ */
 NB.checkUnlocks();
 NB.render();
 startAutoRefresh();
 if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v21 ready');
+console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v22 ready');
 
 })(window);
