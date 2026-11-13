@@ -15,6 +15,7 @@
   --sh-lg:0 28px 60px -24px rgba(0,0,0,.85),0 0 60px -30px rgba(255,107,0,.5);
   --ease:cubic-bezier(.2,.7,.3,1);
   --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
 }
 *,*::before,*::after { box-sizing:border-box; }
 html,body { height:100%; }
@@ -65,6 +66,18 @@ p { margin:0; }
 @keyframes atmBloodDrip { 0%,100% { transform:translateY(0); opacity:.6; } 50% { transform:translateY(6px); opacity:.85; } }
 @keyframes atmGlitchPanel { 0%,100% { filter:none; } 50% { filter:hue-rotate(8deg) saturate(1.08) brightness(1.02); } }
 @keyframes breathe { 0%,100% { transform:scale(1); opacity:.9; } 50% { transform:scale(1.02); opacity:1; } }
+/* новые — для детализации */
+@keyframes tagPop { from { opacity:0; transform:scale(.7) translateY(4px); } to { opacity:1; transform:scale(1) translateY(0); } }
+@keyframes tagHoverGlow { 0%,100% { box-shadow:0 0 0 0 currentColor; } 50% { box-shadow:0 0 12px -2px currentColor; } }
+@keyframes gradientShift { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
+@keyframes counterFlip { 0% { transform:translateY(0); opacity:1; } 50% { transform:translateY(-6px); opacity:.4; } 100% { transform:translateY(0); opacity:1; } }
+@keyframes borderTrace { 0% { background-position:0% 0%; } 100% { background-position:200% 0%; } }
+@keyframes tilt { 0%,100% { transform:rotate(0deg); } 25% { transform:rotate(-1deg); } 75% { transform:rotate(1deg); } }
+@keyframes slideStagger { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+@keyframes shine { 0% { left:-100%; } 100% { left:100%; } }
+@keyframes softGlow { 0%,100% { box-shadow:0 0 20px -8px currentColor; } 50% { box-shadow:0 0 30px -4px currentColor; } }
+@keyframes floatSlow { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+@keyframes numberRoll { 0% { transform:translateY(-100%); } 100% { transform:translateY(0); } }
 
 .fade { animation:fadein .35s var(--ease) both; }
 .fade-in { animation:fadein .5s var(--ease) both; }
@@ -76,7 +89,7 @@ body.anomaly-glitch .view { animation:shakeH .15s infinite; }
 body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glitch .sim-bar,body.anomaly-glitch h1 { filter:blur(1.5px) hue-rotate(180deg) contrast(1.4); opacity:.7; }
 
 /* ============================================================
-   SOLVER SYMBOL — три острые стрелки из центра
+   SOLVER SYMBOL
    ============================================================ */
 .solver-symbol {
   display:inline-block; width:1.1em; height:1.1em; vertical-align:middle;
@@ -116,8 +129,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
     radial-gradient(circle 1.5px at 45% 70%, rgba(180,0,0,.40), transparent 2px),
     radial-gradient(circle 2px at 68% 90%, rgba(180,0,0,.30), transparent 2.5px),
     radial-gradient(circle 1.5px at 85% 75%, rgba(180,0,0,.35), transparent 2px);
-  background-repeat:no-repeat;
-  animation:atmBloodDrip 6s ease-in-out infinite;
+  background-repeat:no-repeat; animation:atmBloodDrip 6s ease-in-out infinite;
 }
 .atm-gear { filter:brightness(0) invert(1) brightness(.55) sepia(1) saturate(5) hue-rotate(182deg); opacity:.06; z-index:-1; }
 .atm-star { width:2px; height:2px; background:#fff; border-radius:50%; opacity:.4; animation:atmTwinkle 3s ease-in-out infinite; z-index:-1; }
@@ -129,7 +141,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 }
 
 /* ============================================================
-   SOLVER / CORPSE FLASH
+   SOLVER FLASH / CORPSE
    ============================================================ */
 .solver-flash {
   position:fixed; inset:0; pointer-events:none; z-index:9998;
@@ -164,7 +176,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .brand { display:flex; align-items:center; gap:10px; padding:0 8px 20px; border-bottom:1px solid var(--line); font-weight:700; font-size:17px; color:#fff; }
 .brand-logo { width:30px; height:30px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,var(--primary),var(--primary-2)); font-size:14px; color:#0a0a0a; box-shadow:0 0 24px -4px rgba(255,107,0,.9); }
 .nav { display:flex; flex-direction:column; gap:2px; }
-.nav-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; border:0; background:transparent; color:#9a9aa6; font-size:13.5px; cursor:pointer; transition:all .2s var(--ease); text-align:left; width:100%; }
+.nav-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; border:0; background:transparent; color:#9a9aa6; font-size:13.5px; cursor:pointer; transition:all .2s var(--ease); text-align:left; width:100%; position:relative; }
 .nav-item:hover { background:var(--surface); color:var(--text); }
 .nav-item.active { background:linear-gradient(90deg,rgba(255,107,0,.18),rgba(255,107,0,.03)); color:var(--primary-3); box-shadow:inset 3px 0 0 var(--primary); }
 .nav-icon { width:22px; text-align:center; font-size:14px; opacity:.9; }
@@ -178,10 +190,16 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .notif-badge { background:var(--primary); color:#0a0a0a; font-size:10px; font-weight:800; min-width:16px; height:16px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; padding:0 4px; margin-left:6px; animation:notifPulse 2s infinite; }
 .main { padding:16px 24px 60px; min-width:0; }
 .page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+.page-head h1 {
+  background:linear-gradient(135deg, #fff, var(--primary-3));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  background-size:200% 200%;
+  animation:gradientShift 8s ease infinite;
+}
 .head-actions { display:flex; gap:8px; flex-wrap:wrap; }
 
 /* ============================================================
-   BUTTONS / CHIPS
+   BUTTONS
    ============================================================ */
 .btn { display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; font-size:13.5px; font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; transition:all .22s var(--ease); white-space:nowrap; position:relative; overflow:hidden; }
 .btn.primary { background:linear-gradient(135deg,var(--primary),var(--primary-2)); color:#0a0a0a; box-shadow:0 8px 22px -8px rgba(255,107,0,.9); }
@@ -205,7 +223,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
    ============================================================ */
 .panel { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; }
 .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; flex-wrap:wrap; }
-.panel-head h2 { font-size:14.5px; color:#fff; }
+.panel-head h2 { font-size:14.5px; color:#fff; letter-spacing:.01em; }
 .live-badge { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--primary-3); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
 .live-badge i { width:6px; height:6px; border-radius:50%; background:var(--primary); box-shadow:0 0 10px var(--primary); animation:pulse 2s infinite; }
 .recs-panel { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
@@ -222,6 +240,83 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .stat-value { font-size:22px; font-weight:700; letter-spacing:-.035em; margin:10px 0 4px; font-variant-numeric:tabular-nums; color:#fff; }
 .stat-sub { font-size:12px; color:var(--muted); }
 .grid-2 { display:grid; grid-template-columns:1.2fr 1fr; gap:12px; margin-bottom:12px; }
+
+/* ============================================================
+   UPGRADE EFFECTS PANEL — ЗАФИКСИРОВАНО
+   ============================================================ */
+.upgrade-effects-panel {
+  background:linear-gradient(135deg, var(--surface), rgba(255,107,0,.03));
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  padding:14px 16px;
+  margin-bottom:12px;
+  position:relative;
+  overflow:hidden;
+}
+.upgrade-effects-panel::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,107,0,.4), transparent);
+}
+.upgrade-effects-panel .panel-head { margin-bottom:10px; }
+.upgrade-effects-panel .panel-head h2 {
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--primary-3);
+  font-weight:700;
+}
+.upgrade-effects-list {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.upgrade-effect-tag {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:5px 11px;
+  border-radius:8px;
+  font-size:11.5px;
+  font-weight:600;
+  background:rgba(34,197,94,.1);
+  color:#4ade80;
+  border:1px solid rgba(34,197,94,.25);
+  white-space:nowrap;
+  animation:tagPop .35s var(--ease-spring) both;
+  transition:transform .15s var(--ease),box-shadow .2s var(--ease),background .2s;
+  position:relative;
+  overflow:hidden;
+}
+.upgrade-effect-tag:nth-child(1) { animation-delay:0ms; }
+.upgrade-effect-tag:nth-child(2) { animation-delay:40ms; }
+.upgrade-effect-tag:nth-child(3) { animation-delay:80ms; }
+.upgrade-effect-tag:nth-child(4) { animation-delay:120ms; }
+.upgrade-effect-tag:nth-child(5) { animation-delay:160ms; }
+.upgrade-effect-tag:nth-child(6) { animation-delay:200ms; }
+.upgrade-effect-tag:nth-child(7) { animation-delay:240ms; }
+.upgrade-effect-tag:nth-child(8) { animation-delay:280ms; }
+.upgrade-effect-tag:nth-child(9) { animation-delay:320ms; }
+.upgrade-effect-tag:nth-child(10) { animation-delay:360ms; }
+.upgrade-effect-tag:hover {
+  transform:translateY(-1px);
+  background:rgba(34,197,94,.16);
+  box-shadow:0 0 14px -4px rgba(34,197,94,.6);
+}
+.upgrade-effect-tag::after {
+  content:'';
+  position:absolute;
+  top:0; left:-100%; width:100%; height:100%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+  transition:left .5s var(--ease);
+  pointer-events:none;
+}
+.upgrade-effect-tag:hover::after { left:100%; }
+/* разный цвет для разных эффектов (по необязательному классу) */
+.upgrade-effect-tag.tag-warn { background:rgba(245,158,11,.1); color:#fbbf24; border-color:rgba(245,158,11,.25); }
+.upgrade-effect-tag.tag-danger { background:rgba(239,68,68,.1); color:#f87171; border-color:rgba(239,68,68,.25); }
+.upgrade-effect-tag.tag-info { background:rgba(14,165,233,.1); color:#38bdf8; border-color:rgba(14,165,233,.25); }
 
 /* ============================================================
    GAME PANEL / ECONOMY / SIM BAR
@@ -279,7 +374,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .traffic-mini-bar i { display:block; height:100%; transition:width .3s var(--ease); }
 
 /* ============================================================
-   AP / XP / TASKS
+   AP / XP
    ============================================================ */
 .ap-bar { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--surface-3); border:1px solid var(--line); border-radius:8px; font-size:11px; font-weight:700; letter-spacing:.04em; }
 .ap-bar .ap-dot { width:12px; height:12px; border-radius:50%; background:var(--surface); border:1.5px solid var(--line-2); transition:all .2s; }
@@ -291,12 +386,16 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .company-xp-mini b { color:var(--primary-3); font-weight:700; }
 .cxp-bar { width:60px; height:4px; background:var(--surface); border-radius:2px; overflow:hidden; }
 .cxp-bar i { display:block; height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-2)); transition:width .4s var(--ease); }
+
+/* ============================================================
+   DAILY TASKS
+   ============================================================ */
 .daily-tasks-panel { background:linear-gradient(135deg,var(--surface),rgba(255,107,0,.06)); border:1px solid var(--primary); border-radius:var(--r); padding:16px 18px; margin-bottom:12px; box-shadow:0 0 30px -14px var(--primary); }
 .dt-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
 .dt-header h3 { font-size:15px; color:#fff; }
 .dt-progress { font-size:14px; font-weight:700; color:var(--primary-3); background:rgba(255,107,0,.15); padding:4px 12px; border-radius:8px; }
 .daily-tasks-list { display:flex; flex-direction:column; gap:6px; }
-.dt-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; font-size:13.5px; }
+.dt-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; font-size:13.5px; transition:all .2s; }
 .dt-item.done { opacity:.6; }
 .dt-text { flex:1; }
 .dt-item.done .dt-text { text-decoration:line-through; color:var(--muted); }
@@ -362,7 +461,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .family-member-info small { font-size:11px; color:var(--muted); }
 
 /* ============================================================
-   CHARTS / NEWS / TOP / TARIFF BARS / MARKET
+   CHARTS / NEWS / TOP / MARKET
    ============================================================ */
 .traffic-chart { width:100%; height:130px; display:block; }
 .revenue-chart { width:100%; height:170px; display:block; }
@@ -404,7 +503,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .market-legend i { width:8px; height:8px; border-radius:2px; }
 
 /* ============================================================
-   TABLES / TARIFFS / UPGRADES / COMPETITORS
+   TABLES / TARIFFS / UPGRADES
    ============================================================ */
 .toolbar { margin-bottom:16px; }
 .search { width:100%; font:inherit; font-size:14px; padding:11px 14px; border-radius:11px; border:1.5px solid var(--line); background:var(--surface-2); outline:none; transition:all .22s var(--ease); color:var(--text); }
@@ -434,7 +533,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .icon { width:30px; height:30px; border-radius:9px; border:1px solid var(--line); background:var(--surface-2); color:var(--text-2); font-size:13px; cursor:pointer; transition:all .2s var(--ease); display:grid; place-items:center; }
 .icon:hover { background:var(--surface-3); color:var(--primary-3); border-color:var(--primary); transform:translateY(-1px); }
 .icon.danger:hover { background:rgba(239,68,68,.1); color:var(--danger); border-color:var(--danger); }
-
 .tariff-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
 .tariff-card { padding:14px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); position:relative; overflow:hidden; transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .35s var(--ease); }
 .tariff-card:hover { transform:translateY(-4px) scale(1.01); box-shadow:var(--sh-md); border-color:var(--primary); }
@@ -450,7 +548,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .slider-marks { display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .slider-hint { margin-top:6px; font-size:11.5px; color:var(--muted); text-align:center; }
 .slider-hint b { color:var(--primary-3); }
-
 .upgrades-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
 .upgrade { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px; position:relative; transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .35s var(--ease); }
 .upgrade:hover { transform:translateY(-3px); box-shadow:var(--sh-md); }
@@ -471,39 +568,151 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .upgrade-effect.neutral { color:var(--muted); }
 .upgrade.broken .upgrade-effect { color:#f87171!important; }
 
+/* ============================================================
+   COMPETITORS
+   ============================================================ */
 .comp-list { display:flex; flex-direction:column; gap:10px; }
 .comp-row { display:flex; align-items:center; gap:14px; padding:14px; background:var(--surface); border:1px solid var(--line); border-radius:12px; transition:all .2s var(--ease); }
 .comp-row:hover { border-color:var(--line-2); transform:translateX(2px); }
 .comp-row.dead { opacity:.4; filter:grayscale(1); }
+.comp-row.price-war {
+  border-color:rgba(239,68,68,.5);
+  background:linear-gradient(90deg,var(--surface),rgba(239,68,68,.04));
+  animation:priceWarPulse 2s ease-in-out infinite;
+}
+.comp-row.declining { border-left:3px solid #f59e0b; opacity:.85; }
+@keyframes priceWarPulse {
+  0%, 100% { box-shadow:0 0 0 0 rgba(239,68,68,.2); }
+  50%      { box-shadow:0 0 20px -6px rgba(239,68,68,.5); }
+}
 .comp-logo { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-size:16px; font-weight:800; color:#0a0a0a; flex-shrink:0; }
 .comp-body { flex:1; min-width:0; }
 .comp-body b { font-size:14.5px; color:#fff; display:block; margin-bottom:2px; }
 .comp-body small { font-size:11.5px; color:var(--muted); }
+.comp-personality {
+  display:inline-block; padding:1px 6px; border-radius:5px;
+  font-size:10px; font-weight:600;
+  background:rgba(255,255,255,.06); color:var(--text-2);
+  margin-left:6px; vertical-align:middle;
+}
 .comp-mood { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-top:4px; }
 .comp-mood.neutral { background:rgba(122,122,134,.15); color:var(--muted); }
 .comp-mood.friendly { background:rgba(34,197,94,.15); color:#4ade80; }
 .comp-mood.hostile { background:rgba(239,68,68,.15); color:#f87171; }
+.comp-mood-row { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+.rel-bar { width:80px; height:4px; background:var(--surface-3); border-radius:2px; overflow:hidden; position:relative; }
+.rel-bar::before { content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--line-2); z-index:1; }
+.rel-bar i { display:block; height:100%; transition:width .4s var(--ease), background .3s; }
+.comp-badge { padding:1px 7px; border-radius:5px; font-size:10px; font-weight:700; background:rgba(34,197,94,.15); color:#4ade80; border:1px solid rgba(34,197,94,.25); }
 .comp-share { font-size:22px; font-weight:800; color:var(--primary-3); font-variant-numeric:tabular-nums; flex-shrink:0; text-align:right; min-width:70px; }
 .comp-share small { font-size:11px; color:var(--muted); font-weight:500; display:block; text-align:right; }
-.comp-actions { display:flex; gap:6px; flex-shrink:0; }
+.comp-actions { display:flex; gap:3px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; max-width:420px; }
+.comp-actions .btn { padding:4px 7px; font-size:13px; min-width:30px; transition:transform .15s var(--ease); }
+.comp-actions .btn:hover:not([disabled]) { transform:translateY(-1px) scale(1.1); }
+.comp-actions .btn[disabled] { opacity:.25; }
+.agreements-list { display:flex; flex-direction:column; gap:6px; }
+.agreement-row { display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--surface-2); border-radius:10px; border-left:3px solid rgba(34,197,94,.4); }
+.agreement-icon { font-size:20px; flex-shrink:0; }
+.agreement-info { flex:1; min-width:0; }
+.agreement-info b { display:block; font-size:13px; color:#fff; }
+.agreement-info small { font-size:11px; color:var(--muted); display:block; margin-top:2px; }
 
 /* ============================================================
-   ACTIVITY / SETTINGS
+   THREATS
    ============================================================ */
-.activity-list { display:flex; flex-direction:column; gap:2px; max-height:400px; overflow:auto; padding-right:4px; }
-.activity-item { display:flex; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
-.activity-item:last-child { border-bottom:0; }
-.activity-icon { width:32px; height:32px; border-radius:10px; flex:none; display:grid; place-items:center; font-size:13px; font-weight:700; }
-.activity-body { flex:1; min-width:0; font-size:13.5px; }
-.activity-body small { display:block; margin-top:3px; font-size:11.5px; color:var(--muted); }
-.settings-section { padding:20px 0; border-bottom:1px solid var(--line); }
-.settings-section:first-child { padding-top:0; }
-.settings-section:last-child { border-bottom:0; padding-bottom:0; }
-.settings-section h3 { font-size:14px; margin-bottom:4px; color:#fff; }
-.setting-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; gap:16px; border-top:1px solid var(--line); }
-.setting-row:first-of-type { border-top:0; }
-.setting-row-info b { font-size:13.5px; display:block; color:#fff; }
-.setting-row-info small { font-size:12px; color:var(--muted); display:block; margin-top:2px; max-width:400px; }
+.threat-row {
+  display:flex; align-items:center; gap:14px; padding:16px;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r); margin-bottom:10px;
+  border-left:3px solid var(--line-2);
+  transition:all .3s var(--ease);
+  animation:fadein .35s var(--ease) both;
+}
+.threat-row.danger { border-left-color:#ef4444; background:linear-gradient(90deg, var(--surface), rgba(239,68,68,.05)); animation:threatPulse 2s ease-in-out infinite; }
+.threat-row.warn { border-left-color:#f59e0b; }
+.threat-row.calm { border-left-color:#4ade80; }
+@keyframes threatPulse {
+  0%, 100% { box-shadow:0 0 0 0 rgba(239,68,68,.2); }
+  50%      { box-shadow:0 0 20px -6px rgba(239,68,68,.5); }
+}
+.threat-raider { border-left-color:#ef4444; }
+.threat-bandit { border-left-color:#f59e0b; }
+.threat-drone { border-left-color:#0ea5e9; }
+.threat-icon { font-size:32px; flex-shrink:0; filter:drop-shadow(0 0 10px currentColor); }
+.threat-body { flex:1; min-width:0; }
+.threat-body b { display:block; font-size:14.5px; color:#fff; margin-bottom:2px; }
+.threat-body small { display:block; font-size:11.5px; color:var(--muted); }
+.threat-bars { display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; }
+.threat-bar { flex:1; min-width:100px; display:flex; align-items:center; gap:8px; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.threat-bar-track { flex:1; height:4px; background:var(--surface-3); border-radius:2px; overflow:hidden; }
+.threat-bar-track i { display:block; height:100%; transition:width .4s var(--ease); }
+.threat-actions { display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; max-width:360px; }
+.threat-actions .btn { padding:6px 10px; font-size:12px; }
+
+/* ============================================================
+   EMPLOYEES — прокачка, навыки, воины
+   ============================================================ */
+.employees-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+.emp-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; position:relative; transition:all .3s var(--ease); }
+.emp-card:hover { transform:translateY(-2px); border-color:var(--line-2); box-shadow:var(--sh-md); }
+.emp-card.hired { border-color:rgba(34,197,94,.4); box-shadow:0 0 25px -12px rgba(34,197,94,.5); }
+.emp-card.warrior { border-color:rgba(239,68,68,.4); background:linear-gradient(135deg, var(--surface), rgba(239,68,68,.04)); }
+.emp-card.warrior::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at 100% 0%, rgba(239,68,68,.08), transparent 60%);
+  pointer-events:none; border-radius:var(--r);
+}
+.emp-card.emp-leveled { animation:cardLevelPulse .9s var(--ease); }
+@keyframes cardLevelPulse {
+  0%   { box-shadow:0 0 0 0 rgba(255,200,0,.6); border-color:rgba(255,200,0,.8); }
+  50%  { box-shadow:0 0 40px 8px rgba(255,200,0,.3); border-color:rgba(255,200,0,1); }
+  100% { box-shadow:0 0 0 0 rgba(255,200,0,0); border-color:var(--line); }
+}
+.emp-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.emp-avatar { width:48px; height:48px; border-radius:12px; display:grid; place-items:center; font-size:18px; font-weight:800; background:linear-gradient(135deg,var(--primary),var(--primary-2)); color:#0a0a0a; flex-shrink:0; }
+.emp-card.warrior .emp-avatar { animation:warriorPulse 3s ease-in-out infinite; }
+@keyframes warriorPulse {
+  0%, 100% { box-shadow:0 0 0 0 rgba(239,68,68,.4); }
+  50%      { box-shadow:0 0 20px 2px rgba(239,68,68,.5); }
+}
+.emp-spec-icon { font-size:22px; filter:drop-shadow(0 0 8px currentColor); }
+.emp-info h3 { margin:0; font-size:14.5px; color:#fff; }
+.emp-info small { font-size:11.5px; color:var(--muted); }
+.emp-spec { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; padding:2px 7px; border-radius:5px; display:inline-block; }
+.emp-spec.support { background:rgba(255,149,0,.15); color:#ffb347; }
+.emp-spec.tech { background:rgba(14,165,233,.15); color:#38bdf8; }
+.emp-spec.security { background:rgba(239,68,68,.15); color:#f87171; }
+.emp-spec.sales { background:rgba(34,197,94,.15); color:#4ade80; }
+.emp-spec.ops { background:rgba(168,85,247,.15); color:#c084fc; }
+.emp-spec.warrior { background:rgba(239,68,68,.15); color:#f87171; }
+.emp-bio { font-size:12px; color:var(--text-2); line-height:1.5; margin-bottom:10px; min-height:36px; font-style:italic; }
+.emp-skills { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; min-height:20px; }
+.emp-skill-badge { display:inline-block; padding:2px 7px; border-radius:6px; font-size:10.5px; font-weight:600; background:rgba(255,255,255,.06); color:var(--text-2); border:1px solid rgba(255,255,255,.08); transition:all .15s var(--ease); }
+.emp-card.warrior .emp-skill-badge { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.25); color:#fca5a5; }
+.emp-skill-badge:hover { transform:translateY(-1px); background:rgba(255,107,0,.15); color:var(--primary-3); }
+.emp-stats { display:flex; gap:10px; margin-bottom:10px; padding:8px 0; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); }
+.emp-stat { flex:1; text-align:center; font-size:11px; color:var(--muted); }
+.emp-stat b { display:block; font-size:15px; color:var(--primary-3); font-weight:800; margin-bottom:1px; }
+.emp-stat.warrior-stat b { color:#f87171 !important; }
+.emp-ap { display:flex; gap:3px; justify-content:center; margin-top:4px; }
+.emp-ap i { width:10px; height:10px; border-radius:50%; background:var(--surface-3); border:1px solid var(--line-2); }
+.emp-ap i.filled { background:radial-gradient(circle at 30% 30%,#ffd84d,#ff9500); border-color:#ffb347; }
+.emp-level-bar { height:4px; background:var(--surface-3); border-radius:2px; overflow:hidden; margin:6px 0; }
+.emp-level-bar i { display:block; height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-2)); transition:width .4s var(--ease); }
+.emp-foot { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px; flex-wrap:wrap; }
+.emp-salary { font-size:12.5px; color:var(--muted); }
+.emp-salary b { color:var(--primary-3); font-size:14px; }
+.emp-upgrade-btn { position:relative; overflow:hidden; }
+.emp-upgrade-btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent); transition:left .5s var(--ease); }
+.emp-upgrade-btn:hover::before { left:100%; }
+.emp-upgrade-btn.just-leveled { animation:empLevelUp .8s var(--ease); }
+@keyframes empLevelUp {
+  0%   { transform:scale(1); }
+  30%  { transform:scale(1.15); box-shadow:0 0 30px rgba(255,200,0,.8); }
+  60%  { transform:scale(1.05); box-shadow:0 0 20px rgba(255,200,0,.5); }
+  100% { transform:scale(1); box-shadow:none; }
+}
+.emp-card.warrior.hired:hover { box-shadow:0 0 30px -10px rgba(239,68,68,.6); border-color:rgba(239,68,68,.7); }
 
 /* ============================================================
    MODAL / FORMS / DETAILS
@@ -543,7 +752,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .event-option > * { position:relative; }
 .event-option-label { flex:1; font-weight:500; }
 .event-option-hint { font-size:11.5px; color:var(--muted); flex-shrink:0; }
-
 .story-panel { background:linear-gradient(135deg,var(--surface),rgba(234,179,8,.08)); border:1px solid rgba(234,179,8,.4); border-radius:var(--r); padding:20px 22px; margin-bottom:16px; position:relative; overflow:hidden; }
 .story-panel::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#eab308,#ffb347,#eab308,transparent); animation:shimmer 4s linear infinite; }
 .story-chapter { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--solver); font-weight:700; margin-bottom:6px; }
@@ -558,12 +766,10 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .story-modal-box .story-title { font-size:22px; margin-bottom:14px; }
 .story-modal-box .story-text { font-size:14px; line-height:1.7; color:var(--text-2); white-space:pre-wrap; margin-bottom:20px; min-height:60px; }
 .story-modal-box .story-choice { width:100%; padding:14px 16px; }
-
 .ultimatum-banner { background:linear-gradient(135deg,rgba(234,179,8,.15),rgba(120,80,0,.2)); border:2px solid var(--solver); border-radius:var(--r); padding:18px 22px; margin-bottom:14px; animation:redPulse 2s infinite; }
 .ultimatum-banner h3 { margin:0 0 6px; font-size:18px; color:#fde047; text-transform:uppercase; letter-spacing:.08em; }
 .ultimatum-banner p { color:#fde047; font-size:13.5px; margin-bottom:12px; }
 .ultimatum-timer { font-size:28px; font-weight:800; color:#fff; font-variant-numeric:tabular-nums; margin-bottom:12px; }
-
 .action-modal-box { width:min(500px,100%)!important; border-color:var(--solver)!important; }
 .action-title { font-size:20px; font-weight:800; color:#fff; margin-bottom:8px; }
 .action-desc { font-size:14px; color:var(--text-2); line-height:1.5; margin-bottom:16px; }
@@ -575,7 +781,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .action-option:hover { border-color:var(--solver); background:rgba(234,179,8,.06); }
 
 /* ============================================================
-   TOASTS / CONFETTI / NOTIF / TOUR / VIDEO
+   TOASTS / CONFETTI / NOTIF / TOUR / VIDEO / ENDING / SPAM
    ============================================================ */
 .toasts { position:fixed; right:22px; bottom:22px; z-index:60; display:flex; flex-direction:column; gap:10px; }
 .toast { background:var(--surface-3); color:#fff; font-size:13.5px; padding:12px 17px; border-radius:12px; border:1px solid var(--line-2); box-shadow:var(--sh-md); opacity:0; transform:translateY(10px); transition:all .32s var(--ease); max-width:320px; animation:toastIn .35s var(--ease) both; }
@@ -595,7 +801,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .notif-item-body { flex:1; min-width:0; }
 .notif-item-body b { display:block; font-size:12.5px; line-height:1.35; color:#fff; font-weight:500; }
 .notif-item-body small { display:block; color:var(--muted); font-size:11px; margin-top:3px; }
-
 .tour-overlay { position:fixed; inset:0; z-index:1000; pointer-events:none; opacity:0; transition:opacity .3s; animation:fadein .3s forwards; }
 .tour-highlight { position:absolute; border-radius:10px; pointer-events:none; box-shadow:0 0 0 9999px rgba(0,0,0,.6),0 0 0 3px var(--primary),0 0 30px 4px rgba(255,107,0,.55); transition:left .35s var(--ease),top .35s var(--ease),width .35s var(--ease),height .35s var(--ease); z-index:1000; }
 .tour-bubble { position:absolute; width:320px; background:var(--surface); border:1px solid rgba(255,107,0,.4); border-radius:16px; padding:20px; box-shadow:var(--sh-lg); pointer-events:auto; z-index:1001; transition:left .25s var(--ease),top .25s var(--ease); }
@@ -622,7 +827,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .tour-back:hover { background:var(--surface-2); color:var(--text); }
 .tutorial-pulse-strong { animation:pulseGlow 1.2s ease-in-out infinite!important; border-radius:10px; position:relative; z-index:1002; outline:2px solid rgba(255,107,0,.6); outline-offset:2px; }
 .tour-interactive-hint { margin-top:10px; padding:8px 12px; background:rgba(255,107,0,.12); border:1px solid rgba(255,107,0,.35); border-radius:8px; font-size:12.5px; color:var(--primary-3); font-weight:600; line-height:1.4; }
-
 .video-overlay { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.92); display:grid; place-items:center; padding:20px; opacity:0; transition:opacity .3s; backdrop-filter:blur(8px); }
 .video-overlay.show { opacity:1; }
 .video-box { position:relative; width:min(900px,100%); background:#000; border-radius:16px; overflow:hidden; }
@@ -630,10 +834,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .video-close { position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,.7); border:0; color:#fff; font-size:18px; cursor:pointer; z-index:2; }
 .video-close:hover { background:var(--primary); color:#000; }
 .video-title { position:absolute; bottom:12px; left:16px; font-size:12px; color:var(--primary-3); font-weight:700; text-transform:uppercase; letter-spacing:.08em; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:6px; }
-
-/* ============================================================
-   ENDING / SPAM
-   ============================================================ */
 .ending-screen { position:fixed; inset:0; z-index:90; background:radial-gradient(circle at 50% 30%,#1a1207,#08080a 70%); display:grid; place-items:center; padding:30px; text-align:center; opacity:0; transition:opacity .5s; }
 .ending-screen.show { opacity:1; }
 .ending-card { max-width:520px; border:1px solid var(--line); border-radius:var(--r); padding:32px; background:var(--surface); }
@@ -643,7 +843,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .ending-stats { display:flex; justify-content:center; gap:30px; margin-bottom:26px; flex-wrap:wrap; }
 .ending-stats b { display:block; font-size:20px; color:var(--primary-3); font-weight:800; }
 .ending-stats span { font-size:11px; color:var(--muted); text-transform:uppercase; }
-
 .sn-spam { position:fixed; z-index:44; width:240px; background:linear-gradient(135deg,#1a1220,#0f0f13); border:1px solid rgba(120,120,140,.4); border-radius:10px; padding:10px 12px; font-size:11.5px; color:#c8c8d0; box-shadow:0 8px 24px -8px rgba(0,0,0,.8); cursor:pointer; transform:scale(.9); opacity:0; transition:all .3s var(--ease); line-height:1.4; }
 .sn-spam.show { transform:scale(1); opacity:1; }
 .sn-spam-brand { font-weight:800; color:#7a7a86; text-transform:uppercase; letter-spacing:.08em; font-size:10px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
@@ -651,7 +850,7 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .sn-spam-body { color:#a0a0a8; }
 
 /* ============================================================
-   CHAT
+   CHAT / MINIGAMES
    ============================================================ */
 .chat-wrap { display:grid; grid-template-columns:280px 1fr; gap:12px; height:calc(100vh - 240px); min-height:480px; }
 .chat-sidebar { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:8px; overflow-y:auto; }
@@ -682,37 +881,6 @@ body.anomaly-glitch .game-cash,body.anomaly-glitch .stat-value,body.anomaly-glit
 .ch-meta .mg { background:rgba(168,85,247,.15); color:#c084fc; }
 .ch-meta .chance { background:rgba(234,179,8,.15); color:#fde047; }
 .chat-waiting { padding:16px; text-align:center; color:var(--muted); font-size:13px; background:var(--surface-2); border-top:1px solid var(--line); font-style:italic; }
-
-/* ============================================================
-   EMPLOYEES / MINIGAMES
-   ============================================================ */
-.employees-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
-.emp-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; transition:all .3s var(--ease); }
-.emp-card:hover { transform:translateY(-2px); border-color:var(--line-2); box-shadow:var(--sh-md); }
-.emp-card.hired { border-color:rgba(34,197,94,.4); box-shadow:0 0 25px -12px rgba(34,197,94,.5); }
-.emp-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-.emp-avatar { width:48px; height:48px; border-radius:12px; display:grid; place-items:center; font-size:18px; font-weight:800; background:linear-gradient(135deg,var(--primary),var(--primary-2)); color:#0a0a0a; flex-shrink:0; }
-.emp-info h3 { margin:0; font-size:14.5px; color:#fff; }
-.emp-info small { font-size:11.5px; color:var(--muted); }
-.emp-spec { font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; padding:2px 7px; border-radius:5px; margin-top:4px; display:inline-block; }
-.emp-spec.support { background:rgba(255,149,0,.15); color:#ffb347; }
-.emp-spec.tech { background:rgba(14,165,233,.15); color:#38bdf8; }
-.emp-spec.security { background:rgba(239,68,68,.15); color:#f87171; }
-.emp-spec.sales { background:rgba(34,197,94,.15); color:#4ade80; }
-.emp-spec.ops { background:rgba(168,85,247,.15); color:#c084fc; }
-.emp-bio { font-size:12px; color:var(--text-2); line-height:1.5; margin-bottom:10px; min-height:36px; font-style:italic; }
-.emp-stats { display:flex; gap:10px; margin-bottom:10px; padding:8px 0; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); }
-.emp-stat { flex:1; text-align:center; font-size:11px; color:var(--muted); }
-.emp-stat b { display:block; font-size:15px; color:var(--primary-3); font-weight:800; margin-bottom:1px; }
-.emp-ap { display:flex; gap:3px; justify-content:center; margin-top:4px; }
-.emp-ap i { width:10px; height:10px; border-radius:50%; background:var(--surface-3); border:1px solid var(--line-2); }
-.emp-ap i.filled { background:radial-gradient(circle at 30% 30%,#ffd84d,#ff9500); border-color:#ffb347; }
-.emp-level-bar { height:4px; background:var(--surface-3); border-radius:2px; overflow:hidden; margin:6px 0; }
-.emp-level-bar i { display:block; height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-2)); transition:width .4s var(--ease); }
-.emp-foot { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px; flex-wrap:wrap; }
-.emp-salary { font-size:12.5px; color:var(--muted); }
-.emp-salary b { color:var(--primary-3); font-size:14px; }
-
 .mg-modal { width:min(520px,100%)!important; text-align:center; }
 .mg-title { font-size:18px; font-weight:800; color:#fff; margin-bottom:6px; }
 .mg-desc { font-size:13px; color:var(--muted); margin-bottom:18px; }
@@ -763,8 +931,11 @@ body[data-arc="resolution"]   { --primary:#22c55e; --primary-2:#4ade80; --primar
   .pc-tariff { text-align:left; }
   .pc-actions { justify-content:flex-end; }
   .comp-row { flex-wrap:wrap; }
+  .comp-actions { max-width:none; width:100%; justify-content:flex-start; }
   .traffic-widget { grid-template-columns:1fr 1fr 1fr; padding:8px; }
   .tariff-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); }
+  .threat-row { flex-wrap:wrap; }
+  .threat-actions { max-width:none; width:100%; justify-content:flex-start; }
 }
 @media(max-width:520px) {
   .stats { grid-template-columns:1fr; }
@@ -775,318 +946,3 @@ body[data-arc="resolution"]   { --primary:#22c55e; --primary-2:#4ade80; --primar
   .sim-econ-mini { display:none; }
   .traffic-mini { display:none; }
 }
-/* ============================================================
-   EMPLOYEE UPGRADES — навыки, воины, анимации
-   ============================================================ */
-.emp-card.warrior {
-  border-color: rgba(239, 68, 68, .4);
-  background: linear-gradient(135deg, var(--surface), rgba(239, 68, 68, .04));
-}
-.emp-card.warrior::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 100% 0%, rgba(239, 68, 68, .08), transparent 60%);
-  pointer-events: none;
-  border-radius: var(--r);
-}
-.emp-spec-icon {
-  font-size: 22px;
-  filter: drop-shadow(0 0 8px currentColor);
-}
-.emp-skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 10px;
-  min-height: 20px;
-}
-.emp-skill-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, .06);
-  color: var(--text-2);
-  border: 1px solid rgba(255, 255, 255, .08);
-  transition: all .15s var(--ease);
-}
-.emp-card.warrior .emp-skill-badge {
-  background: rgba(239, 68, 68, .12);
-  border-color: rgba(239, 68, 68, .25);
-  color: #fca5a5;
-}
-.emp-skill-badge:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 107, 0, .15);
-  color: var(--primary-3);
-}
-.emp-upgrade-btn {
-  position: relative;
-  overflow: hidden;
-}
-.emp-upgrade-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
-  transition: left .5s var(--ease);
-}
-.emp-upgrade-btn:hover::before { left: 100%; }
-.emp-upgrade-btn.just-leveled {
-  animation: empLevelUp .8s var(--ease);
-}
-@keyframes empLevelUp {
-  0%   { transform: scale(1); }
-  30%  { transform: scale(1.15); box-shadow: 0 0 30px rgba(255, 200, 0, .8); }
-  60%  { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 200, 0, .5); }
-  100% { transform: scale(1); box-shadow: none; }
-}
-/* Прокачка: пульс уровня */
-.emp-card.emp-leveled {
-  animation: cardLevelPulse .9s var(--ease);
-}
-@keyframes cardLevelPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(255, 200, 0, .6); border-color: rgba(255, 200, 0, .8); }
-  50%  { box-shadow: 0 0 40px 8px rgba(255, 200, 0, .3); border-color: rgba(255, 200, 0, 1); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0); border-color: var(--line); }
-}
-/* Воины: огненная аура */
-.emp-card.warrior.hired:hover {
-  box-shadow: 0 0 30px -10px rgba(239, 68, 68, .6);
-  border-color: rgba(239, 68, 68, .7);
-}
-.emp-card.warrior .emp-avatar {
-  animation: warriorPulse 3s ease-in-out infinite;
-}
-@keyframes warriorPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .4); }
-  50%      { box-shadow: 0 0 20px 2px rgba(239, 68, 68, .5); }
-}
-/* Боевые статы — воин */
-.emp-stat.warrior-stat b { color: #f87171 !important; }
-/* Обновить пул — иконка вращения */
-.btn[data-action="refresh-employees-pool"]:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px -10px rgba(255, 107, 0, .9);
-}
-/* ============================================================
-   COMPETITORS — расширенные
-   ============================================================ */
-.comp-row.price-war {
-  border-color: rgba(239, 68, 68, .5);
-  background: linear-gradient(90deg, var(--surface), rgba(239, 68, 68, .04));
-  animation: priceWarPulse 2s ease-in-out infinite;
-}
-@keyframes priceWarPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .2); }
-  50%      { box-shadow: 0 0 20px -6px rgba(239, 68, 68, .5); }
-}
-.comp-personality {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, .06);
-  color: var(--text-2);
-  margin-left: 6px;
-  vertical-align: middle;
-  letter-spacing: .02em;
-}
-.comp-mood-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-.rel-bar {
-  width: 80px;
-  height: 4px;
-  background: var(--surface-3);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-.rel-bar::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 0; bottom: 0;
-  width: 1px;
-  background: var(--line-2);
-  z-index: 1;
-}
-.rel-bar i {
-  display: block;
-  height: 100%;
-  transition: width .4s var(--ease), background .3s;
-}
-.comp-badge {
-  padding: 1px 7px;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 700;
-  background: rgba(34, 197, 94, .15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, .25);
-}
-.comp-actions {
-  display: flex;
-  gap: 3px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 420px;
-}
-.comp-actions .btn {
-  padding: 4px 7px;
-  font-size: 13px;
-  min-width: 30px;
-  transition: transform .15s var(--ease), background .15s;
-}
-.comp-actions .btn:hover:not([disabled]) {
-  transform: translateY(-1px) scale(1.1);
-}
-.comp-actions .btn[disabled] { opacity: .25; }
-
-/* Активные соглашения */
-.agreements-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.agreement-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--surface-2);
-  border-radius: 10px;
-  border-left: 3px solid rgba(34, 197, 94, .4);
-}
-.agreement-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.agreement-info {
-  flex: 1;
-  min-width: 0;
-}
-.agreement-info b {
-  display: block;
-  font-size: 13px;
-  color: #fff;
-}
-.agreement-info small {
-  font-size: 11px;
-  color: var(--muted);
-  display: block;
-  margin-top: 2px;
-}
-
-/* ============================================================
-   COMPETITORS — расширенные + угрозы
-   ============================================================ */
-.comp-row.price-war {
-  border-color: rgba(239, 68, 68, .5);
-  background: linear-gradient(90deg, var(--surface), rgba(239, 68, 68, .04));
-  animation: priceWarPulse 2s ease-in-out infinite;
-}
-.comp-row.declining { border-left: 3px solid #f59e0b; opacity: .85; }
-@keyframes priceWarPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .2); }
-  50%      { box-shadow: 0 0 20px -6px rgba(239, 68, 68, .5); }
-}
-.comp-personality {
-  display: inline-block; padding: 1px 6px; border-radius: 5px;
-  font-size: 10px; font-weight: 600;
-  background: rgba(255, 255, 255, .06); color: var(--text-2);
-  margin-left: 6px; vertical-align: middle;
-}
-.comp-mood-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-.rel-bar {
-  width: 80px; height: 4px; background: var(--surface-3);
-  border-radius: 2px; overflow: hidden; position: relative;
-}
-.rel-bar::before {
-  content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
-  width: 1px; background: var(--line-2); z-index: 1;
-}
-.rel-bar i { display: block; height: 100%; transition: width .4s var(--ease), background .3s; }
-.comp-badge {
-  padding: 1px 7px; border-radius: 5px; font-size: 10px; font-weight: 700;
-  background: rgba(34, 197, 94, .15); color: #4ade80; border: 1px solid rgba(34, 197, 94, .25);
-}
-.comp-actions {
-  display: flex; gap: 3px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 420px;
-}
-.comp-actions .btn { padding: 4px 7px; font-size: 13px; min-width: 30px; transition: transform .15s var(--ease); }
-.comp-actions .btn:hover:not([disabled]) { transform: translateY(-1px) scale(1.1); }
-.comp-actions .btn[disabled] { opacity: .25; }
-
-.agreements-list { display: flex; flex-direction: column; gap: 6px; }
-.agreement-row {
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-  background: var(--surface-2); border-radius: 10px;
-  border-left: 3px solid rgba(34, 197, 94, .4);
-}
-.agreement-icon { font-size: 20px; flex-shrink: 0; }
-.agreement-info { flex: 1; min-width: 0; }
-.agreement-info b { display: block; font-size: 13px; color: #fff; }
-.agreement-info small { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; }
-
-/* ============================================================
-   THREATS — рейдеры, бандиты, дроны
-   ============================================================ */
-.threat-row {
-  display: flex; align-items: center; gap: 14px; padding: 16px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r); margin-bottom: 10px;
-  border-left: 3px solid var(--line-2);
-  transition: all .3s var(--ease);
-  animation: fadein .35s var(--ease) both;
-}
-.threat-row.danger {
-  border-left-color: #ef4444;
-  background: linear-gradient(90deg, var(--surface), rgba(239, 68, 68, .05));
-  animation: threatPulse 2s ease-in-out infinite;
-}
-.threat-row.warn { border-left-color: #f59e0b; }
-.threat-row.calm { border-left-color: #4ade80; }
-@keyframes threatPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .2); }
-  50%      { box-shadow: 0 0 20px -6px rgba(239, 68, 68, .5); }
-}
-.threat-raider { border-left-color: #ef4444; }
-.threat-bandit { border-left-color: #f59e0b; }
-.threat-drone { border-left-color: #0ea5e9; }
-.threat-icon {
-  font-size: 32px; flex-shrink: 0;
-  filter: drop-shadow(0 0 10px currentColor);
-}
-.threat-body { flex: 1; min-width: 0; }
-.threat-body b { display: block; font-size: 14.5px; color: #fff; margin-bottom: 2px; }
-.threat-body small { display: block; font-size: 11.5px; color: var(--muted); }
-.threat-bars {
-  display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap;
-}
-.threat-bar {
-  flex: 1; min-width: 100px;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 10.5px; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .05em;
-}
-.threat-bar-track {
-  flex: 1; height: 4px; background: var(--surface-3);
-  border-radius: 2px; overflow: hidden;
-}
-.threat-bar-track i { display: block; height: 100%; transition: width .4s var(--ease); }
-.threat-actions {
-  display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;
-  max-width: 360px;
-}
-.threat-actions .btn { padding: 6px 10px; font-size: 12px; }
