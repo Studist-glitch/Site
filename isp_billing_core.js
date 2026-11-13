@@ -57,7 +57,7 @@ NB.genPhone = () => `+7 ${NB.randInt(900, 999)} ${NB.randInt(100, 999)}-${NB.ran
 NB.genKid = () => NB.pick(KIDS);
 NB.genWife = () => NB.pick(WIVES);
 
-NB.LS_KEY = 'netbill_v19';
+NB.LS_KEY = 'netbill_v20';
 NB.DEFAULT_PASS = '1234';
 NB.BASE_DAILY_COST = 30;
 NB.COST_PER_CLIENT = 2;
@@ -266,11 +266,11 @@ NB.checkUnlocks = function () {
   }
 };
 
-/* ============ TRAFFIC (FIXED BALANCE) ============ */
+/* ============ TRAFFIC ============ */
+/* Base 5000 — комфортно для ~30 средних клиентов. bandwidth +3000. */
 NB.traffic.getCapacity = function () {
   const u = NB.state.game.upgrades;
-  /* Base 5000 — комфортно для ~30 средних клиентов. Каждый апгрейд даёт существенный буст. */
-  return 5000 + u.bandwidth * 2000 + u.fiber * 4000 + u.satellite * 8000 + u.microBooster * 1000;
+  return 5000 + u.bandwidth * 3000 + u.fiber * 5000 + u.satellite * 10000 + u.microBooster * 1200;
 };
 NB.traffic.getUsage = function () {
   return NB.state.clients.filter(c => c.status === 'active')
@@ -298,7 +298,7 @@ NB.spendAp = c => { if (c <= 0) return true; if (NB.state.game.ap.current < c) r
 NB.resetAp = () => { const g = NB.state.game; g.ap.current = g.ap.max; g.employees.forEach(e => { e.ap.current = e.ap.max; }); NB.save(); };
 NB.recomputeApMax = () => { const g = NB.state.game; g.ap.max = 3 + Math.floor(Math.max(0, g.company.level - 1) / 3); if (g.ap.current > g.ap.max) g.ap.current = g.ap.max; };
 
-/* ============ COMPANY XP ============ */
+/* ============ Company XP ============ */
 NB.addCompanyXp = function (n) {
   const g = NB.state.game;
   g.company.xp += n;
@@ -347,8 +347,8 @@ NB.netDailyEstimate = () => {
 
 NB.canAdvanceDay = function () {
   const g = NB.state.game;
-  if (g.activeEvent) return { ok: false, reason: 'Решить событие' };
-  if (g.pendingClients.length > 0) return { ok: false, reason: `Принять клиентов (${g.pendingClients.length})` };
+  if (g.activeEvent) return { ok: false, reason: 'Событие' };
+  if (g.pendingClients.length > 0) return { ok: false, reason: `Клиенты (${g.pendingClients.length})` };
   return { ok: true };
 };
 
@@ -383,14 +383,17 @@ style.textContent = `
 @keyframes numberPop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
 @keyframes dangerPulse{0%,100%{background:rgba(255,0,0,.08)}50%{background:rgba(255,0,0,.2)}}
 @keyframes shake-horizontal{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@keyframes glitchText{0%{text-shadow:2px 0 #ff0000,-2px 0 #00ffff;transform:translate(0)}25%{text-shadow:-2px 0 #ff0000,2px 0 #00ffff;transform:translate(-1px,1px)}50%{text-shadow:2px 0 #00ffff,-2px 0 #ff0000;transform:translate(1px,-1px)}75%{text-shadow:-1px 0 #ff0000,1px 0 #00ffff;transform:translate(-1px,-1px)}100%{text-shadow:0 0 transparent;transform:translate(0)}}
 .cyn-warning{animation:redPulse 2s infinite}
 .typewriter{overflow:hidden;white-space:nowrap;border-right:2px solid var(--primary);animation:typewriter 2s steps(80) both}
 .fade-in{animation:fadein .5s cubic-bezier(.2,.7,.3,1) both}
 .tutorial-pulse{animation:pulseGlow 1.5s infinite;border-radius:10px;position:relative;z-index:999}
 .number-pop{animation:numberPop .3s}
+.glitch-text{animation:glitchText .35s infinite}
 body.cynessa-danger::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9997;background:rgba(255,0,0,.12);animation:dangerPulse 2s infinite}
-body.anomaly-glitch .view{animation:shake-horizontal .3s infinite}
-body.anomaly-glitch .game-cash, body.anomaly-glitch .stat-value{filter:blur(1px);opacity:.7}
+body.anomaly-glitch .view{animation:shake-horizontal .15s infinite}
+body.anomaly-glitch .game-cash, body.anomaly-glitch .stat-value, body.anomaly-glitch .sim-bar, body.anomaly-glitch h1{filter:blur(1.5px) hue-rotate(180deg) contrast(1.4);opacity:.7;animation:glitchText .3s infinite}
+body.anomaly-glitch .sidebar{animation:shake-horizontal .2s infinite reverse}
 `;
 document.head.appendChild(style);
 
@@ -407,11 +410,14 @@ NB.effects.redFlash = () => {
 };
 NB.effects.glitch = el => {
   if (!el) return;
-  const orig = el.textContent; const chars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  let i = 0; const iv = setInterval(() => {
-    el.textContent = orig.split('').map(c => Math.random() < 0.3 ? chars[Math.floor(Math.random()*chars.length)] : c).join('');
-    if (++i > 12) { clearInterval(iv); el.textContent = orig; }
-  }, 50);
+  const orig = el.textContent;
+  const chars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  el.classList.add('glitch-text');
+  let i = 0;
+  const iv = setInterval(() => {
+    el.textContent = orig.split('').map(c => Math.random() < 0.45 ? chars[Math.floor(Math.random()*chars.length)] : c).join('');
+    if (++i > 20) { clearInterval(iv); el.textContent = orig; el.classList.remove('glitch-text'); }
+  }, 60);
 };
 NB.effects.typewriter = (el, text) => {
   if (!el) return; el.textContent = ''; el.classList.add('typewriter');
@@ -429,6 +435,7 @@ NB.showCynessaEnding = function () {
   g.stats.endings.push('cynessa');
   NB.save();
   document.body.classList.remove('cynessa-danger');
+  document.body.classList.remove('anomaly-glitch');
   const root = document.getElementById('root');
   if (root) root.innerHTML = '';
   const wrap = document.createElement('div');
@@ -539,7 +546,7 @@ NB.addLog = (text, type) => {
   if (g.daily.log.length > 30) g.daily.log = g.daily.log.slice(-30);
 };
 
-/* ============ НОВОСТИ С COOLDOWN ============ */
+/* ============ НОВОСТИ ============ */
 NB.addNews = function (text, opts) {
   opts = opts || {};
   const w = NB.state.game.world;
@@ -549,13 +556,7 @@ NB.addNews = function (text, opts) {
   const lastDay = w.newsCooldown[key];
   if (lastDay !== undefined && NB.state.game.daily.dayNumber - lastDay < cooldownDays) return false;
   w.newsCooldown[key] = NB.state.game.daily.dayNumber;
-  w.news.unshift({
-    id: NB.state.seq.story++,
-    text,
-    at: new Date().toISOString(),
-    video: opts.video || null,
-    videoTitle: opts.videoTitle || null
-  });
+  w.news.unshift({ id: NB.state.seq.story++, text, at: new Date().toISOString(), video: opts.video || null, videoTitle: opts.videoTitle || null });
   if (w.news.length > 40) w.news = w.news.slice(0, 40);
   return true;
 };
@@ -624,7 +625,10 @@ NB.refreshLive = () => {
   const p2 = document.getElementById('pending-revenue-2');
   if (p2) p2.textContent = NB.money(NB.state.game.daily.pendingRevenue);
   const b = document.getElementById('game-goal-bar');
-  if (b) b.style.width = Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100) + '%';
+  if (b) {
+    const pct = Math.max(0, Math.min(100, (NB.state.game.cash / NB.state.game.goal) * 100));
+    b.style.width = pct + '%';
+  }
 };
 
 NB.renderApDots = () => {
@@ -636,7 +640,7 @@ NB.renderApDots = () => {
 
 NB.renderCompanyXp = () => {
   const c = NB.state.game.company;
-  const pct = (c.xp / c.xpNext) * 100;
+  const pct = Math.max(0, Math.min(100, (c.xp / c.xpNext) * 100));
   return `<div class="company-xp-mini" title="Опыт компании">
     <span>Ур. <b>${c.level}</b></span>
     <div class="cxp-bar"><i style="width:${pct}%"></i></div>
@@ -647,14 +651,16 @@ NB.renderCompanyXp = () => {
 NB.buildShell = (navItems, content) => {
   const unread = NB.state.notifications.filter(n => !n.read).length;
   const g = NB.state.game;
+  const unpaidInvoices = NB.state.invoices.filter(i => i.status === 'unpaid' && i.period === NB.period()).length;
+  const overdueBills = g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length;
   const badges = {
     clients: g.pendingClients.length,
     chat: NB.state.tickets.filter(t => t.status === 'open').length,
     dashboard: (g.activeEvent ? 1 : 0) + g.world.storyQueue.length,
-    invoices: g.bills.filter(b => b.status === 'pending' && b.dueDay < g.daily.dayNumber).length
+    invoices: unpaidInvoices + overdueBills
   };
   document.body.dataset.arc = (g.world && g.world.arc) || 'ordinary';
-  if (g.world.threat >= 8 && !g.stats.won && !g.stats.lost) document.body.classList.add('cynessa-danger');
+  if (g.world.threat >= 8 && !g.world.flags.worldSaved && !g.stats.won && !g.stats.lost) document.body.classList.add('cynessa-danger');
   else document.body.classList.remove('cynessa-danger');
   return `<div class="app">
     <aside class="sidebar">
@@ -696,6 +702,7 @@ NB.simBar = () => {
   const traffic = NB.traffic.getLoad();
   const trafficColor = traffic.percent > 100 ? '#ef4444' : traffic.percent > 80 ? '#f59e0b' : '#22c55e';
   const dronesCount = g.world.drones.enabled ? g.world.drones.count : 0;
+  const trafficPct = Math.max(0, Math.min(100, traffic.percent));
   return `<div class="sim-bar">
     <div class="sim-date"><span>📅</span><span>${NB.dayLabel(NB.state.simDate)}</span><span class="sim-day">· Д${g.daily.dayNumber}</span></div>
     ${NB.renderApDots()}
@@ -707,7 +714,7 @@ NB.simBar = () => {
     </div>
     <div class="traffic-mini" title="Нагрузка: ${traffic.percent}% (${traffic.usage}/${traffic.cap} Мбит/с)">
       <span class="traffic-mini-label">📶 ${traffic.percent}%</span>
-      <div class="traffic-mini-bar"><i style="width:${Math.min(100,traffic.percent)}%;background:${trafficColor}"></i></div>
+      <div class="traffic-mini-bar"><i style="width:${trafficPct}%;background:${trafficColor}"></i></div>
     </div>
     ${dronesCount > 0 ? `<div class="traffic-mini" style="border-color:rgba(14,165,233,.4)"><span class="traffic-mini-label" style="color:#7dd3fc">🤖 ${dronesCount}</span></div>` : ''}
     <div class="spacer"></div>
@@ -715,7 +722,7 @@ NB.simBar = () => {
     ${openTickets > 0 ? `<span class="sim-note warn">✉ ${openTickets}</span>` : ''}
     ${overdueBills > 0 ? `<span class="sim-note warn">🔥 ${overdueBills}</span>` : ''}
     <button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(canAdv.ok ? 'Завершить день' : canAdv.reason)}">
-      ${canAdv.ok ? 'День →' : '⬜'}
+      ${canAdv.ok ? 'День →' : `⬜ ${canAdv.reason}`}
     </button>
   </div>`;
 };

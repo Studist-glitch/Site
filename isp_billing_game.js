@@ -5,15 +5,15 @@ const G = NB.game = NB.game || {};
 
 G.UPGRADES = {
   ddos:           { icon:'🛡', name:'DDoS-защита',           desc:'Отбивает атаки.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN','Автоблок'], minDay: 3 },
-  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'Расширяет канал. +2000 Мбит/с за уровень.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+2000 Мбит','+4000 Мбит','+6000 Мбит'] },
+  bandwidth:      { icon:'⚡', name:'Пропускная способность', desc:'Расширяет канал. +3000 Мбит/с за уровень.', costs:[12000,25000,50000], upkeep:[20,50,100], levels:['+3000 Мбит','+6000 Мбит','+9000 Мбит'] },
   support:        { icon:'💬', name:'Поддержка',              desc:'Меньше оттока, быстрее оплата.', costs:[6000,15000,30000], upkeep:[15,40,80], levels:['2 оператора','24/7','Менеджеры'], minDay: 5 },
   marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1 клиент','+2 клиента','+3 клиента'], minDay: 4 },
-  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. +4000 Мбит/с.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade: 'bandwidth' },
-  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие. +8000 Мбит/с.', costs:[50000], upkeep:[80], levels:['Спутниковый резерв'], minDay: 20 },
+  fiber:          { icon:'🕸', name:'Оптиковолокно',          desc:'Магистрали. +5000 Мбит/с.', costs:[30000,70000], upkeep:[60,150], levels:['Городская','Магистральная'], requiresUpgrade: 'bandwidth' },
+  satellite:      { icon:'🛰', name:'Спутник',                desc:'Резерв и покрытие. +10000 Мбит/с.', costs:[50000], upkeep:[80], levels:['Спутниковый резерв'], minDay: 20 },
   ai:             { icon:'🤖', name:'AI-автоматизация',       desc:'Автоподдержка.', costs:[70000], upkeep:[120], levels:['AI-оператор'], minDay: 30 },
   quantum:        { icon:'⚛', name:'Квантовый шифр',          desc:'После особой концовки.', costs:[180000], upkeep:[200], levels:['Квантовая сеть'], requiresFlag: 'quantumUnlocked' },
   firewall:       { icon:'🧱', name:'Firewall',               desc:'Снижает взломы.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay: 15 },
-  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Буст канала. +1000 Мбит/с.', costs:[4000,12000], upkeep:[10,25], levels:['+1000','+2000'] },
+  microBooster:   { icon:'🔧', name:'Микроускоритель',        desc:'Буст канала. +1200 Мбит/с.', costs:[4000,12000], upkeep:[10,25], levels:['+1200','+2400'] },
   darkFiber:      { icon:'🌑', name:'Тёмное волокно',          desc:'Секретный канал.', costs:[80000], upkeep:[150], levels:['Скрытая магистраль'], minDay: 40 },
   autoCollect:    { icon:'💰', name:'Автосбор выручки',        desc:'Собирает автоматически.', costs:[6000,15000], upkeep:[10,25], levels:['100%','+5%'], minDay: 6 },
   autoClean:      { icon:'🧹', name:'Автоочистка спама',       desc:'Убирает спам.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay: 8 },
@@ -89,7 +89,7 @@ G.repairUpgrade = function (key) {
   NB.save(); NB.render();
 };
 
-/* ============ СОБЫТИЯ — 31 шт ============ */
+/* ============ СОБЫТИЯ — 32 шт ============ */
 G.EVENTS = [
   { id:'coffee', title:'☕ Кофе', desc:'Сотрудники просят кофе.', weight:1.2,
     condition:()=>NB.state.game.employees.length>0,
@@ -238,7 +238,8 @@ G.EVENTS = [
               if (g.cash < 5000) { NB.notify('Денег нет', 'warn'); NB.render(); return; }
               g.cash -= 5000;
               emp.salary = Math.round(emp.salary * 1.2);
-              NB.notify(`${emp.name} доволен`, 'ok');
+              emp.level++;
+              NB.notify(`${emp.name} доволен. Уровень ${emp.level}`, 'ok');
             } else {
               g.employees = g.employees.filter(e => e.id !== emp.id);
               NB.notify(`${emp.name} уволился`, 'warn');
@@ -399,6 +400,23 @@ G.EVENTS = [
         return `−${lost} клиентов, −6 репутации`;
       }}
     ]
+  },
+  /* НОВОЕ: секретное событие при high trust Neon */
+  { id:'neon_secret', title:'🌟 Секрет Neon', desc:'Neon прислал зашифрованный файл. «Только для тебя».', weight:0.3,
+    condition:()=>NB.state.game.world.neon.trust > 60 && !NB.state.game.world.flags.neonSecretSeen,
+    opts:[
+      { label:'Открыть (1 AP)', action:()=>{
+        if (!NB.spendAp(1)) return 'Нет AP';
+        const g = NB.state.game;
+        g.world.flags.neonSecretSeen = true;
+        g.world.flags.quantumUnlocked = true;
+        g.unlockedTech.push('quantum');
+        g.cash += 50000;
+        NB.notify('🌟 Neon дал тебе квантовый ключ. +50 000 ₽', 'ok');
+        return 'Квантовые технологии доступны';
+      }},
+      { label:'Удалить', run:()=>'Удалено' }
+    ]
   }
 ];
 
@@ -455,7 +473,6 @@ G.resolveEvent = function (idx) {
   NB.save(); NB.checkGameState(); NB.render();
 };
 
-/* ============ УРОВНИ ============ */
 G.LEVELS = [
   { at:0,       label:'Новичок' },
   { at:50000,   label:'Стартап' },
@@ -499,44 +516,45 @@ G.updateMarketShare = function () {
   alive.forEach(c => { c.share = Math.round((c.share / sum) * other * 10) / 10; });
 };
 
-/* ============ ТУРЫ ============ */
+/* ============ ТУРЫ С ИНТЕРАКТИВНЫМИ ШАГАМИ ============ */
+/* Шаг: { view, selector, icon, title, text, interactive?: { selector, hint } } */
+/* Если interactive — ждём клика по элементу, кнопка "Далее" недоступна */
+
 G.TOUR = [
   { view:'dashboard', selector:'.daily-tasks-panel', icon:'📋', title:'Добро пожаловать', text:'Слева — меню (открывается по мере роста). Главное — задачи дня. Пока не выполнены — «Следующий день» заблокирован.' },
-  { view:'dashboard', selector:'.daily-tasks-list', icon:'✅', title:'Задачи дня', text:'Соберите выручку, примите клиентов, разберите заявки. Только тогда можно завершить день.' },
-  { view:'dashboard', selector:'.pending-clients-section', icon:'🆕', title:'Клиенты', text:'Принимайте клиентов — деньги. Рискованные (взломщики, спамеры, неизвестные) — риск. Неизвестные раскрываются через 3 дня.' },
-  { view:'dashboard', selector:'.collect-revenue-btn', icon:'💰', title:'Соберите деньги', text:'Клик «Собрать» — деньги в кассу. Иначе 20% сгорит.' },
+  { view:'dashboard', selector:'.daily-tasks-list', icon:'✅', title:'Задачи дня', text:'Три задачи: выручка, клиенты, заявки. Выполните все — только тогда следующий день.' },
+  { view:'dashboard', selector:'.pending-clients-section', icon:'🆕', title:'Клиенты',
+    text:'Принимайте клиентов — деньги. Кликните «✓» у любого клиента, чтобы принять его.',
+    interactive: { selector:'[data-action="accept-client"]', hint:'Кликните ✓ у любого клиента' }
+  },
+  { view:'dashboard', selector:'.collect-revenue-btn', icon:'💰', title:'Соберите деньги',
+    text:'Кликните «Собрать» — деньги уйдут в кассу. Иначе 20% сгорит.',
+    interactive: { selector:'.collect-revenue-btn', hint:'Кликните «Собрать»' }
+  },
   { view:'dashboard', selector:'.economy-panel', icon:'💵', title:'Экономика', text:'Net/день = доход − расход. Минус — плохо. Проверьте пропускную способность и маркетинг.' },
-  { view:'invoices', selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим (зарплаты, семья, налоги, коммуналка).' },
+  { view:'invoices', selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим (зарплаты, семья, налоги).' },
   { view:'tariffs', selector:'.tariff-grid', icon:'◆', title:'Тарифы', text:'Скорость ограничена пропускной способностью. Цена — от скорости. Покупайте апгрейды, чтобы поднимать планку.' },
-  { view:'upgrades', selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Открывается постепенно. Сначала — пропускная способность, маркетинг, автосбор. Остальное — позже.' },
-  { view:'dashboard', selector:'.advance-day-btn', icon:'📅', title:'Готовы!', text:'Каждый день: собрать → принять клиентов → заявки → следующий день. Удачи!' }
+  { view:'upgrades', selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Открывается постепенно. Сначала — пропускная способность, маркетинг, автосбор.' },
+  { view:'dashboard', selector:'.advance-day-btn', icon:'📅', title:'Готовы!',
+    text:'Соберите выручку, примите клиентов, разберите заявки. Затем — «Следующий день».',
+    interactive: { selector:'.advance-day-btn', hint:'Завершите день' }
+  }
 ];
 
 G.TOURS_BY_VIEW = {
   dashboard: G.TOUR,
-  chat: [
-    { selector:'.chat-wrap', icon:'💬', title:'Поддержка', text:'Клиенты пишут. Отвечайте. Некоторые ответы требуют AP, сотрудников или мини-игру.' }
-  ],
-  employees: [
-    { selector:'.employees-grid', icon:'👥', title:'Сотрудники', text:'Помогают в чате и событиях. У них свой AP. Прокачиваются с успехами.' }
-  ],
-  competitors: [
-    { selector:'.comp-list', icon:'🏢', title:'Конкуренты', text:'Переговоры (1 AP) или саботаж (2 AP + 10 000 ₽). Отношения влияют на агрессию.' }
-  ],
-  upgrades: [
-    { selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Открывается постепенно. Пропускная способность — ключевая: без неё нельзя ставить высокие тарифы.' }
-  ],
-  invoices: [
-    { selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим. Просрочки бьют по репутации.' }
-  ],
-  tariffs: [
-    { selector:'.tariff-grid', icon:'◆', title:'Тарифы', text:'Диапазон скорости растёт от пропускной способности. Цена — от скорости. Нельзя ставить максимум без апгрейдов.' }
-  ]
+  chat: [{ selector:'.chat-wrap', icon:'💬', title:'Поддержка', text:'Клиенты пишут. Отвечайте. Некоторые ответы требуют AP, сотрудников или мини-игру.' }],
+  employees: [{ selector:'.employees-grid', icon:'👥', title:'Сотрудники', text:'Пассивно усиливают компанию: support → меньше оттока, tech → меньше поломок, security → меньше взломов, sales → больше клиентов, ops → +AP.' }],
+  competitors: [{ selector:'.comp-list', icon:'🏢', title:'Конкуренты', text:'Переговоры (1 AP) или саботаж (2 AP + 10 000 ₽). Отношения влияют на агрессию.' }],
+  upgrades: [{ selector:'.upgrades-grid', icon:'⚙', title:'Магазин', text:'Пропускная способность — ключевая: без неё нельзя ставить высокие тарифы.' }],
+  invoices: [{ selector:'.invoice-tabs', icon:'📄', title:'Счета', text:'Слева — клиенты платят нам. Справа — мы платим. Просрочки бьют по репутации.' }],
+  tariffs: [{ selector:'.tariff-grid', icon:'◆', title:'Тарифы', text:'Диапазон скорости растёт от пропускной способности. Цена — от скорости.' }]
 };
 
 function makeTour(steps, onFinish) {
   if (document.querySelector('.tour-overlay')) return;
   let idx = 0;
+  let awaitingAction = false;
   const overlay = document.createElement('div');
   overlay.className = 'tour-overlay';
   overlay.innerHTML = `<div class="tour-highlight" id="tour-hl"></div>
@@ -544,6 +562,7 @@ function makeTour(steps, onFinish) {
       <div class="tour-icon" id="tour-icon"></div>
       <div class="tour-title" id="tour-title"></div>
       <div class="tour-text" id="tour-text"></div>
+      <div class="tour-interactive-hint" id="tour-int" style="display:none"></div>
       <div class="tour-dots" id="tour-dots"></div>
       <div class="tour-actions">
         <button type="button" class="tour-skip" id="tour-skip">Пропустить</button>
@@ -556,8 +575,9 @@ function makeTour(steps, onFinish) {
   document.body.appendChild(overlay);
   const hl = overlay.querySelector('#tour-hl');
   const bubble = overlay.querySelector('#tour-bubble');
+  const nextBtn = overlay.querySelector('#tour-next');
 
-  const updateHighlight = () => {
+  const updatePositions = () => {
     const s = steps[idx];
     if (!s.selector) return;
     const target = document.querySelector(s.selector);
@@ -568,9 +588,66 @@ function makeTour(steps, onFinish) {
     hl.style.top = (r.top - 6) + 'px';
     hl.style.width = (r.width + 12) + 'px';
     hl.style.height = (r.height + 12) + 'px';
+    const mob = window.innerWidth <= 760;
+    if (mob) {
+      bubble.className = 'tour-bubble below';
+      bubble.style.left = '12px';
+      bubble.style.right = '12px';
+      bubble.style.width = 'auto';
+      bubble.style.top = (r.bottom + 18) + 'px';
+      bubble.style.transform = 'none';
+    } else {
+      bubble.className = 'tour-bubble left';
+      bubble.style.width = '320px';
+      bubble.style.transform = 'none';
+      bubble.style.left = Math.min(r.right + 20, window.innerWidth - 340) + 'px';
+      bubble.style.top = Math.max(12, r.top - 22) + 'px';
+    }
+  };
+
+  const cleanupInteractive = () => {
+    if (!awaitingAction) return;
+    awaitingAction = false;
+    nextBtn.disabled = false;
+    nextBtn.textContent = 'Далее';
+    nextBtn.style.opacity = '';
+    nextBtn.style.cursor = '';
+    document.getElementById('tour-int').style.display = 'none';
+    const s = steps[idx];
+    if (s && s.interactive) {
+      const el = document.querySelector(s.interactive.selector);
+      if (el && el._tourCleanup) {
+        el._tourCleanup.forEach(fn => fn());
+        delete el._tourCleanup;
+      }
+    }
+  };
+
+  const setupInteractive = () => {
+    const s = steps[idx];
+    if (!s.interactive) return;
+    const el = document.querySelector(s.interactive.selector);
+    if (!el) return;
+    awaitingAction = true;
+    nextBtn.disabled = true;
+    nextBtn.textContent = 'Ждём действия...';
+    nextBtn.style.opacity = '.6';
+    const hint = document.getElementById('tour-int');
+    hint.style.display = 'block';
+    hint.innerHTML = `👉 ${NB.esc(s.interactive.hint)}`;
+    const handler = (e) => {
+      setTimeout(() => {
+        cleanupInteractive();
+        idx++;
+        step();
+      }, 400);
+    };
+    el.addEventListener('click', handler);
+    el._tourCleanup = [(ev) => el.removeEventListener('click', handler)];
   };
 
   const step = () => {
+    cleanupInteractive();
     const s = steps[idx];
     if (s.view && NB.ui.view !== s.view) { NB.ui.view = s.view; NB.renderView(); setTimeout(step, 220); return; }
     NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
@@ -578,20 +655,7 @@ function makeTour(steps, onFinish) {
     const target = s.selector ? document.querySelector(s.selector) : null;
     if (target) {
       target.classList.add('tutorial-pulse');
-      updateHighlight();
-      const r = target.getBoundingClientRect();
-      const mob = window.innerWidth <= 760;
-      if (mob) {
-        bubble.className = 'tour-bubble below';
-        bubble.style.left = '12px'; bubble.style.right = '12px'; bubble.style.width = 'auto';
-        bubble.style.top = (r.bottom + 18) + 'px'; bubble.style.transform = 'none';
-      } else {
-        bubble.className = 'tour-bubble left';
-        bubble.style.width = '320px';
-        bubble.style.transform = 'none';
-        bubble.style.left = Math.min(r.right + 20, window.innerWidth - 340) + 'px';
-        bubble.style.top = Math.max(12, r.top - 22) + 'px';
-      }
+      updatePositions();
     } else {
       hl.style.display = 'none';
       bubble.className = 'tour-bubble left';
@@ -604,26 +668,32 @@ function makeTour(steps, onFinish) {
     overlay.querySelector('#tour-title').textContent = s.title;
     overlay.querySelector('#tour-text').textContent = s.text;
     overlay.querySelector('#tour-dots').innerHTML = steps.map((_, i) => `<i class="${i === idx ? 'active' : ''}"></i>`).join('');
-    overlay.querySelector('#tour-next').textContent = idx === steps.length - 1 ? 'Понятно!' : 'Далее';
+    nextBtn.textContent = idx === steps.length - 1 ? 'Понятно!' : 'Далее';
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '';
     overlay.querySelector('#tour-back').style.display = idx > 0 ? '' : 'none';
+
+    if (s.interactive) setTimeout(setupInteractive, 200);
   };
 
   const finish = () => {
-    window.removeEventListener('scroll', updateHighlight);
-    window.removeEventListener('resize', updateHighlight);
+    cleanupInteractive();
+    window.removeEventListener('scroll', updatePositions);
+    window.removeEventListener('resize', updatePositions);
     NB.$$('.tutorial-pulse').forEach(el => el.classList.remove('tutorial-pulse'));
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 300);
     if (onFinish) onFinish();
   };
 
-  window.addEventListener('scroll', updateHighlight, { passive: true });
-  window.addEventListener('resize', updateHighlight, { passive: true });
+  window.addEventListener('scroll', updatePositions, { passive: true });
+  window.addEventListener('resize', updatePositions, { passive: true });
 
-  overlay.querySelector('#tour-next').addEventListener('click', () => {
+  nextBtn.addEventListener('click', () => {
+    if (awaitingAction) return;
     if (idx === steps.length - 1) finish(); else { idx++; step(); }
   });
-  overlay.querySelector('#tour-back').addEventListener('click', () => { if (idx > 0) { idx--; step(); } });
+  overlay.querySelector('#tour-back').addEventListener('click', () => { if (idx > 0 && !awaitingAction) { idx--; step(); } });
   overlay.querySelector('#tour-skip').addEventListener('click', finish);
   overlay.style.pointerEvents = 'auto';
   requestAnimationFrame(step);

@@ -1,4 +1,4 @@
-/* isp_billing_story.js — сюжет */
+/* isp_billing_story.js — сюжет с финалом */
 (function (global) {
 'use strict';
 const NB = global.NB;
@@ -295,12 +295,25 @@ S.SCENES = [
 
   /* ============ RESOLUTION ============ */
   { id:'resolution_neon_returns', arc:'resolution', title:'Neon вернулся',
-    text:'Стук в дверь бункера. На пороге — Neon. Живой. Рядом с ним — тень. «Мы всё решили. Она больше не тронет вас. Я обещал».',
+    text:'Стук в дверь бункера. На пороге — Neon. Живой. Уставший. Рядом с ним — тень. Он говорит: «Мы всё решили. Она больше не тронет вас. Я обещал».',
     day:180, requires:g=>g.world.neon.state==='missing',
     choices:[
-      { label:'Поверить', run:g=>{ g.world.flags.worldSaved=true; return 'Neon улыбнулся. Тень исчезла.'; }},
-      { label:'Не верить', run:g=>'Neon не стал спорить. Он ушёл.' },
-      { label:'Спросить о Cynessa (1 AP)', ap:1, run:g=>{ g.world.flags.worldSaved=true; return '«Она не злая. Она просто следует программе. Я показал ей другой путь».'; }}
+      { label:'Поверить', run:g=>{
+        g.world.flags.worldSaved = true;
+        g.world.threat = Math.max(0, g.world.threat - 2);
+        return 'Neon улыбнулся. Тень исчезла. Атаки прекратились.';
+      }},
+      { label:'Не верить', run:g=>{
+        g.world.flags.distrustedNeon = true;
+        g.world.threat = Math.max(0, g.world.threat - 1);
+        return 'Neon не стал спорить. Он ушёл. Но атаки прекратились.';
+      }},
+      { label:'Спросить о Cynessa (1 AP)', ap:1, run:g=>{
+        g.world.flags.worldSaved = true;
+        g.world.flags.askedCynessa = true;
+        g.world.threat = Math.max(0, g.world.threat - 3);
+        return '«Она не злая. Она просто следовала программе. Я показал ей другой путь. Теперь она ушла».';
+      }}
     ]
   },
   { id:'resolution_corp_win', arc:'resolution', title:'Корпоративный триумф',
@@ -353,6 +366,17 @@ S.maybeVideoNews = function () {
 };
 
 S.pickNews = function () {
+  const g = NB.state.game;
+  /* Если мир спасён — только хорошие новости */
+  if (g.world.flags.worldSaved) {
+    return NB.pick([
+      'Тишина. Аномалии больше не фиксируются.',
+      'Люди возвращаются из бункеров.',
+      'Колонии восстанавливают связь с Землёй.',
+      'Neon и Cynessa исчезли. Мир медленно восстанавливается.',
+      'Начинается новая эпоха.'
+    ]);
+  }
   const arc = S.currentArc().id;
   const pool = {
     ordinary: [
@@ -482,6 +506,14 @@ S.resolveScene = function (sc, idx) {
 S.renderPanel = function () {
   const g = NB.state.game;
   const arc = S.currentArc();
+  if (g.world.flags.worldSaved) {
+    return `<div class="story-panel fade-in" style="border-color:rgba(34,197,94,.5);background:linear-gradient(135deg,var(--surface),rgba(34,197,94,.08))">
+      <div class="story-chapter" style="color:#4ade80">Развязка · Мир спасён</div>
+      <div class="story-title">🌍 Тишина</div>
+      <div class="story-text">Аномалии исчезли. Neon и Cynessa ушли. Люди возвращаются из бункеров. Колонии восстанавливают связь.</div>
+      ${g.world.threat > 0 ? `<div class="story-text" style="color:var(--muted);font-size:12px">Последние отголоски: threat ${g.world.threat} → 0</div>` : ''}
+    </div>`;
+  }
   if (g.world.bunker.ultimatumDay > 0 && g.daily.dayNumber < g.world.bunker.ultimatumDay && !g.world.bunker.built) {
     const left = g.world.bunker.ultimatumDay - g.daily.dayNumber;
     return `<div class="ultimatum-banner">

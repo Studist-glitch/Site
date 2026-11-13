@@ -98,21 +98,6 @@ function startAutoRefresh() {
   }, 15000);
 }
 
-/* === FAMILY EVENING ACTION === */
-if (!NB.actions.familyEvening) {
-  NB.actions.familyEvening = function () {
-    const g = NB.state.game;
-    if (!g.family.wife) return NB.toast('Нет семьи', 'err');
-    if (!NB.spendAp(1)) return NB.toast('Не хватает AP', 'err');
-    g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 20);
-    g.family.crisisShown = false;
-    NB.addLog('Проведён вечер с семьёй (+20)', 'success');
-    NB.notify('Семья довольна', 'ok');
-    NB.save();
-    NB.renderView();
-  };
-}
-
 /* === CLICK HANDLER === */
 document.addEventListener('click', e => {
   /* 1. Action */
@@ -120,7 +105,7 @@ document.addEventListener('click', e => {
   if (t) {
     const name = t.dataset.action;
     const map = NB.actions.map || {};
-    const fn = name === 'family-evening' ? NB.actions.familyEvening : map[name];
+    const fn = map[name];
     if (!fn) {
       console.warn('[NetBill] Unknown action:', name);
       NB.toast(`Неизвестное действие: ${name}`, 'err');
@@ -272,6 +257,6 @@ NB.render();
 startAutoRefresh();
 if (NB.story && NB.story.applyTheme) NB.story.applyTheme();
 
-console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v18 ready');
+console.log('%c◉ NetBill', 'color:#ff6b00;font-weight:800;font-size:16px', '— v20 ready');
 
 })(window);
