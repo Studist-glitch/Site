@@ -161,10 +161,11 @@ E.hire = function (empId) {
   if (g.cash < cost) return NB.toast('Недостаточно средств', 'err');
   /* Лимит воинов — по апгрейду soldier */
   if (pool.spec === 'warrior') {
-    const cap = (g.upgrades.soldier || 0) * 10;
+    if (!g.upgrades.barracks) return NB.toast('Нужны казармы', 'err');
+    const baseCap = 5;                                // казармы дают 5 мест
+    const cap = baseCap + (g.upgrades.soldier || 0) * 10;
     const current = g.employees.filter(e => e.spec === 'warrior').length;
     if (current >= cap) return NB.toast(`Лимит воинов: ${cap}. Улучшите «Добровольцев».`, 'err');
-    if (!g.upgrades.barracks) return NB.toast('Нужны казармы', 'err');
   }
   g.cash -= cost;
   g.employeesPool = g.employeesPool.filter(e => e.id !== empId);

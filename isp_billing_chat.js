@@ -908,7 +908,7 @@ C.renderChoice = function (r, idx, t) {
    ============================================================ */
 C.handleReply = function (ticketId, replyIdx) {
   const t = NB.state.tickets.find(x => x.id === ticketId);
-  if (!t) return;
+  if (!t || t.status !== 'open') return;
   const tpl = C.TEMPLATES[t.templateId];
   if (!tpl || !tpl.stages[t.stage]) return;
   const stage = tpl.stages[t.stage];

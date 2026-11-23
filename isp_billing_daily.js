@@ -144,10 +144,21 @@ D.processAnomaly = function () {
 D.processFamily = function () {
   const g = NB.state.game; if (!g.family.wife) return;
   g.family.wifeHappiness = Math.max(0, g.family.wifeHappiness - 1);
-  if (g.family.wifeHappiness === 0 && !g.family.crisisShown) { g.family.crisisShown = true; NB.notify(`💔 ${g.family.wife.name} на грани`, 'warn'); }
-  if (g.family.wifeHappiness === 0 && Math.random() < 0.25) {
-    NB.notify(`💔 ${g.family.wife.name} ушла`, 'warn'); NB.addLog(`${g.family.wife.name} ушла`, 'warn');
-    g.family.wife = null; g.reputation = Math.max(0, g.reputation - 15);
+  if (g.family.wifeHappiness === 0 && !g.family.crisisShown) {
+    g.family.crisisShown = true;
+    NB.notify(`💔 ${g.family.wife.name} на грани`, 'warn');
+    /* сцена family_crisis покажется через story.tick, шанс ухода — только через 3 дня нуля */
+    g.family.crisisDay = g.daily.dayNumber;
+    return;
+  }
+  /* Уход только если кризис уже показан и прошло 3 дня без улучшения */
+  if (g.family.wifeHappiness === 0 && g.family.crisisShown && g.family.crisisDay) {
+    if (g.daily.dayNumber - g.family.crisisDay >= 3 && Math.random() < 0.25) {
+      NB.notify(`💔 ${g.family.wife.name} ушла`, 'warn');
+      NB.addLog(`${g.family.wife.name} ушла`, 'warn');
+      g.family.wife = null;
+      g.reputation = Math.max(0, g.reputation - 15);
+    }
   }
 };
 

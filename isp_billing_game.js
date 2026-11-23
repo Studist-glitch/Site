@@ -293,7 +293,7 @@ G.EVENTS = [
         NB.employees.levelUp(warrior.id);
         return `${warrior.name} справился. Получил опыт.`;
       }},
-      { label:'Отключить оборудование', run:()=>{ const broken=Object.keys(NB.state.game.upgrades).filter(k=>NB.state.game.upgrades[k]>0&&!NB.state.game.upgradesBroken[k]); if(broken.length){const k=NB.pick(broken); NB.state.game.upgradesBroken[k]={brokenAt:NB.state.game.daily.dayNumber,reason:'Пожар'}; return `Сломано: ${NB.GAME?.UPGRADES?.[k]?.name||k}`;} return 'Обошлось'; }}
+      { label:'Отключить оборудование', run:()=>{ const broken=Object.keys(NB.state.game.upgrades).filter(k=>NB.state.game.upgrades[k]>0&&!NB.state.game.upgradesBroken[k]); if(broken.length){const k=NB.pick(broken); NB.state.game.upgradesBroken[k]={brokenAt:NB.state.game.daily.dayNumber,reason:'Пожар'}; return `Сломано: ${NB.game.UPGRADES[k]?.name||k}`;} return 'Обошлось'; }}
     ]
   },
   { id:'market_pitch', title:'📊 Крупный тендер', desc:'Город объявил конкурс на подключение.', weight:0.8,
@@ -632,13 +632,32 @@ G.showEventModal = function () {
 G.resolveEvent = function (idx) {
   const evt = NB.state.game.activeEvent; if (!evt) return;
   const opt = evt.opts[idx]; if (!opt) return;
+  const g = NB.state.game;
+
+  /* Проверки ресурсов */
+  if (opt.ap && g.ap.current < opt.ap) return NB.toast('Не хватает AP', 'err');
+  if (opt.cost && g.cash < opt.cost) return NB.toast('Недостаточно денег', 'err');
+  let employee = null;
+  if (opt.employeeSkill) {
+    employee = NB.employees.bestFor(opt.employeeSkill);
+    if (!employee) return NB.toast('Нужен сотрудник с навыком', 'err');
+    if (employee.ap.current < 1) return NB.toast('У сотрудника нет AP', 'err');
+  }
+
+  /* Списание */
+  if (opt.ap) NB.spendAp(opt.ap);
+  if (opt.cost) g.cash -= opt.cost;
+  if (employee) NB.employees.spendAp(employee.id, 1);
+
   let result = '';
-  if (opt.action) { result = opt.action(); NB.state.game.activeEvent = null; NB.state.game.stats.eventsResolved++; NB.closeModal(); NB.notify(`${evt.title}: ${result||'выполнено'}`, 'info'); NB.save(); if (NB.render) NB.render(); return; }
-  if (opt.run) result = opt.run();
-  NB.state.game.activeEvent = null;
-  NB.state.game.history.push({ id:evt.id, title:evt.title, choice:opt.label, result, at:new Date().toISOString() });
-  NB.state.game.stats.eventsResolved++;
-  NB.closeModal(); NB.notify(`${evt.title}: ${result||'выполнено'}`, 'info');
+  if (opt.action) result = opt.action();
+  else if (opt.run) result = opt.run();
+
+  g.activeEvent = null;
+  g.stats.eventsResolved++;
+  g.history.push({ id:evt.id, title:evt.title, choice:opt.label, result, at:new Date().toISOString() });
+  NB.closeModal();
+  NB.notify(`${evt.title}: ${result||'выполнено'}`, 'info');
   NB.save(); NB.checkGameState(); NB.render();
 };
 

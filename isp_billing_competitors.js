@@ -687,6 +687,8 @@ C.showEvent = function (evt) {
   setTimeout(() => {
     NB.$$('[data-competitor-opt]').forEach(btn => btn.addEventListener('click', () => {
       const o = tpl.opts[Number(btn.dataset.competitorOpt)];
+      if (o.ap && g.ap.current < o.ap) return NB.toast('Не хватает AP', 'err');
+      if (o.ap) NB.spendAp(o.ap);
       let result = '';
       if (o.action) result = o.action();
       else if (o.run) result = o.run();

@@ -519,6 +519,7 @@ NB.showEndingScreen = function (type) {
   requestAnimationFrame(() => wrap.classList.add('show'));
   wrap.querySelector('#ending-close').addEventListener('click', () => wrap.remove());
   if (!g.stats.endings.includes(type)) g.stats.endings.push(type);
+  g.world.endingTriggered = true;
   NB.save();
 };
 

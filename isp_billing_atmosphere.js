@@ -136,20 +136,6 @@ A.scan = function () {
 
 A.update = A.scan;
 
-function wrapRender(obj, key) {
-  const orig = obj[key];
-  if (!orig || orig.__atmWrapped) return;
-  const wrapped = function () {
-    const r = orig.apply(this, arguments);
-    setTimeout(() => A.scan(), 60);
-    return r;
-  };
-  wrapped.__atmWrapped = true;
-  obj[key] = wrapped;
-}
-wrapRender(NB, 'render');
-wrapRender(NB, 'renderView');
-
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', () => setTimeout(() => A.scan(), 500));
 } else {

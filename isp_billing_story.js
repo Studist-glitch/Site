@@ -1556,6 +1556,8 @@ ${hasNeon(NB.state.game) ? 'Neon не выходит на связь уже ме
    ============================================================ */
 S.tick = function () {
   const g = NB.state.game;
+  if (g.stats.won || g.stats.lost) return;
+  if (g.world.endingTriggered) return;
   const day = g.daily.dayNumber;
   const seen = NB.state.story.seenEvents;
   S.SCENES.forEach(sc => {
@@ -1571,11 +1573,13 @@ S.tick = function () {
 
 S.showNextInQueue = function () {
   const g = NB.state.game;
-  const id = g.world.storyQueue[0];
-  if (!id) return;
-  const sc = S.SCENES.find(s => s.id === id);
-  if (!sc) { g.world.storyQueue.shift(); return; }
-  S.showScene(sc);
+  while (g.world.storyQueue.length) {
+    const id = g.world.storyQueue[0];
+    const sc = S.SCENES.find(s => s.id === id);
+    if (!sc) { g.world.storyQueue.shift(); continue; }
+    S.showScene(sc);
+    return;
+  }
 };
 
 S.showScene = function (sc) {
