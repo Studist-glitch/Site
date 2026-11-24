@@ -142,6 +142,7 @@ function defaultGame() {
     world: {
       arc: 'ordinary', storyQueue: [], flags: {}, news: [], threat: 0,
       newsCooldown: {},
+      cynessaActive: false,
       videoShown: {},
       neon: { met:false, trust:0, helped:0, state:'active', lastContactDay:0 },
       drones: { enabled:false, count:0, replaced:0, droneClients:0 },
@@ -234,6 +235,7 @@ function migrate(s) {
   if (!g.world.videoShown) g.world.videoShown = {};
   if (!g.world.storyLines) g.world.storyLines = { neon:0, cynessa:0, corporate:0, family:0 };
   if (typeof g.world.era === 'undefined') g.world.era = 'rivals';
+  if (typeof g.world.cynessaActive === 'undefined') g.world.cynessaActive = false;
   if (!g.world.threats) g.world.threats = [];
   if (typeof g.world.threatSeq === 'undefined') g.world.threatSeq = 0;
   if (!g.world.competitorQueue) g.world.competitorQueue = [];

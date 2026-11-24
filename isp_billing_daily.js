@@ -127,6 +127,7 @@ D.processPricing = function () {
 
 D.processAnomaly = function () {
   const g = NB.state.game;
+  if (!g.world.cynessaActive) return;
   if (g.world.flags.worldSaved || g.world.threat < 1) return;
   const threat = g.world.threat;
   if (Math.random() < 0.15 + threat * 0.03) {
@@ -164,6 +165,7 @@ D.processFamily = function () {
 
 D.processSolverAttacks = function () {
   const g = NB.state.game;
+  if (!g.world.cynessaActive) return;
   if (g.world.flags.worldSaved || g.world.threat < 3) return;
   const eff = NB.game.getUpgradeEffects();
   const chance = Math.max(0.05, Math.min(0.6, g.world.threat * 0.06 - eff.solverAttackReduction));
@@ -234,6 +236,14 @@ D.advanceDay = function () {
   g.daily.dayNumber++; st.simDate = NB.addDays(st.simDate, 1); g.stats.daysPlayed++;
   g.daily.collectedToday = 0; g.daily.log = [{ text: `День ${g.daily.dayNumber}`, type: 'info' }];
 
+  /* Синесса активируется после галла-вечера (день 50) */
+  if (!g.world.cynessaActive && g.daily.dayNumber >= 50) {
+    g.world.cynessaActive = true;
+    g.world.threat = Math.max(g.world.threat, 4);
+    NB.addLog('🌑 Что-то изменилось в сети', 'warn');
+    NB.notify('🌑 В сети появилось что-то новое', 'warn');
+  }
+
   NB.resetAp(); NB.checkUnlocks(); D.processEmployeePassives();
 
   setTimeout(() => {
@@ -264,11 +274,11 @@ D.advanceDay = function () {
   else if (g.world.threat > 0) { g.world.threat = Math.max(0, g.world.threat - 1); if (g.world.threat === 0) { NB.notify('🌍 Тишина. Аномалии исчезли.', 'ok'); NB.addLog('Аномалии прекратились', 'success'); } }
 
   /* Новые клиенты */
-  const base = 2 + eff.newClientBonus + bon.sales * 0.5;
+  const base = 2 + bon.sales * 0.5;
   const activeNow = st.clients.filter(c => c.status === 'active');
   const avgPrice = activeNow.reduce((s, c) => s + NB.price(c.tariffId), 0) / Math.max(1, activeNow.length);
   const priceFactor = avgPrice < 400 ? 1.5 : avgPrice < 600 ? 1 : avgPrice < 900 ? 0.6 : 0.3;
-  const cnt = Math.max(1, Math.round((base + NB.randInt(0, 2)) * priceFactor));
+  const cnt = Math.max(1, Math.round((base + NB.randInt(0, 2)) * priceFactor) + eff.newClientBonus);
   for (let i = 0; i < cnt; i++) {
     const t = NB.pick(st.tariffs);
     const roll = Math.random();
@@ -285,6 +295,27 @@ D.advanceDay = function () {
     g.pendingClients.push({ id: g.pendingClientSeq++, name, address, phone, tariffId: t.id, risk, revealed });
   }
   NB.addLog(`Новые клиенты: ${cnt}`, 'info');
+
+  /* Neon-партнёрство: +1 клиент/день за рекламу */
+  if (g.world.neon && g.world.neon.deal === 'accepted') {
+    const adCost = g.world.neon.dailyCost || 100;
+    if (g.cash >= adCost) {
+      g.cash -= adCost;
+      const t = NB.pick(st.tariffs);
+      st.clients.push({
+        id: NB.state.seq.client++,
+        name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
+        tariffId: t.id, balance: 0, status: 'active',
+        createdAt: new Date().toISOString(),
+        password: NB.DEFAULT_PASS, isDrone: false, risk: 'good', revealed: true,
+        referredBy: 'Neon'
+      });
+      NB.addLog(`Neon привёл клиента (−${NB.money(adCost)} реклама)`, 'info');
+    } else {
+      g.world.neon.deal = 'paused';
+      NB.notify('Neon: реклама приостановлена (нет денег)', 'warn');
+    }
+  }
 
   /* Заявки */
   const active = st.clients.filter(c => c.status === 'active');

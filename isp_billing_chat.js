@@ -415,6 +415,7 @@ C.TEMPLATES = {
 
   ransomware: {
     subject: 'Угроза данных',
+    condition: g => g.world.cynessaActive,
     intro: [
       { from: 'client', text: 'Здравствуйте! Мой компьютер заблокирован. Требуют выкуп.' },
       { from: 'client', text: 'На экране — жёлтый символ. Три стрелки.' }
@@ -515,7 +516,7 @@ C.TEMPLATES = {
   /* ---------- С УСЛОВИЯМИ ---------- */
   mysterious_caller: {
     subject: 'Звонок в 3:33',
-    condition: g => g.world.threat >= 3,
+    condition: g => g.world.cynessaActive && g.world.threat >= 3,
     intro: [
       { from: 'client', text: 'Я получил(а) странный звонок. Голос сказал: «Передай ему, что я вижу».' },
       { from: 'client', text: 'Это было в 3:33. Кто это может быть?' }
@@ -536,7 +537,7 @@ C.TEMPLATES = {
 
   survivor_after_gala: {
     subject: 'Я был там',
-    condition: g => g.world.flags.galaSurvived,
+    condition: g => g.world.cynessaActive && g.world.flags.galaSurvived,
     intro: [
       { from: 'client', text: 'Здравствуйте. Я был(а) на гала-вечере.' },
       { from: 'client', text: 'Видел(а) её. Ту, что убивает. Она смеялась.' }
@@ -629,7 +630,7 @@ C.TEMPLATES = {
 
   hacker_gift: {
     subject: 'Странная посылка',
-    condition: g => g.world.threat >= 2,
+    condition: g => g.world.cynessaActive && g.world.threat >= 2,
     intro: [
       { from: 'client', text: 'Мне пришла посылка. Внутри — флешка.' },
       { from: 'client', text: 'На ней надпись: «От друга».' }
@@ -659,6 +660,7 @@ C.TEMPLATES = {
   /* ---------- РЕДКИЕ ---------- */
   ghost_client: {
     subject: 'Я умираю',
+    condition: g => g.world.cynessaActive,
     intro: [
       { from: 'client', text: 'Здравствуйте. Я старый клиент.' },
       { from: 'client', text: 'Я умираю. Хочу попрощаться.' }
@@ -726,7 +728,7 @@ C.TEMPLATES = {
 
   apocalypse_scavenger: {
     subject: 'Обмен?',
-    condition: g => g.world.threat >= 6,
+    condition: g => g.world.cynessaActive && g.world.threat >= 6,
     intro: [{ from: 'client', text: 'У меня есть припасы. Хочу обменять на интернет.' }],
     stages: {
       initial: {
