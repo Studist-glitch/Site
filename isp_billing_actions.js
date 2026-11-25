@@ -58,38 +58,9 @@ A.openClient = function (id) {
     </div>
     ${myTickets.length ? `<div class="detail-section"><h4>Заявки</h4>${myTickets.map(tk => `<div class="detail-row"><span>${NB.esc(tk.subject)}</span><span class="pill ${tk.status === 'open' ? 'wait' : 'ok'}">${tk.status === 'open' ? 'Открыта' : 'Решена'}</span></div>`).join('')}</div>` : ''}
     <div class="detail-actions">
-      <button class="btn ghost small" data-action="edit-client" data-id="${c.id}">Изменить</button>
-      <button class="btn ghost small" data-action="toggle" data-id="${c.id}">${c.status === 'active' ? 'Блок' : 'Разблок'}</button>
       <button class="btn ghost small" data-action="del-client" data-id="${c.id}" style="color:var(--danger)">Удалить</button>
     </div>`;
   NB.openModal({ title: c.name, html, noSubmit: true, wide: true });
-};
-
-A.editClient = function (id) {
-  const c = NB.client(Number(id));
-  if (!c) return;
-  NB.openModal({
-    title: 'Редактировать',
-    html: NB.field('ФИО', 'name', 'text', c.name, 'required') +
-      NB.field('Адрес', 'address', 'text', c.address) +
-      NB.field('Телефон', 'phone', 'text', c.phone, 'required') +
-      NB.selectField('Тариф', 'tariffId', NB.state.tariffs.map(t => ({ v: t.id, l: `${t.name} · ${t.price} ₽` }))),
-    onSubmit(fd) {
-      c.name = String(fd.get('name') || '').trim() || c.name;
-      c.address = String(fd.get('address') || '').trim() || '—';
-      c.phone = String(fd.get('phone') || '').trim() || c.phone;
-      c.tariffId = Number(fd.get('tariffId'));
-      NB.save(); NB.closeModal(); NB.render();
-    }
-  });
-  setTimeout(() => { const s = document.querySelector('select[name=tariffId]'); if (s) s.value = c.tariffId; }, 50);
-};
-
-A.toggleClient = function (id) {
-  const c = NB.client(Number(id));
-  if (!c) return;
-  c.status = c.status === 'active' ? 'blocked' : 'active';
-  NB.save(); NB.closeModal(); NB.render();
 };
 
 A.delClient = function (id) {
@@ -426,8 +397,6 @@ A.map = {
   'accept-client':            d => A.acceptClient(d.id),
   'reject-client':            d => A.rejectClient(d.id),
   'open-client':              d => A.openClient(d.id),
-  'edit-client':              d => A.editClient(d.id),
-  'toggle':                   d => A.toggleClient(d.id),
   'del-client':               d => A.delClient(d.id),
   'add-tariff':               A.addTariff,
   'edit-tariff':              d => A.editTariff(d.id),

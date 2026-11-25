@@ -220,6 +220,13 @@ window.addEventListener('resize', () => {
 
 window.addEventListener('beforeunload', () => { try { NB.save(); } catch (err) {} });
 
+/* Начальный пул сотрудников, если его нет */
+if (!NB.state.game.employeesPool) NB.state.game.employeesPool = [];
+if (NB.state.game.employeesPool.length === 0 && NB.employees && NB.employees.generatePool) {
+  NB.state.game.employeesPool = NB.employees.generatePool(3);
+  NB.save();
+}
+
 NB.checkUnlocks();
 NB.render();
 startAutoRefresh();

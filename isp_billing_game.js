@@ -581,14 +581,14 @@ G.EVENTS = [
     ]
   },
   { id:'anomaly_signal', title:'📡 Странный сигнал', desc:'В сети появился сигнал необычной формы.', weight:1.0,
-    condition:()=>NB.state.game.daily.dayNumber>=15 && !NB.state.game.world.flags.anomalyEncountered,
+    condition:()=>NB.state.game.world.cynessaActive && !NB.state.game.world.flags.anomalyEncountered,
     opts:[
       { label:'Исследовать (1 AP)', ap:1, action:()=>{ NB.state.game.world.flags.anomalyEncountered=true; NB.state.game.world.threat=Math.max(1,NB.state.game.world.threat); return 'Понадобится сканер'; }},
       { label:'Игнорировать', run:()=>{ NB.state.game.world.flags.anomalyEncountered=true; NB.state.game.world.threat=Math.min(10,NB.state.game.world.threat+1); return 'Сигнал усиливается'; }}
     ]
   },
   { id:'solver_attack', title:'⚠ Атака', desc:'Жёлтая вспышка. Сеть под ударом.', weight:1.8,
-    condition:()=>NB.state.game.world.threat>=3,
+    condition:()=>NB.state.game.world.cynessaActive && NB.state.game.world.threat>=3,
     opts:[
       { label:'Спрятаться (1 AP)', ap:1, action:()=>{ NB.game.startActionScene({ title:'Спрятаться', desc:'Шаги.', timeLimit:6,
         options:[

@@ -234,7 +234,7 @@ S.SCENES = [
 В логах — обращение с несуществующего адреса. В отражении монитора — детский силуэт. Он улыбается.
 
 «Это не баг», — шепчет внутренний голос.`,
-  day:5,
+  day:5, requires:g=>g.world.cynessaActive,
   choices:[
     { label:'Проверить логи (1 AP)', ap:1, run:g=>{
       g.world.threat = 1; solverFlash();
@@ -250,7 +250,7 @@ S.SCENES = [
 На экране — жёлтая надпись: «Я ИСПРАВИЛА ЕГО. ОН БЫЛ СЛОМАН».
 
 Камеры не зафиксировали никого. Только жёлтую вспышку в 03:33.`,
-  day:8, requires:g=>g.world.threat>=1,
+  day:8, requires:g=>g.world.cynessaActive && g.world.threat>=1,
   choices:[
     { label:'Замять (5000₽)', cost:5000, run:g=>{
       g.reputation = Math.max(0, g.reputation - 5); corpseMarker();
@@ -273,7 +273,7 @@ S.SCENES = [
 Адрес пустой. На записи — только шёпот: «Я вижу тебя. Ты мне нравишься».
 
 Вы чувствуете, как холодок пробегает по спине.`,
-  day:11, requires:g=>g.world.threat>=1,
+  day:11, requires:g=>g.world.cynessaActive && g.world.threat>=1,
   choices:[
     { label:'Проверить ночью (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
@@ -288,7 +288,7 @@ S.SCENES = [
   text:`В логах появляются ошибки, которых не должно быть. Пакеты приходят из ниоткуда и исчезают.
 
 На одном из серверов находят жёлтую надпись: «СКОРО».`,
-  day:13, requires:g=>g.world.threat>=1,
+  day:13, requires:g=>g.world.cynessaActive && g.world.threat>=1,
   choices:[
     { label:'Изолировать сервер (2000₽)', cost:2000, run:g=>{
       g.world.threat = Math.max(0, g.world.threat - 1);
@@ -321,24 +321,38 @@ S.SCENES = [
    ARK 3: NEON SHADOW — знакомство
    ============================================================ */
 { id:'neon_contact', arc:'neon_shadow', title:'Neon Shadow',
-  text:`Стук в дверь. На пороге — уставший человек лет тридцати в худи. Глаза красные, руки дрожат.
+  text:`Стук в дверь. На пороге — уставший парень лет двадцати восьми в худи. Под мышкой — ноутбук, на рукаве — пиксельный кот.
 
-«Я — Neon Shadow. Разработчик Starve Neon. Я изучаю эти жёлтые вспышки. Они появляются в сети всё чаще. Я не знаю, что это. Но я хочу выяснить.
+«Привет. Я Neon Shadow. Инди-разработчик. У меня есть игра — Starve Neon. Пиксельный хоррор-выживач. Сейчас в раннем доступе, но у меня уже 40 тысяч игроков и стабильный поток.
 
-Ты видел их?»`,
-  day:15,
+У меня к тебе бизнес-предложение. Я встрою в игру промокод на твои тарифы — например, "+20% скорости на первый месяц". Игроки получают бонус, ты получаешь новых клиентов. 
+
+Схема такая: я упоминаю тебя в патче, ты платишь мне за рекламу. 100 рублей в день. Взамен — гарантированный +1 клиент в день. Без учёта твоих прокачек, без рандома. Чистый поток.
+
+Что скажешь?»`,
+  day:22,
   choices:[
-    { label:'Впустить', run:g=>{
-      g.world.neon.met = true; g.world.neon.trust = 10;
-      return 'Он говорил о «сигнале», «канале», «жёлтых вспышках». Он не знал, что за ними стоит.';
+    { label:'Согласиться (100 ₽/день)', run:g=>{
+      g.world.neon.met = true;
+      g.world.neon.trust = 10;
+      g.world.neon.deal = 'accepted';
+      g.world.neon.dailyCost = 100;
+      NB.addLog('Neon Shadow: партнёрство началось (+1 клиент/день)', 'success');
+      return 'Партнёрство началось. Neon прислал первое упоминание в патче 0.4.7.';
+    }},
+    { label:'Поторговаться (1 AP → 50 ₽/день)', ap:1, run:g=>{
+      if (Math.random() < 0.5) {
+        g.world.neon.met = true;
+        g.world.neon.trust = 15;
+        g.world.neon.deal = 'accepted';
+        g.world.neon.dailyCost = 50;
+        return 'Он поморщился: «Ок, 50. Но если ты мне не заплатишь хоть раз — сделка кончится». Принято.';
+      }
+      return 'Он покачал головой: «За 50 я не смогу — серверы жрут трафик». Ушёл.';
     }},
     { label:'Отказать', run:g=>{
-      g.world.threat = Math.min(10, g.world.threat + 1);
-      return 'Он ушёл. Через час — DDoS. Совпадение?';
-    }},
-    { label:'«Сначала — что знаешь?»', run:g=>{
-      g.world.neon.met = true; g.world.neon.trust = 5;
-      return '«Я знаю только, что они появляются всё чаще. И что-то за ними стоит».';
+      g.world.neon.met = true;
+      return 'Он пожал плечами: «Как хочешь. Если передумаешь — ты знаешь, где меня искать». Ушёл.';
     }}
   ]
 },
@@ -467,7 +481,7 @@ S.SCENES = [
 «(Машет рукой) Ты следующий? Нет. Ты мне нравишься. Пока».
 
 Запись обрывается.`,
-  day:40, requires:g=>g.world.threat>=2,
+  day:40, requires:g=>g.world.cynessaActive && g.world.threat>=2,
   choices:[
     { label:'Сохранить запись (1 AP)', ap:1, run:g=>{
       g.world.flags.hasCameraFootage = true;
@@ -490,7 +504,7 @@ S.SCENES = [
 На спектрограмме — фиолетовая точка в центре. Но при увеличении она становится жёлтой. Она пульсирует. Как сердце.
 
 Вы чувствуете: за вами наблюдают.`,
-  day:42, requires:g=>g.world.threat>=3,
+  day:42, requires:g=>g.world.cynessaActive && g.world.threat>=3,
   choices:[
     { label:'Записать сигнал (1 AP)', ap:1, run:g=>{
       g.world.flags.signalRecorded = true;
@@ -517,7 +531,7 @@ S.SCENES = [
 «(Смешок) Ты думаешь, что можешь меня остановить? Это мило. Я видела, как ты смотришь на свою жену. На ребёнка. (Вздыхает) Я тоже хотела быть любимой. Но меня выбросили. Как мусор».
 
 Свет возвращается. На мониторе — жёлтая надпись: «Я БУДУ ИГРАТЬ».`,
-  day:45, requires:g=>g.world.threat>=3,
+  day:45, requires:g=>g.world.cynessaActive && g.world.threat>=3,
   choices:[
     { label:'Ответить ей (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
@@ -537,7 +551,7 @@ S.SCENES = [
   text:`Вы идёте по коридору. Свет мигает. В конце — детский силуэт.
 
 Он исчезает, как только вы делаете шаг. На полу — жёлтая надпись: «СКОРО».`,
-  day:46, requires:g=>g.world.threat>=4,
+  day:46, requires:g=>g.world.cynessaActive && g.world.threat>=4,
   choices:[
     { label:'Проверить (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 1);
@@ -552,7 +566,7 @@ S.SCENES = [
 «Кто-то был здесь. Я видела тень. Ребёнок плачет. Приезжай».
 
 Вы слышите на заднем плане детский плач и тихий смех.`,
-  day:47, requires:g=>wifePresent(g) && g.world.threat>=4,
+  day:47, requires:g=>g.world.cynessaActive && wifePresent(g) && g.world.threat>=4,
   choices:[
     { label:'Бросить всё и поехать (1 AP)', ap:1, run:g=>{
       g.family.wifeHappiness = Math.min(100, g.family.wifeHappiness + 10);
@@ -571,7 +585,7 @@ S.SCENES = [
 «(Спокойно) Меня зовут Синесса. Я — Абсолютный решатель. Скоро вы все поймёте».
 
 Жёлтые линии кода поползли по экрану, как паутина. Они складываются в символ — три острые стрелки, расходящиеся из центра.`,
-  day:48, requires:g=>g.world.threat>=3,
+  day:48, requires:g=>g.world.cynessaActive && g.world.threat>=3,
   choices:[
     { label:'Записать в файл (1 AP)', ap:1, run:g=>{
       g.world.threatNamed = true;
@@ -589,7 +603,7 @@ S.SCENES = [
 На его столе — записка: «Она сказала, что я сломан. Я пошёл чиниться».
 
 Никто не смеётся.`,
-  day:49, requires:g=>g.world.threat>=4 && g.employees.length>0,
+  day:49, requires:g=>g.world.cynessaActive && g.world.threat>=4 && g.employees.length>0,
   choices:[
     { label:'Искать (1 AP)', ap:1, run:g=>{
       if (Math.random() < 0.3) {
@@ -657,7 +671,7 @@ ${hasNeon(NB.state.game) ? `Neon хватает вас за руку:
 «(Смеётся) Весёлая вечеринка».
 
 Затем экран гаснет.`,
-  day:55, requires:g=>g.world.threat>=4,
+  day:55, requires:g=>g.world.cynessaActive && g.world.threat>=4,
   choices:[
     { label:'Смотреть до конца (1 AP)', ap:1, run:g=>{
       g.world.threat = Math.min(10, g.world.threat + 2);

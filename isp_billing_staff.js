@@ -164,10 +164,42 @@ S.dashboard = function () {
 };
 
 S.clients = function () {
+  const g = NB.state.game;
   const q = NB.ui.query.trim().toLowerCase();
-  let list = NB.state.clients.filter(c => !q || c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q));
+  const match = c => !q ||
+    String(c.name || '').toLowerCase().includes(q) ||
+    String(c.address || '').toLowerCase().includes(q) ||
+    String(c.phone || '').toLowerCase().includes(q);
+
+  /* --- Pending-клиенты (секция сверху, как на дашборде) --- */
+  const pending = g.pendingClients || [];
+  const pendingHtml = pending.length ? `<div class="panel pending-clients-section" style="border-color:rgba(255,107,0,.5);margin-bottom:12px">
+    <div class="panel-head"><h2>🆕 Новые клиенты</h2><span class="muted small">${pending.length}</span></div>
+    <div class="pending-list">${pending.map(pc => {
+      const t = NB.tariff(pc.tariffId) || { name:'—', price:0, color:'#7a7a86' };
+      const dailyInc = Math.round(t.price / NB.INCOME_DIVISOR);
+      return `<div class="pending-client">
+        <div class="pc-info">
+          <b>${NB.esc(pc.name)}</b>
+          <small>${NB.esc(pc.phone || '—')} · ${NB.esc(pc.address || '—')}</small>
+          ${riskBadge(pc.risk)}
+        </div>
+        <div class="pc-tariff">
+          <span class="tag" style="--c:${t.color}">${NB.esc(t.name)}</span>
+          <small>${NB.money(t.price)}/мес · +${NB.money(dailyInc)}/день</small>
+        </div>
+        <div class="pc-actions">
+          <button class="btn primary small" data-action="accept-client" data-id="${pc.id}">✓</button>
+          <button class="btn ghost small" data-action="reject-client" data-id="${pc.id}">✕</button>
+        </div>
+      </div>`;
+    }).join('')}</div>
+  </div>` : '';
+
+  /* --- Активные клиенты --- */
+  let list = NB.state.clients.filter(match);
   const dir = NB.ui.clientSort.dir === 'asc' ? 1 : -1;
-  const riskOrder = {hacker:0,spammer:1,unknown:2,risky:3,normal:4,good:5};
+  const riskOrder = { hacker:0, spammer:1, unknown:2, risky:3, normal:4, good:5 };
   list.sort((a,b) => {
     const k = NB.ui.clientSort.key;
     if (k === 'name') return a.name.localeCompare(b.name) * dir;
@@ -178,22 +210,21 @@ S.clients = function () {
   const droneCount = NB.state.clients.filter(c => c.isDrone).length;
   const riskyCount = NB.state.clients.filter(c => ['hacker','spammer','risky','unknown'].includes(c.risk)).length;
   const rows = list.map(c => {
-    const t = NB.tariff(c.tariffId) || {name:'—',color:'#7a7a86'};
+    const t = NB.tariff(c.tariffId) || { name:'—', color:'#7a7a86' };
     return `<tr class="fade">
       <td><div class="who" data-action="open-client" data-id="${c.id}"><div class="ava" style="background:${t.color}26;color:${t.color}">${NB.initials(c.name)}</div><div><b>${NB.esc(c.name)}${c.isDrone?' 🤖':''}</b><small>${NB.esc(c.phone)}</small></div></div></td>
       <td class="muted">${NB.esc(c.address)}</td>
       <td><span class="tag" style="--c:${t.color}">${NB.esc(t.name)}</span></td>
       <td>${riskBadge(c.risk)}</td>
       <td class="num">${NB.money(NB.price(c.tariffId))}</td>
-      <td>${c.status === 'active' ? '<span class="pill ok">Активен</span>' : '<span class="pill off">Блок</span>'}</td>
       <td class="actions">
-        <button class="icon" data-action="edit-client" data-id="${c.id}">✎</button>
-        <button class="icon" data-action="toggle" data-id="${c.id}">${c.status==='active'?'❙':'▶'}</button>
-        <button class="icon danger" data-action="del-client" data-id="${c.id}">✕</button>
+        <button class="icon danger" data-action="del-client" data-id="${c.id}" title="Удалить">✕</button>
       </td>
     </tr>`;
   }).join('');
-  return `<div class="page-head"><div><h1>Клиенты</h1><p class="muted">${NB.state.clients.length} всего · 👤 ${NB.state.clients.length-droneCount}${droneCount?` · 🤖 ${droneCount}`:''}${riskyCount?` · ⚠ ${riskyCount} риск`:''}</p></div></div>
+
+  return `<div class="page-head"><div><h1>Клиенты</h1><p class="muted">${NB.state.clients.length} всего · 👤 ${NB.state.clients.length-droneCount}${droneCount?` · 🤖 ${droneCount}`:''}${riskyCount?` · ⚠ ${riskyCount} риск`:''}${pending.length?` · 🆕 ${pending.length} ждут`:''}</p></div></div>
+  ${pendingHtml}
   <div class="panel">
     <div class="toolbar"><input class="search" id="client-search" placeholder="Поиск…" value="${NB.esc(NB.ui.query)}"></div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -202,7 +233,7 @@ S.clients = function () {
       <button class="chip ${NB.ui.clientSort.key==='name'?'active':''}" data-sort="name">🔤 По имени</button>
     </div>
     ${list.length ? `<div class="table-wrap"><table class="table">
-      <thead><tr><th>Клиент</th><th>Адрес</th><th>Тариф</th><th>Риск</th><th class="num">Абонплата</th><th>Статус</th><th></th></tr></thead>
+      <thead><tr><th>Клиент</th><th>Адрес</th><th>Тариф</th><th>Риск</th><th class="num">Абонплата</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<p class="empty">Ничего не найдено</p>'}
   </div>`;
