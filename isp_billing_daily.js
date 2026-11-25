@@ -96,20 +96,32 @@ D.processOverload = function () {
   const g = NB.state.game, load = NB.traffic.getLoad();
   if (load.percent <= 100) return;
   const severity = Math.min(3, (load.percent - 100) / 100);
-  const active = NB.state.clients.filter(c => c.status === 'active' && !c.isDrone);
+    const active = NB.state.clients.filter(c => c.status === 'active' && !c.isDrone);
   if (active.length && Math.random() < 0.3 + severity * 0.4) {
     const count = Math.max(1, Math.round(severity * 2));
+    /* Клиенты с приоритетом уходят последними */
+    const prioritized = active.filter(c => c.features && c.features.priority);
+    const hasNonPriority = active.length > prioritized.length;
+
     for (let i = 0; i < count && active.length; i++) {
-      const v = NB.pick(active);
+      /* Если есть обычные клиенты — уходят только они.
+         Если ВСЕ с приоритетом — приоритет "не работает", уходят все. */
+      let pool = active;
+      if (hasNonPriority) {
+        pool = active.filter(c => !(c.features && c.features.priority));
+      }
+      if (pool.length === 0) pool = active;
+      const v = NB.pick(pool);
       NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
       NB.state.tickets = NB.state.tickets.filter(t => t.clientId !== v.id);
-      NB.addLog(`«${v.name}» ушёл (перегрузка)`, 'warn');
+      const reason = (v.features && v.features.priority) ? 'приоритет не помог' : 'перегрузка';
+      NB.addLog(`«${v.name}» ушёл (${reason})`, 'warn');
       active.splice(active.indexOf(v), 1);
     }
   }
   const repPenalty = Math.round(severity * 3);
   if (repPenalty > 0) { g.reputation = Math.max(0, g.reputation - repPenalty); NB.addLog(`Перегрузка: −${repPenalty} реп`, 'warn'); }
-  if (load.percent > 200 && Math.random() < 0.15) {
+  if (load.percent > 200 && Math.random() < 0.15 * (1 - NB.game.getUpgradeEffects().equipmentBreakResist)) {
     const broken = Object.keys(g.upgrades).filter(k => g.upgrades[k] > 0 && !g.upgradesBroken[k]);
     if (broken.length) {
       const victim = NB.pick(broken);
@@ -123,7 +135,15 @@ D.processOverload = function () {
 D.processPricing = function () {
   const g = NB.state.game, active = NB.state.clients.filter(c => c.status === 'active');
   if (!active.length) return;
-  const avg = active.reduce((s, c) => s + NB.price(c.tariffId), 0) / active.length;
+  const realPrice = c => {
+    let p = NB.price(c.tariffId);
+    if (c.features && NB.tariffs.FEATURES) {
+      if (c.features.priority)   p += NB.tariffs.FEATURES.priority.price;
+      if (c.features.ddosShield) p += NB.tariffs.FEATURES.ddosShield.price;
+    }
+    return p;
+  };
+  const avg = active.reduce((s, c) => s + realPrice(c), 0) / active.length;
   if (avg > 1250 && Math.random() < 0.2 * (avg / 1250)) {
     const v = NB.pick(active);
     NB.state.clients = NB.state.clients.filter(c => c.id !== v.id);
@@ -175,17 +195,22 @@ D.processSolverAttacks = function () {
   const eff = NB.game.getUpgradeEffects();
 
   /* Обычный DDOS — возможен всегда (от дня 10) */
-  if (g.daily.dayNumber >= 10 && Math.random() < 0.08) {
-    /* Урон зависит от ddosReduction */
+    if (g.daily.dayNumber >= 10 && Math.random() < 0.08) {
     const baseLoss = Math.min(Math.round(g.cash * 0.03), 3000);
-    const loss = Math.round(baseLoss * (1 - eff.ddosReduction));
-    if (loss > 0) { g.cash -= loss; NB.addLog(`🌐 DDoS-атака: −${NB.money(loss)}`, 'warn'); }
+    const loss = Math.round(baseLoss * (1 - eff.ddosReduction) * (1 - eff.insurancePayout));
+    if (loss > 0) { g.cash -= loss; NB.addLog(`🌐 DDoS-атака: −${NB.money(loss)}${eff.insurancePayout>0?' (страховка)':''}`, 'warn'); }
     const repLoss = eff.ddosShield ? 1 : 3;
     g.reputation = Math.max(0, g.reputation - repLoss);
     if (!eff.ddosShield) NB.addLog(`DDoS: −${repLoss} реп`, 'warn');
-    /* Анимация */
-    document.body.classList.add('solver-flash');
-    setTimeout(() => document.body.classList.remove('solver-flash'), 800);
+    /* Клиенты с личной ddosShield не теряют деньги при атаке */
+    if (loss > 0) {
+      const protectedClients = NB.state.clients.filter(c => c.status === 'active' && c.features && c.features.ddosShield);
+      if (protectedClients.length > 0) {
+        const refund = Math.round(loss * 0.3);
+        g.cash += refund;
+        NB.addLog(`🛡 Личная защита ${protectedClients.length} клиентов вернула ${NB.money(refund)}`, 'info');
+      }
+    }
   }
 
   /* Ночные атаки Синессы — только после галла */
@@ -207,9 +232,10 @@ D.processBunkerHunger = function () {
     g.world.bunker.food = (g.world.bunker.food || 0) + eff.bunkerFoodPerDay;
     NB.addLog(`🍖 Запасы еды +${eff.bunkerFoodPerDay}`, 'info');
   }
-  const pop = g.world.bunker.population || 0;
+  const pop = Math.min(g.world.bunker.population || 0, eff.populationCap);
+  g.world.bunker.population = pop;
   const food = g.world.bunker.food || 0;
-  const consumption = Math.max(1, Math.ceil(pop / 5));
+  const consumption = Math.max(1, Math.ceil(pop / 5 * (1 - eff.arkBonus)));
   g.world.bunker.food = Math.max(0, food - consumption);
   if (g.world.bunker.food === 0) {
     g.reputation = Math.max(0, g.reputation - 5);
@@ -237,6 +263,7 @@ D.checkFinale = function () {
 
 D.advanceDay = function () {
   const st = NB.state, g = st.game;
+  if (!g.simulationMode) { NB.toast('Симуляция выключена', 'err'); return; }    // ← NEW
   if (g.stats.won || g.stats.lost) { NB.toast('Игра окончена', 'err'); return; }
   const check = NB.canAdvanceDay();
   if (!check.ok) { NB.toast(check.reason, 'err'); return; }
@@ -304,6 +331,11 @@ D.advanceDay = function () {
   const cnt = Math.max(1, Math.round((base + NB.randInt(0, 2)) * priceFactor) + eff.newClientBonus);
   for (let i = 0; i < cnt; i++) {
     const t = NB.pick(st.tariffs);
+    const clientFeatures = {};
+    if (t.features) {
+      if (t.features.priority && Math.random() < 0.4) clientFeatures.priority = true;
+      if (t.features.ddosShield && Math.random() < 0.35) clientFeatures.ddosShield = true;
+    }
     const roll = Math.random();
     let risk = 'normal', revealed = true, name, phone, address;
     if (roll < 0.55) risk = 'good';
@@ -315,25 +347,54 @@ D.advanceDay = function () {
     name = risk === 'unknown' ? '❓ Неизвестный' : (g.world.drones.enabled && Math.random() < 0.2 ? NB.genDroneName() : NB.genName());
     phone = risk === 'unknown' ? '—' : NB.genPhone();
     address = risk === 'unknown' ? 'нет данных' : NB.genAddress();
-    g.pendingClients.push({ id: g.pendingClientSeq++, name, address, phone, tariffId: t.id, risk, revealed });
+    g.pendingClients.push({ id: g.pendingClientSeq++, name, address, phone, tariffId: t.id, risk, revealed, features: clientFeatures });
   }
   NB.addLog(`Новые клиенты: ${cnt}`, 'info');
 
-  /* Neon-партнёрство: +1 клиент/день за рекламу */
-  if (g.world.neon && g.world.neon.deal === 'accepted') {
+  /* Neon-партнёрство: клиенты/день за рекламу + rev-share */
+  if (g.world.neon && ['accepted','expanded','exclusive'].includes(g.world.neon.deal)) {
     const adCost = g.world.neon.dailyCost || 100;
+    let clientsPerDay = g.world.neon.clientsPerDay || 1;
+    const revShare = g.world.neon.revShare || 0;
+
+    /* Таргетированный бонус от аналитики */
+    if (g.world.neon.targetedBonus > 0) {
+      clientsPerDay += 1;
+      g.world.neon.targetedBonus--;
+      if (g.world.neon.targetedBonus === 0) {
+        NB.addLog('Neon: таргетированная реклама завершена', 'info');
+      }
+    }
+
     if (g.cash >= adCost) {
       g.cash -= adCost;
-      const t = NB.pick(st.tariffs);
-      st.clients.push({
-        id: NB.state.seq.client++,
-        name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
-        tariffId: t.id, balance: 0, status: 'active',
-        createdAt: new Date().toISOString(),
-        password: NB.DEFAULT_PASS, isDrone: false, risk: 'good', revealed: true,
-        referredBy: 'Neon'
-      });
-      NB.addLog(`Neon привёл клиента (−${NB.money(adCost)} реклама)`, 'info');
+      g.stats.totalExpenses += adCost;
+      for (let i = 0; i < clientsPerDay; i++) {
+        const t = NB.pick(st.tariffs);
+        st.clients.push({
+          id: NB.state.seq.client++,
+          name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
+          tariffId: t.id, balance: 0, status: 'active',
+          createdAt: new Date().toISOString(),
+          password: NB.DEFAULT_PASS, isDrone: false, risk: 'good', revealed: true,
+          referredBy: 'Neon'
+        });
+      }
+      /* Rev-share: 5% от суточной выручки клиентов Neon */
+      if (revShare > 0) {
+        const neonClients = st.clients.filter(c => c.referredBy === 'Neon' && c.status === 'active');
+        const neonRevenue = neonClients.reduce((s, c) => {
+          const t = NB.tariff(c.tariffId);
+          return s + (t ? t.price / NB.INCOME_DIVISOR : 0);
+        }, 0);
+        const share = Math.round(neonRevenue * revShare);
+        if (share > 0) {
+          g.cash -= share;
+          g.stats.totalExpenses += share;
+          NB.addLog(`Neon rev-share: −${NB.money(share)}`, 'info');
+        }
+      }
+      NB.addLog(`Neon привёл ${clientsPerDay} кл. (−${NB.money(adCost)})`, 'info');
     } else {
       g.world.neon.deal = 'paused';
       NB.notify('Neon: реклама приостановлена (нет денег)', 'warn');

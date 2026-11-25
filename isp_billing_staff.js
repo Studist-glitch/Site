@@ -53,6 +53,26 @@ function renderUpgradeEffects() {
 
 S.dashboard = function () {
   const st = NB.state, g = st.game, w = g.world;
+
+  /* ===== РЕЖИМ БЕЗ СИМУЛЯЦИИ ===== */
+  if (!g.simulationMode) {
+    const stats = NB.computeStats();
+    const traffic = NB.traffic.getLoad();
+    const top = [...st.clients.filter(c => c.status === 'active')]
+      .sort((a, b) => NB.price(b.tariffId) - NB.price(a.tariffId))
+      .slice(0, 5)
+      .map(c => ({ client: c, sum: NB.price(c.tariffId) }));
+    const dist = st.tariffs.map(t => ({...t, count: st.clients.filter(c => c.tariffId === t.id).length})).sort((a,b) => b.count - a.count);
+    const maxCount = Math.max(1, ...dist.map(d => d.count));
+    return `<div class="page-head"><div><h1>${NB.esc(g.companyName || 'NetBill')}</h1><p class="muted">Биллинг · без симуляции · ${st.clients.length} клиентов</p></div></div>
+    <div class="stats">${NB.statCard('Абоненты',stats.clients,`${st.clients.filter(c=>c.status==='active').length} активных`,false,'#ff6b00','clients')}${NB.statCard('MRR',stats.mrr,'выручка/мес',true,'#ff9500','mrr')}${NB.statCard('Выручка',stats.revenue,'за 14 дней',true,'#ffb347','revenue')}${NB.statCard('К оплате',stats.due,'по счетам',true,'#f59e0b','due')}</div>
+    <div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>Выручка по дням</h2><span class="muted small">${st.revenue.length} дней</span></div><canvas id="revenue-chart" class="revenue-chart"></canvas><div class="chart-foot"><span>Итого: <b>${NB.money(stats.revenue)}</b></span></div></div>
+    <div class="grid-2"><div class="panel"><div class="panel-head"><h2>Трафик</h2><span class="live-badge"><i></i>live</span></div><div class="traffic-widget"><div class="traffic-stat ${traffic.status==='ok'?'ok':traffic.status==='elevated'||traffic.status==='warning'?'warn':'bad'}"><b>${traffic.usage}</b><small>Мбит/с</small></div><div class="traffic-stat ${traffic.status==='ok'?'ok':traffic.status==='elevated'||traffic.status==='warning'?'warn':'bad'}"><b>${traffic.percent}%</b><small>нагрузка</small></div><div class="traffic-stat ${traffic.stability>70?'ok':traffic.stability>40?'warn':'bad'}"><b>${traffic.stability}%</b><small>стабильность</small></div></div><canvas id="traffic-chart" class="traffic-chart"></canvas></div>
+    <div class="panel"><div class="panel-head"><h2>Распределение по тарифам</h2><button class="btn tiny" data-view="tariffs">Все →</button></div>${dist.map(d=>`<div class="tariff-bar"><div class="tariff-bar-top"><span><i class="dot" style="background:${d.color}"></i>${NB.esc(d.name)}</span><b>${d.count}</b></div><div class="bar"><i style="width:${(d.count/maxCount)*100}%;background:${d.color}"></i></div></div>`).join('')}</div></div>
+    <div class="panel"><div class="panel-head"><h2>Топ клиентов</h2><button class="btn tiny" data-view="clients">Все →</button></div>${top.length?`<div class="top-list">${top.map((t,i)=>`<div class="top-item"><div class="top-rank">${i+1}</div><div class="top-body"><b>${NB.esc(t.client.name)}</b><small>${NB.esc(t.client.phone)}</small></div><div class="top-amount">${NB.money(t.sum)}<small style="font-weight:400;color:var(--muted);display:block;font-size:10px">в месяц</small></div></div>`).join('')}</div>`:'<p class="empty">Нет данных</p>'}</div>`;
+  }
+
+  /* ===== ПОЛНЫЙ РЕЖИМ ===== */
   const stats = NB.computeStats();
   const openTicketsList = st.tickets.filter(t => t.status === 'open');
   const openTickets = openTicketsList.length;
@@ -242,7 +262,8 @@ S.clients = function () {
 S.tariffs = function () {
   const r = NB.tariffs.getRange();
   return `<div class="page-head"><div><h1>Тарифы</h1><p class="muted">${NB.state.tariffs.length} планов · до ${r.speedMax} Мбит/с</p></div><button class="btn primary" data-action="add-tariff">＋ Новый</button></div>
-  <div class="tariff-grid">${NB.state.tariffs.map((t,i)=>{const count=NB.state.clients.filter(c=>c.tariffId===t.id).length;return `<article class="tariff-card fade" style="animation-delay:${i*60}ms"><div style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.14;filter:blur(32px);pointer-events:none"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;position:relative"><h3 style="font-size:13.5px;color:#fff">${NB.esc(t.name)}</h3><div style="display:flex;gap:2px"><button class="icon" style="width:24px;height:24px;font-size:11px" data-action="edit-tariff" data-id="${t.id}">✎</button><button class="icon danger" style="width:24px;height:24px;font-size:11px" data-action="del-tariff" data-id="${t.id}">✕</button></div></div><p style="color:var(--muted);font-size:11.5px;margin-bottom:10px;min-height:14px;position:relative">${NB.esc(t.desc||'')}</p><div style="font-size:12px;color:var(--muted);position:relative"><b class="tariff-speed" style="font-size:20px;color:var(--primary-3)">${t.speed}</b> Мбит/с</div><div class="tariff-price" style="font-size:16px;font-weight:700;margin:6px 0 10px;color:#fff;position:relative">${NB.money(t.price)}<small style="font-size:11px;color:var(--muted);margin-left:2px">/мес</small></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;position:relative"><span>${count} кл.</span><span>${NB.money(count*t.price)}</span></div></article>`;}).join('')}</div>
+  <div class="tariff-grid">${NB.state.tariffs.map((t,i)=>{const count=NB.state.clients.filter(c=>c.tariffId===t.id).length;return `<article class="tariff-card fade" style="animation-delay:${i*60}ms"><div style="position:absolute;inset:-40% 60% 70% -30%;border-radius:50%;background:${t.color};opacity:.14;filter:blur(32px);pointer-events:none"></div><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;position:relative"><h3 style="font-size:13.5px;color:#fff">${NB.esc(t.name)}</h3><div style="display:flex;gap:2px"><button class="icon" style="width:24px;height:24px;font-size:11px" data-action="edit-tariff" data-id="${t.id}">✎</button><button class="icon danger" style="width:24px;height:24px;font-size:11px" data-action="del-tariff" data-id="${t.id}">✕</button></div></div><p style="color:var(--muted);font-size:11.5px;margin-bottom:10px;min-height:14px;position:relative">${NB.esc(t.desc||'')}</p><div style="font-size:12px;color:var(--muted);position:relative"><b class="tariff-speed" style="font-size:20px;color:var(--primary-3)">${t.speed}</b> Мбит/с</div><div class="tariff-price" style="font-size:16px;font-weight:700;margin:6px 0 10px;color:#fff;position:relative">${NB.money(t.price)}<small style="font-size:11px;color:var(--muted);margin-left:2px">/мес</small></div>    ${t.features && (t.features.priority || t.features.ddosShield) ? `<div style="display:flex;gap:4px;margin-bottom:6px;position:relative">${t.features.priority?`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,179,71,.15);color:var(--primary-3)">⭐ Приоритет</span>`:''}${t.features.ddosShield?`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(34,197,94,.15);color:#4ade80">🛡 DDoS</span>`:''}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;position:relative"><span>${count} кл.</span><span>${NB.money(count*NB.tariffs.computePrice(t))}</span></div></article>`;}).join('')}</div>
   <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Диапазон возможностей</h2></div><p class="muted small" style="margin-bottom:8px">Скорость и цена зависят от пропускной способности.</p><div class="tariff-range-info"><span>⚡ Скорость: <b>${r.speedMin}–${r.speedMax}</b> Мбит/с</span><span>💰 Апгрейды: <b>${NB.state.game.upgrades.bandwidth}</b></span><button class="btn tiny" data-view="upgrades" style="margin-left:auto">Улучшить канал →</button></div></div>`;
 };
 
@@ -302,8 +323,23 @@ S.bunker = function () {
 
 S.settings = function () {
   const g = NB.state.game;
-  return `<div class="page-head"><div><h1>Настройки</h1><p class="muted">Данные и прогресс</p></div></div>
+  return `<div class="page-head"><div><h1>Настройки</h1><p class="muted">Компания и режим</p></div></div>
   <div class="panel">
+    <div class="settings-section"><h3>Компания</h3>
+      <label class="field"><span>Название</span>
+        <input type="text" id="company-name-input" value="${NB.esc(g.companyName || 'NetBill')}" maxlength="30">
+      </label>
+      <button class="btn primary small" data-action="save-company-name" style="margin-top:8px">Сохранить</button>
+    </div>
+    <div class="settings-section"><h3>Режим</h3>
+      <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface-2);border-radius:10px;cursor:pointer;border:1.5px solid var(--line)">
+        <input type="checkbox" id="sim-mode-toggle" ${g.simulationMode ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--primary)">
+        <div style="flex:1">
+          <div style="font-weight:700;color:#fff;font-size:14px">🎮 Симуляция</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Полный геймплей: события, дни, конкуренты, сюжет.</div>
+        </div>
+      </label>
+    </div>
     <div class="settings-section"><h3>Прогресс</h3>
       <div class="setting-row"><div class="setting-row-info"><b>Дней: ${g.daily.dayNumber}</b><small>Уровень компании: ${g.company.level} · событий: ${g.stats.eventsResolved}</small></div></div>
       <div class="setting-row"><div class="setting-row-info"><b>Заработано: ${NB.money(g.stats.totalRevenue)}</b><small>Потрачено: ${NB.money(g.stats.totalExpenses)}</small></div></div>

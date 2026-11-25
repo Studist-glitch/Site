@@ -162,8 +162,11 @@ document.addEventListener('click', e => {
 
   if (e.target.id === 'start-speed' && NB.charts.runSpeedTest) { NB.charts.runSpeedTest(); return; }
 
-  if (e.target.id === 'modal') { NB.closeModal(); return; }
-  if (e.target.closest('[data-close]')) { NB.closeModal(); return; }
+  if (e.target.id === 'modal') {
+    const m = document.getElementById('modal');
+    if (m && m._onClose) { try { m._onClose(); } catch(err) { console.warn(err); } }
+    NB.closeModal(); return;
+  }
 });
 
 let rafPending = false;
@@ -182,6 +185,13 @@ document.addEventListener('input', e => {
 });
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'sim-mode-toggle') {
+    NB.state.game.simulationMode = !!e.target.checked;
+    NB.save();
+    NB.render();
+    NB.notify(NB.state.game.simulationMode ? 'Симуляция включена' : 'Симуляция выключена', 'info');
+    return;
+  }
   const key = e.target.dataset.setting;
   if (!key) return;
   if (e.target.type === 'checkbox') { NB.state.settings[key] = e.target.checked; NB.save(); }
@@ -226,6 +236,65 @@ if (NB.state.game.employeesPool.length === 0 && NB.employees && NB.employees.gen
   NB.state.game.employeesPool = NB.employees.generatePool(3);
   NB.save();
 }
+
+/* Онбординг: выбор названия компании + режим симуляции */
+NB.showOnboarding = function () {
+  const g = NB.state.game;
+  NB.openModal({
+    title: '', noSubmit: true, boxClass: 'event-modal-box',
+    html: `
+      <div class="event-title" style="text-align:center">⚡ Добро пожаловать</div>
+      <div class="event-desc" style="text-align:center;margin-bottom:20px">Настройте свой биллинг</div>
+      <div style="margin-bottom:14px">
+        <label class="field"><span>Название компании</span>
+          <input id="onb-name" type="text" value="${NB.esc(g.companyName || 'NetBill')}" maxlength="30" placeholder="Например, NetBill" required>
+        </label>
+      </div>
+      <div class="event-options" style="margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;padding:14px;background:var(--surface-2);border-radius:10px;cursor:pointer;border:1.5px solid var(--line)">
+          <input id="onb-sim" type="checkbox" ${g.simulationMode ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--primary)">
+          <div style="flex:1">
+            <div style="font-weight:700;color:#fff;font-size:14px">🎮 Включить симуляцию</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Полный геймплей: события, дни, конкуренты, сюжет. Иначе — только биллинг.</div>
+          </div>
+        </label>
+      </div>
+      <div class="event-options">
+        <button type="button" class="event-option" id="onb-start" style="justify-content:center;text-align:center">
+          <span class="event-option-label" style="width:100%">Начать →</span>
+        </button>
+      </div>
+    `,
+    onClose: () => {
+      /* Если закрыли без выбора — берём дефолты */
+      g.companyName = g.companyName || 'NetBill';
+      g.simulationMode = true;
+      NB.state.onboarded.onboarding = true;
+      NB.save();
+      NB.render();
+    }
+  });
+  setTimeout(() => {
+    const nameInput = document.getElementById('onb-name');
+    const simCheck = document.getElementById('onb-sim');
+    const btn = document.getElementById('onb-start');
+    if (btn) btn.addEventListener('click', () => {
+      const name = (nameInput.value || 'NetBill').trim().slice(0, 30) || 'NetBill';
+      g.companyName = name;
+      g.simulationMode = !!simCheck.checked;
+      NB.state.onboarded.onboarding = true;
+      NB.save();
+      NB.closeModal();
+      NB.render();
+      NB.notify(`Добро пожаловать, ${name}!`, 'ok');
+    });
+  }, 50);
+};
+
+/* Если онбординг не пройден — показать */
+setTimeout(() => {
+  if (!NB.state.onboarded.onboarding) NB.showOnboarding();
+}, 300);
 
 NB.checkUnlocks();
 NB.render();

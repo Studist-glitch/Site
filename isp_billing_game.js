@@ -38,6 +38,7 @@ G.UPGRADES = {
   antivirus:      { icon:'🦠', name:'Антивирус',              desc:'Снижает шанс заражения клиентов-хакеров. −20% атак.', costs:[6000,14000,28000], upkeep:[10,25,55], levels:['Базовый','Продвинутый','Корпоративный'], minDay:5 },
   firewall:       { icon:'🧱', name:'Firewall',               desc:'Фильтр входящего трафика. −30% попыток взлома.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay:10 },
   ddos:           { icon:'🛡', name:'DDoS-защита',            desc:'Отбивает распределённые атаки. −15% потерь при DDOS.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN-фильтр','Автоблок'], minDay:7 },
+  spamFilter:     { icon:'🧹', name:'Спам-фильтр',            desc:'Блокирует спамеров. −20% урона от спама.', costs:[4000,9000,20000], upkeep:[8,20,45], levels:['Скрипт','Прокси','AI-фильтр'], minDay:6 },
   backup:         { icon:'💾', name:'Резервные копии',        desc:'Восстанавливает данные после взлома. −50% потерь от хакеров.', costs:[10000,22000], upkeep:[15,35], levels:['Ежедневно','Реалтайм'], minDay:12 },
   insurance:      { icon:'📋', name:'Кибер-страховка',        desc:'Компенсирует 30% финансовых потерь от атак.', costs:[15000,35000], upkeep:[50,120], levels:['Базовая','Полная'], minDay:20 },
   
@@ -110,7 +111,8 @@ G.getUpgradeEffects = function () {
       + comp*1200 + wf*400 + gponLvl*3000 + mplsLvl*1500,
     churnReduction: (u.support||0)*0.15 + (u.salesBoost||0)*0.05
       + eq*0.02 + sw*0.03 + cool*0.02 + qosLvl*0.04 + upsLvl*0.02
-      + lb*0.02 + dr*0.02 + wf*0.03 + mplsLvl*0.02 + gponLvl*0.02,
+      + lb*0.02 + dr*0.02 + wf*0.03 + mplsLvl*0.02 + gponLvl*0.02
+      + (u.racks||0)*0.01 + (u.docsis||0)*0.01 + (u.peering||0)*0.02,  // ← NEW
     newClientBonus: (u.marketing||0) + (u.salesBoost||0)*0.5 + cdnLvl*0.3 + mplsLvl*0.5 + wf*0.2,
     autoPayChance: (u.support||0)*0.05,
 
@@ -124,13 +126,31 @@ G.getUpgradeEffects = function () {
 
     autoCollect: u.autoCollect > 0,
     autoResolveTickets: u.ai || 0,
-    solverAttackReduction: (u.ddos||0)*0.05 + (u.firewall||0)*0.03
+        solverAttackReduction: (u.ddos||0)*0.05 + (u.firewall||0)*0.03
       + (u.anomalyScanner||0)*0.05 + hp*0.05 + bp*0.08,
+
+    /* NEW: защита оборудования от поломок (охлаждение + ИБП + стойки) */
+    equipmentBreakResist: Math.min(0.8,
+      cool*0.06 +
+      (u.coolingPro||0)*0.10 +
+      upsLvl*0.04 +
+      (u.backupPower||0)*0.06 +
+      (u.racks||0)*0.02
+    ),
+
+    /* NEW: снижение потерь от отключений (ИБП + генераторы) */
+    uptimeBonus: Math.min(0.9,
+      upsLvl*0.10 + (u.backupPower||0)*0.15
+    ),
+
     bunkerDefense: (u.bunkerDefense||0)*0.15,
     bunkerFoodPerDay: (u.bunkerFood||0)*5,
     bunkerMedChance: (u.bunkerMed||0)*0.10,
     bunkerVentChance: (u.bunkerVent||0)*0.15,
     arkSecurity: (u.arkSecurity||0)*0.10,
+    /* NEW: ковчег усиливает всё в бункере */
+    arkBonus: (u.ark||0) * 0.15,          // +15% ко всем эффектам бункера
+    populationCap: 20 + (u.bunker||0)*10 + (u.ark||0)*50,   // макс. жителей
     soldierRunBonus: (u.soldier||0)*0.10,
     combatPower: (u.armory||0)*20 + (u.trainingGround||0)*15 + (u.barracks||0)*10,
     stealthBonus: (u.darkFiber||0)*0.1,
@@ -144,10 +164,13 @@ NB.traffic.getCapacity = function () {
   return 5000
     + (u.bandwidth||0)*3000 + (u.fiber||0)*5000 + (u.satellite||0)*10000
     + (u.microBooster||0)*1200 + (u.darkFiber||0)*5000
-    + (u.router||0)*800 + (u.switch||0)*500 + (u.caching||0)*1500
-    + (u.cdn||0)*2000 + (u.loadBalancer||0)*1000
+    + (u.router||0)*800 + (u.switch||0)*500
+    + (u.caching||0)*1500 + (u.cdn||0)*2000 + (u.loadBalancer||0)*1000
     + (u.compression||0)*1200 + (u.wifi6||0)*400
-    + (u.gpon||0)*3000 + (u.mpls||0)*1500;
+    + (u.gpon||0)*3000 + (u.mpls||0)*1500
+    + (u.racks||0)*500              // ← NEW: стойки дают +500 Мбит
+    + (u.docsis||0)*2000             // ← NEW: DOCSIS +2000 Мбит
+    + (u.peering||0)*2000;           // ← NEW: пиринг +2000 Мбит
 };
 
 G.buyUpgrade = function (key) {
@@ -377,14 +400,14 @@ G.EVENTS = [
   },
   { id:'viral', title:'📈 Вирусный эффект', desc:'Пост стал популярным.', weight:0.9,
     opts:[
-      { label:'Вложить (8000₽)', run:()=>{ if(NB.state.game.cash<8000) return 'Нет денег'; NB.state.game.cash-=8000; for(let i=0;i<5;i++){const t=NB.pick(NB.state.tariffs); NB.state.clients.push({id:NB.state.seq.client++,name:NB.genName(),address:NB.genAddress(),phone:NB.genPhone(),tariffId:t.id,balance:0,status:'active',createdAt:new Date().toISOString(),password:NB.DEFAULT_PASS,isDrone:false,risk:'normal',revealed:true});} return '+5 клиентов'; }},
+      { label:'Вложить в рекламу', costFn:()=>NB.rewardMoney(0.08), run:()=>{ for(let i=0;i<5;i++){const t=NB.pick(NB.state.tariffs); NB.state.clients.push({id:NB.state.seq.client++,name:NB.genName(),address:NB.genAddress(),phone:NB.genPhone(),tariffId:t.id,balance:0,status:'active',createdAt:new Date().toISOString(),password:NB.DEFAULT_PASS,isDrone:false,risk:'normal',revealed:true});} return '+5 клиентов'; }},
       { label:'Пропустить', run:()=>'Пропущено' }
     ]
   },
   { id:'competitor', title:'🎯 Конкурент', desc:'Крупный конкурент запустил акцию.', weight:1.0,
     condition:()=>NB.state.game.unlocks.competitors,
     opts:[
-      { label:'Ответить акцией (10k₽)', run:()=>{ if(NB.state.game.cash<10000) return 'Нет денег'; NB.state.game.cash-=10000; return 'Потери'; }},
+      { label:'Ответить акцией', costFn:()=>NB.rewardMoney(0.10), run:()=>'Отбито' },
       { label:'Ничего', run:()=>{ for(let i=0;i<8&&i<NB.state.clients.length;i++){const v=NB.state.clients[i]; NB.state.clients=NB.state.clients.filter(c=>c.id!==v.id);} return 'Потери'; }}
     ]
   },
@@ -432,7 +455,7 @@ G.EVENTS = [
   { id:'hacker_blackmail', title:'👾 Шантаж', desc:'Взломали базу. Требуют 15 000 ₽.', weight:0.9,
     condition:()=>NB.state.game.daily.dayNumber>=10,
     opts:[
-      { label:'Заплатить', run:()=>{ if(NB.state.game.cash<15000) return 'Нет денег'; NB.state.game.cash-=15000; NB.state.game.world.flags.hackerEncountered=true; return 'Заплачено'; }},
+      { label:'Заплатить', costFn:()=>NB.rewardMoney(0.15), run:()=>{ NB.state.game.world.flags.hackerEncountered=true; return 'Заплачено'; }},
       { label:'Контр-взлом (1 AP)', ap:1, employeeSkill:'counterHack', action:()=>{
         const s = NB.employees.bestFor('counterHack');
         if (!s) return 'Нужен безопасник с контр-взломом';
@@ -533,7 +556,7 @@ G.EVENTS = [
   { id:'subsidy', title:'🏛 Субсидия', desc:'30 000 ₽ за подключение деревень.', weight:0.6,
     condition:()=>NB.state.game.reputation>60,
     opts:[
-      { label:'Взять', run:()=>{ NB.state.game.cash+=30000; NB.state.game.reputation=Math.max(0,NB.state.game.reputation-8); return '+30 000 ₽'; }},
+      { label:'Взять', run:()=>{ const gain = NB.rewardMoney(0.3); NB.state.game.cash+=gain; NB.state.game.reputation=Math.max(0,NB.state.game.reputation-8); return `+${NB.money(gain)}` }},
       { label:'Отказать', run:()=>'Отказ' }
     ]
   },
@@ -547,7 +570,7 @@ G.EVENTS = [
   { id:'vandalism', title:'🔨 Вандализм', desc:'Кто-то сломал оборудование.', weight:0.8,
     condition:()=>Object.keys(NB.state.game.upgrades).some(k=>NB.state.game.upgrades[k]>0 && !NB.state.game.upgradesBroken[k]),
     opts:[
-      { label:'Починить (4000₽)', cost:4000, run:()=>'Восстановлено'},
+      { label:'Починить', costFn:()=>NB.rewardMoney(0.04), run:()=>'Восстановлено'},
       { label:'Оставить', run:()=>{ const broken=Object.keys(NB.state.game.upgrades).filter(k=>NB.state.game.upgrades[k]>0 && !NB.state.game.upgradesBroken[k]); if(broken.length){ const k=NB.pick(broken); NB.state.game.upgradesBroken[k]={brokenAt:NB.state.game.daily.dayNumber,reason:'Вандализм'}; return `Сломано`; } return 'Обошлось'; }}
     ]
   },
@@ -573,11 +596,28 @@ G.EVENTS = [
       { label:'Ждать', run:()=>{ NB.state.game.reputation=Math.max(0,NB.state.game.reputation-6); return '−6 реп'; }}
     ]
   },
-  { id:'neon_secret', title:'🌟 Секрет Neon', desc:'Neon прислал зашифрованный файл.', weight:0.3,
-    condition:()=>NB.state.game.world.neon.trust>60 && !NB.state.game.world.flags.neonSecretSeen,
+  { id:'neon_secret', title:'🌟 Инсайд от Neon', desc:'Neon делится внутренней аналитикой — какие тарифы лучше конвертят.', weight:0.4,
+    condition:()=>NB.state.game.world.neon && NB.state.game.world.neon.trust>=40 && !NB.state.game.world.flags.neonInsiderSeen,
     opts:[
-      { label:'Открыть (1 AP)', ap:1, action:()=>{ const g=NB.state.game; g.world.flags.neonSecretSeen=true; g.world.flags.quantumUnlocked=true; g.cash+=50000; NB.notify('🌟 +50 000 ₽','ok'); return 'Квантовый ключ'; }},
-      { label:'Удалить', run:()=>'Удалено' }
+      { label:'Воспользоваться (1 AP)', ap:1, action:()=>{
+        const g = NB.state.game;
+        g.world.flags.neonInsiderSeen = true;
+        /* +5 клиентов из целевого сегмента, с шансом на лучший тариф */
+        const bestTariff = [...NB.state.tariffs].sort((a,b) => b.price - a.price)[0];
+        for (let i = 0; i < 5; i++) {
+          NB.state.clients.push({
+            id: NB.state.seq.client++,
+            name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
+            tariffId: bestTariff.id, balance: 0, status: 'active',
+            createdAt: new Date().toISOString(),
+            password: NB.DEFAULT_PASS, isDrone: false, risk: 'good', revealed: true,
+            referredBy: 'Neon'
+          });
+        }
+        NB.notify('🌟 +5 клиентов на топ-тариф','ok');
+        return 'Аналитика сработала: 5 клиентов на дорогом тарифе';
+      }},
+      { label:'Пропустить', run:()=>'Пропущено' }
     ]
   },
   { id:'anomaly_signal', title:'📡 Странный сигнал', desc:'В сети появился сигнал необычной формы.', weight:1.0,
@@ -585,6 +625,37 @@ G.EVENTS = [
     opts:[
       { label:'Исследовать (1 AP)', ap:1, action:()=>{ NB.state.game.world.flags.anomalyEncountered=true; NB.state.game.world.threat=Math.max(1,NB.state.game.world.threat); return 'Понадобится сканер'; }},
       { label:'Игнорировать', run:()=>{ NB.state.game.world.flags.anomalyEncountered=true; NB.state.game.world.threat=Math.min(10,NB.state.game.world.threat+1); return 'Сигнал усиливается'; }}
+    ]
+  },
+  /* --- Обычные инциденты (до Синессы) --- */
+  { id:'malware_outbreak', title:'🦠 Вирус у клиентов', desc:'Несколько клиентов сообщают о вирусе в сети.', weight:1.2,
+    condition:()=>NB.state.game.daily.dayNumber>=8 && !NB.state.game.world.cynessaActive,
+    opts:[
+      { label:'Заплатить антивирус (3000₽)', cost:3000, run:()=>{ NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 3); return 'Проблема решена'; }},
+      { label:'Использовать антивирус', employeeSkill:'hack', run:()=>{ NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 5); return 'Сотрудник справился'; }},
+      { label:'Игнорировать', run:()=>{ NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 5); return '−5 реп'; }}
+    ]
+  },
+  { id:'competitor_ddos', title:'💥 DDoS от конкурента', desc:'Крупный конкурент атакует вашу сеть.', weight:1.0,
+    condition:()=>NB.state.game.unlocks.competitors && !NB.state.game.world.cynessaActive,
+    opts:[
+      { label:'Активировать защиту (5000₽)', cost:5000, run:()=>'Отбито'},
+      { label:'Терпеть', run:()=>{ NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 8); return '−8 реп'; }}
+    ]
+  },
+  { id:'pirate_radio', title:'📻 Пиратская радиостанция', desc:'В вашем диапазоне вещает пират. Помехи.', weight:0.7,
+    condition:()=>NB.state.game.daily.dayNumber>=12 && !NB.state.game.world.cynessaActive,
+    opts:[
+      { label:'Найти и заглушить (1 AP)', ap:1, run:()=>{ NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 3); return 'Помехи устранены'; }},
+      { label:'Смириться', run:()=>{ NB.state.game.reputation = Math.max(0, NB.state.game.reputation - 2); return '−2 реп'; }}
+    ]
+  },
+  { id:'competitor_sabotage', title:'⚙ Саботаж на узле', desc:'Кто-то повредил оборудование.', weight:0.9,
+    condition:()=>NB.state.game.daily.dayNumber>=20 && !NB.state.game.world.cynessaActive && NB.state.game.competitors.some(c=>c.alive),
+    opts:[
+      { label:'Починить (4000₽)', cost:4000, run:()=>'Восстановлено' },
+      { label:'Найти виновного (1 AP)', ap:1, run:()=>{ NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 4); return 'Нашли — конкурент. Скандал.'; }},
+      { label:'Оставить', run:()=>{ const broken=Object.keys(NB.state.game.upgrades).filter(k=>NB.state.game.upgrades[k]>0 && !NB.state.game.upgradesBroken[k]); if(broken.length){ const k=NB.pick(broken); NB.state.game.upgradesBroken[k]={brokenAt:NB.state.game.daily.dayNumber,reason:'Саботаж'}; return 'Сломано'; } return 'Обошлось'; }}
     ]
   },
   { id:'solver_attack', title:'⚠ Атака', desc:'Жёлтая вспышка. Сеть под ударом.', weight:1.8,
@@ -642,7 +713,18 @@ G.triggerEvent = function () {
 G.showEventModal = function () {
   const evt = NB.state.game.activeEvent; if (!evt) return;
   const opts = (evt.opts || []).map((o, i) => `<button type="button" class="event-option" data-event-opt="${i}"><span class="event-option-label">${o.label}</span><span class="event-option-hint">${o.hint||''}</span></button>`).join('');
-  NB.openModal({ title:'', noSubmit:true, boxClass:'event-modal-box', html:`<div class="event-title">${evt.title}</div><div class="event-desc">${evt.desc}</div><div class="event-options">${opts}</div>` });
+  NB.openModal({
+    title:'', noSubmit:true, boxClass:'event-modal-box',
+    html:`<div class="event-title">${evt.title}</div><div class="event-desc">${evt.desc}</div><div class="event-options">${opts}</div>`,
+    onClose: () => {
+      /* Игрок закрыл событие — считаем как "Игнорировать", чтобы день разблокировался */
+      const g = NB.state.game;
+      g.activeEvent = null;
+      g.history.push({ id:evt.id, title:evt.title, choice:'— закрыто —', result:'событие пропущено', at:new Date().toISOString() });
+      NB.save();
+      setTimeout(() => { if (NB.render) NB.render(); }, 250);
+    }
+  });
   setTimeout(() => { NB.$$('[data-event-opt]').forEach(btn => btn.addEventListener('click', () => G.resolveEvent(Number(btn.dataset.eventOpt)))); }, 30);
 };
 
@@ -652,8 +734,9 @@ G.resolveEvent = function (idx) {
   const g = NB.state.game;
 
   /* Проверки ресурсов */
+  const effectiveCost = opt.costFn ? opt.costFn(g) : opt.cost;
   if (opt.ap && g.ap.current < opt.ap) return NB.toast('Не хватает AP', 'err');
-  if (opt.cost && g.cash < opt.cost) return NB.toast('Недостаточно денег', 'err');
+  if (effectiveCost && g.cash < effectiveCost) return NB.toast('Недостаточно денег', 'err');
   let employee = null;
   if (opt.employeeSkill) {
     employee = NB.employees.bestFor(opt.employeeSkill);
@@ -664,6 +747,7 @@ G.resolveEvent = function (idx) {
   /* Списание */
   if (opt.ap) NB.spendAp(opt.ap);
   if (opt.cost) g.cash -= opt.cost;
+  else if (effectiveCost) { g.cash -= effectiveCost; g.stats.totalExpenses += effectiveCost; }
   if (employee) NB.employees.spendAp(employee.id, 1);
 
   let result = '';

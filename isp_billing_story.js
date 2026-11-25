@@ -330,7 +330,7 @@ S.SCENES = [
 Схема такая: я упоминаю тебя в патче, ты платишь мне за рекламу. 100 рублей в день. Взамен — гарантированный +1 клиент в день. Без учёта твоих прокачек, без рандома. Чистый поток.
 
 Что скажешь?»`,
-  day:22,
+  day:15,
   choices:[
     { label:'Согласиться (100 ₽/день)', run:g=>{
       g.world.neon.met = true;
@@ -356,109 +356,180 @@ S.SCENES = [
     }}
   ]
 },
-{ id:'neon_request_1', arc:'neon_shadow', title:'Первая просьба',
-  text:`Neon раскладывает на столе ноутбук. На экране — карта города с жёлтыми точками.
+{ id:'neon_request_1', arc:'neon_shadow', title:'Расширение',
+  text:`Neon приходит с ноутбуком и графиком.
 
-«Мне нужен доступ к твоему трафику. Ненадолго. Я смогу отследить эти вспышки. Может, пойму, что это».`,
-  day:19, requires:g=>hasNeon(g),
+«Слушай, дела идут лучше, чем я думал. Твои тарифы зашли игрокам — конверсия 8%, это очень много. У меня есть идея: расширить промо.
+
+Сейчас я упоминаю тебя только в патчах. Предлагаю ещё пост в Discord-канале (у меня 12 тысяч подписчиков) и рекламу в меню игры. Тогда поток станет стабильнее — 2 клиента в день.
+
+Цена вопроса — 200 в день. Вместо 100. Согласен?»`,
+  day:22, requires:g=>hasNeon(g) && g.world.neon.deal === 'accepted',
   choices:[
-    { label:'Разрешить', run:g=>{
-      g.world.neon.trust += 20; g.world.neon.helped++;
-      return 'Утром трафик был чище обычного. Neon прислал координаты — жёлтая точка.';
+    { label:'Расширить (200 ₽/день → +2 клиента/день)', run:g=>{
+      g.world.neon.deal = 'expanded';
+      g.world.neon.dailyCost = 200;
+      g.world.neon.clientsPerDay = 2;
+      g.world.neon.trust += 15;
+      NB.addLog('Neon: расширение рекламы (+2 клиента/день)', 'success');
+      return 'Neon обновил патчноут и сделал пост. Завтра придут первые из Discord.';
     }},
-    { label:'За 5000 ₽', run:g=>{
-      g.cash += 5000; g.world.neon.trust += 10; g.world.neon.helped++;
-      return 'Он улыбнулся — впервые. «Спасибо».';
+    { label:'Поторговаться (1 AP → 150 ₽/день)', ap:1, run:g=>{
+      if (Math.random() < 0.6) {
+        g.world.neon.deal = 'expanded';
+        g.world.neon.dailyCost = 150;
+        g.world.neon.clientsPerDay = 2;
+        g.world.neon.trust += 10;
+        return 'Он подумал: «Ок, 150. Но больше не снижай — я и так в минусе».';
+      }
+      return 'Он покачал головой: «Извини, 200 — это минимум. Discord жрёт модерацию».';
+    }},
+    { label:'Оставить как есть', run:g=>{
+      g.world.neon.trust -= 5;
+      return 'Он кивнул: «Ладно. Как скажешь». Но энтузиазма поубавилось.';
+    }}
+  ]
+},
+{ id:'neon_trace', arc:'neon_shadow', title:'Аналитика',
+  text:`Neon приходит с планшетом, на экране — графики.
+
+«Слушай, хочу предложить взаимовыгодную штуку. Дай мне доступ к обезличенной статистике твоих клиентов: кто какой тариф выбирает, средний чек, откуда приходят.
+
+Я прогоню это через свою аналитику и скажу, какие тарифы у тебя недооценены. Может, ты теряешь деньги на популярном тарифе с низкой маржой.
+
+Плюс — я лучше пойму, кого приводить. Меньше случайных, больше целевых. Все выиграют».`,
+  day:28, requires:g=>hasNeon(g) && g.world.neon.deal && g.world.neon.deal !== 'accepted' && g.world.neon.trust>=15,
+  choices:[
+    { label:'Дать доступ (1 AP)', ap:1, run:g=>{
+      g.world.neon.trust += 15;
+      g.world.flags.neonAnalytics = true;
+      /* Бонус: +1 клиент в день на 10 дней (таргетированная реклама) */
+      g.world.neon.targetedBonus = 10;
+      NB.addLog('Neon: таргетированная реклама на 10 дней', 'success');
+      return 'Он вернулся через два дня с рекомендациями. «Подними цену на средний тариф — он самый популярный».';
+    }},
+    { label:'Только публичные данные', run:g=>{
+      g.world.neon.trust += 5;
+      g.world.flags.neonAnalytics = true;
+      return 'Он согласился: «Ладно, хватит и этого». Но энтузиазма меньше.';
     }},
     { label:'Отказать', run:g=>{
       g.world.neon.trust -= 10;
-      return 'Он замолчал на несколько дней. Атаки усилились.';
+      return '«Понимаю. Безопасность важнее». Ушёл расстроенный.';
     }}
   ]
 },
-{ id:'neon_trace', arc:'neon_shadow', title:'Отслеживание',
-  text:`Neon не спал три дня. Под глазами — тёмные круги.
+{ id:'neon_alliance', arc:'neon_shadow', title:'Эксклюзив',
+  text:`Neon кладёт на стол распечатанный контракт.
 
-«Я почти вижу её. Но мне нужно больше мощности. Дай мне доступ к серверам — или к дронам. Или… я могу попробовать сам, но это опасно. Она почувствует.
+«Я хочу предложить эксклюзив. Только твои тарифы — в моей игре. Никаких других провайдеров. Взамен:
 
-Если мы найдём её логово — у нас будет шанс. Если нет — она найдёт нас первыми».`,
-  day:26, requires:g=>hasNeon(g) && g.world.neon.trust>=15,
+— 3 клиента в день, стабильно.
+— 300 в день за рекламу.
+— 5% от выручки тех клиентов, что я привёл. Мне — за эксклюзив, тебе — чистая прибыль с остальных 95%.
+
+По рукам?»`,
+  day:33, requires:g=>hasNeon(g) && g.world.neon.deal === 'expanded' && g.world.neon.trust>=30,
   choices:[
-    { label:'Дать доступ к серверам (1 AP)', ap:1, run:g=>{
-      if (Math.random() < 0.6) {
-        g.world.neon.trust += 15; g.world.flags.neonTraceSuccess = true;
-        return 'Он нашёл её след. Но она тоже нашла его. Жёлтая вспышка на секунду ослепила вас обоих.';
-      }
-      g.world.threat = Math.min(10, g.world.threat + 2); g.world.neon.trust += 5;
-      return 'Он почти нашёл. Но она заметила. Атака была жестокой. Neon едва выжил.';
+    { label:'Подписать (300 ₽/день, +3 клиента, −5% с приведённых)', run:g=>{
+      g.world.neon.deal = 'exclusive';
+      g.world.neon.dailyCost = 300;
+      g.world.neon.clientsPerDay = 3;
+      g.world.neon.revShare = 0.05;
+      g.world.neon.trust += 20;
+      NB.addLog('Neon: эксклюзивный контракт (+3 клиента/день)', 'success');
+      return 'Вы пожали руки. Neon ушёл с улыбкой. Через час — первый баннер в игре.';
     }},
-    { label:'Дать доступ к дронам (если есть)', requires:g=>g.world.drones.enabled, run:g=>{
-      if (Math.random() < 0.75) {
-        g.world.neon.trust += 20; g.world.flags.neonTraceSuccess = true;
-        return 'Через дронов он вычислил поместье Эллиот. «Там её логово. Но идти туда — смерть».';
-      }
-      g.world.threat = Math.min(10, g.world.threat + 3); loseEmployees(2);
-      return 'Дроны были заражены. Двое ваших людей погибли. Neon плакал.';
-    }},
-    { label:'«Это слишком опасно»', run:g=>{
-      g.world.neon.trust -= 5;
-      return 'Он кивнул. «Тогда мы никогда не узнаем».';
-    }}
-  ]
-},
-{ id:'neon_alliance', arc:'neon_shadow', title:'Союз',
-  text:`Neon стоит у окна. За стеклом — ночной город.
-
-«Я могу уйти. У меня есть убежище. Если ты пойдёшь со мной — мы будем вместе искать способ остановить её. Но это значит оставить всё. Компанию. Семью.
-
-Или я останусь. И мы продолжим бороться здесь. Решай».`,
-  day:32, requires:g=>hasNeon(g) && g.world.neon.trust>=30,
-  choices:[
-    { label:'Уйти с Neon (1 AP)', ap:1, run:g=>{
-      g.world.flags.neonAlliance = true;
-      g.world.neon.state = 'allied';
-      return 'Вы оставили всё. Компанию, дом. Но вы не одни. Neon рядом.';
-    }},
-    { label:'Остаться', run:g=>{
-      g.world.neon.trust += 5;
-      return '«Тогда я останусь с тобой. До конца».';
-    }}
-  ]
-},
-{ id:'neon_doubt', arc:'neon_shadow', title:'Сомнения',
-  text:`Neon смотрит на вас с тревогой.
-
-«Ты уверен, что мы делаем правильно? Может, она не хочет воевать. Может, она просто… сломана. Как и все мы».
-
-Он отводит взгляд.`,
-  day:35, requires:g=>hasNeon(g) && g.world.neon.trust>=10,
-  choices:[
-    { label:'«Она убивает людей»', run:g=>{
-      g.world.neon.trust -= 5;
-      return '«Да. Ты прав». Он сжал кулаки.';
-    }},
-    { label:'«Может, мы можем её спасти»', run:g=>{
+    { label:'Без rev-share (350 ₽/день)', run:g=>{
+      g.world.neon.deal = 'exclusive';
+      g.world.neon.dailyCost = 350;
+      g.world.neon.clientsPerDay = 3;
+      g.world.neon.revShare = 0;
       g.world.neon.trust += 10;
-      g.world.flags.mercyPath = true;
-      return 'Он посмотрел на вас с надеждой. «Может быть».';
+      return 'Он поморщился: «350 — грабёж». Но согласился.';
+    }},
+    { label:'Отказать', run:g=>{
+      g.world.neon.trust -= 5;
+      return '«Ладно. Остаёмся на том, что есть».';
     }}
   ]
 },
-{ id:'neon_plan', arc:'neon_shadow', title:'План',
-  text:`Neon разворачивает карту.
+{ id:'neon_doubt', arc:'neon_shadow', title:'Претензии',
+  text:`Neon приходит мрачный. На телефоне — скриншоты.
 
-«Если мы сможем проникнуть в поместье, у нас будет шанс. Но нам нужен план. И люди. Что скажешь?»`,
-  day:38, requires:g=>hasNeon(g) && g.world.neon.trust>=20,
+«Мои игроки жалуются. Говорят, ты продал им тариф с плохой скоростью. Двое уже отписались от игры, потому что решили, что я рекламирую шлак.
+
+Я рискую репутацией. Давай честно: что у тебя с качеством?»`,
+  day:36, requires:g=>hasNeon(g) && g.world.neon.deal && g.world.neon.deal !== 'accepted',
   choices:[
-    { label:'Атаковать (1 AP)', ap:1, run:g=>{
-      if (Math.random() < 0.5) {
-        g.world.flags.assaultPlanned = true;
-        return 'Вы разработали план. Рискованно, но возможно.';
-      }
-      loseEmployees(1);
-      return 'План провалился. Один из ваших людей погиб.';
+    { label:'Компенсировать (5000₽ + 1 AP)', cost:5000, ap:1, run:g=>{
+      g.world.neon.trust += 20;
+      g.world.neon.doubtResolved = true;
+      g.reputation = Math.min(100, g.reputation + 5);
+      return 'Neon выдохнул: «Спасибо. Я ценю, что ты не отмахнулся».';
     }},
-    { label:'Ждать', run:g=>'Вы решили подождать.' }
+    { label:'Показать статистику (1 AP)', ap:1, run:g=>{
+      const avgSpeed = NB.state.clients.length > 0
+        ? Math.round(NB.state.clients.reduce((s,c) => s + (NB.tariff(c.tariffId)?.speed||0), 0) / NB.state.clients.length)
+        : 0;
+      if (avgSpeed >= 100) {
+        g.world.neon.trust += 10;
+        g.world.neon.doubtResolved = true;
+        return `Вы показали: средняя скорость у клиентов — ${avgSpeed} Мбит/с. Neon кивнул: «Ок, верю».`;
+      }
+      g.world.neon.trust -= 10;
+      return `Средняя скорость ${avgSpeed} Мбит/с. Neon помрачнел: «Надо улучшать».`;
+    }},
+    { label:'«Это их проблемы»', run:g=>{
+      g.world.neon.trust -= 25;
+      if (Math.random() < 0.3 && g.world.neon.deal === 'exclusive') {
+        g.world.neon.deal = 'expanded';
+        g.world.neon.dailyCost = 200;
+        g.world.neon.clientsPerDay = 2;
+        g.world.neon.revShare = 0;
+        return 'Neon разорвал эксклюзив. Откатились до расширенной рекламы.';
+      }
+      return 'Neon покачал головой и ушёл. Доверие подорвано.';
+    }}
+  ]
+},
+{ id:'neon_plan', arc:'neon_shadow', title:'Совместная акция',
+  text:`Neon показывает планшет с календарём.
+
+«Слушай, у меня через 4 дня — релиз крупного патча. Starve Neon 1.0. Игроки ждут, охват будет огромный.
+
+Давай сделаем совместную акцию: я анонсирую промокод на твой VIP-тариф, ты добавляешь в биллинг страницу "от партнёра". За два дня акции — гарантированные 10 клиентов разом.
+
+Только нужно подготовиться: поднять пропускную способность, чтобы не уронить сеть. Иначе будет конфуз».`,
+  day:40, requires:g=>hasNeon(g) && g.world.neon.trust>=20,
+  choices:[
+    { label:'Провести акцию (1 AP)', ap:1, run:g=>{
+      const load = NB.traffic.getLoad();
+      if (load.percent > 70) {
+        g.world.neon.trust -= 10;
+        g.reputation = Math.max(0, g.reputation - 5);
+        return `Сеть не выдержала — перегрузка ${load.percent}%. Игроки жалуются. Neon расстроен.`;
+      }
+      const t = NB.pick(NB.state.tariffs);
+      for (let i = 0; i < 10; i++) {
+        NB.state.clients.push({
+          id: NB.state.seq.client++,
+          name: NB.genName(), address: NB.genAddress(), phone: NB.genPhone(),
+          tariffId: t.id, balance: 0, status: 'active',
+          createdAt: new Date().toISOString(),
+          password: NB.DEFAULT_PASS, isDrone: false, risk: 'good', revealed: true,
+          referredBy: 'Neon'
+        });
+      }
+      g.world.neon.trust += 25;
+      g.world.flags.neonBigEvent = true;
+      g.reputation = Math.min(100, g.reputation + 10);
+      return `Акция прошла отлично! +10 клиентов разом. Neon доволен.`;
+    }},
+    { label:'Отложить', run:g=>{
+      g.world.neon.trust -= 5;
+      return 'Neon кивнул: «Ладно. Но в следующий раз — без меня».';
+    }}
   ]
 },
 
@@ -946,15 +1017,20 @@ ${hasNeon(NB.state.game) && neonAlive(NB.state.game) ? 'Neon находит ва
   day:100, requires:g=>g.world.bunker.built,
   choices:[
     { label:'Впустить всех', run:g=>{
+      const cap = NB.game.getUpgradeEffects().populationCap;
+      const current = g.world.bunker.population || 0;
+      const canFit = Math.max(0, cap - current);
+      if (canFit === 0) return 'В бункере нет места. Придётся расширяться.';
       if (Math.random() < 0.3) {
         g.world.threat = Math.min(10, g.world.threat + 2);
         const first = NB.state.clients[0];
         if (first) killClient(first.id);
         return 'Ночью один из них встал. Глаза жёлтые. Он убил двоих, прежде чем его скрутили. Синесса смеялась через его рот.';
       }
+      const actual = Math.min(4, canFit);
       g.reputation = Math.min(100, g.reputation + 10);
-      g.world.bunker.population = (g.world.bunker.population || 0) + 4;
-      return 'Они оказались чисты. Женщина плакала от благодарности.';
+      g.world.bunker.population = current + actual;
+      return `Они оказались чисты. Женщина плакала от благодарности. (+${actual} выживших)`;
     }},
     { label:'Проверить (1 AP)', ap:1, run:g=>{
       if (Math.random() < 0.7) {
@@ -977,7 +1053,7 @@ ${hasNeon(NB.state.game) && neonAlive(NB.state.game) ? 'Neon находит ва
 Нужно заказать поставку с воздуха. Но это дорого и опасно — она может отследить сигнал.`,
   day:110, requires:g=>g.world.bunker.built,
   choices:[
-    { label:'Заказать поставку (15 000 ₽)', cost:15000, run:g=>{
+    { label:'Заказать поставку', costFn:()=>NB.rewardMoney(0.12), run:g=>{
       if (Math.random() < 0.6) {
         g.world.bunker.food = (g.world.bunker.food || 0) + 10;
         g.reputation = Math.min(100, g.reputation + 5);
@@ -1344,10 +1420,12 @@ ${hasNeon(NB.state.game) ? 'Neon: «Это её. Нам нужно уничто�
       g.reputation = Math.max(0, g.reputation - 10);
       return 'Кто-то бросил камень. Вы ранены. Бунт подавлен силой.';
     }},
-    { label:'Отправить охрану', requires:g=>combatPower(g)>0, run:g=>{
-      g.reputation = Math.max(0, g.reputation - 15);
+    { label:'Отправить охрану', requires:g=>combatPower(g)>0 || (g.upgrades.arkSecurity||0)>0, run:g=>{
+      const arkSec = (g.upgrades.arkSecurity||0) * 0.10;
+      const repLoss = Math.round(15 * (1 - arkSec));
+      g.reputation = Math.max(0, g.reputation - repLoss);
       g.world.bunker.control = (g.world.bunker.control || 0) + 2;
-      return 'Охрана разогнала толпу. Кровь на полу. Порядок восстановлен.';
+      return `Охрана разогнала толпу (−${repLoss} реп). Порядок восстановлен.`;
     }},
     { label:'Спрятаться', run:g=>{
       g.reputation = Math.max(0, g.reputation - 20);
@@ -1614,7 +1692,20 @@ S.showScene = function (sc) {
     html: `<div class="story-chapter">${S.currentArc().title}</div>
       <div class="story-title fade-in">${NB.esc(sc.title)}</div>
       <div class="story-text typewriter-target fade-in" id="story-text-el">${NB.esc(sc.text)}</div>
-      <div class="story-choices">${choicesHtml}</div>`
+      <div class="story-choices">${choicesHtml}</div>`,
+    onClose: () => {
+      /* Игрок закрыл сцену — снимаем из очереди, чтобы она не зацикливалась */
+      const g = NB.state.game;
+      g.world.storyQueue = g.world.storyQueue.filter(x => x !== sc.id);
+      NB.state.story.seenEvents.push(sc.id);      // помечаем как "видел"
+      NB.state.story.choices[sc.id] = -1;         // -1 = пропущено
+      NB.save();
+      setTimeout(() => {
+        S.tick();
+        if (g.world.storyQueue.length) setTimeout(S.showNextInQueue, 400);
+        else NB.render();
+      }, 250);
+    }
   });
 
   setTimeout(() => {

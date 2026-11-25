@@ -8,7 +8,7 @@ const A = NB.actions = NB.actions || {};
    КЛИЕНТЫ
    ============================================================ */
 A.acceptClient = function (id) {
-  const g = NB.state.game;
+    const g = NB.state.game;
   const pc = g.pendingClients.find(c => c.id === Number(id));
   if (!pc) return;
   const isDrone = g.world.drones.enabled && Math.random() < 0.25;
@@ -16,8 +16,9 @@ A.acceptClient = function (id) {
     id: NB.state.seq.client++, name: pc.name, address: pc.address, phone: pc.phone,
     tariffId: pc.tariffId, balance: 0, status: 'active',
     createdAt: new Date().toISOString(), password: NB.DEFAULT_PASS,
-    isDrone, risk: pc.risk, revealed: true
-  });
+    isDrone, risk: pc.risk, revealed: true,
+    features: pc.features || {}                                      // ← NEW
+  })
   g.pendingClients = g.pendingClients.filter(c => c.id !== pc.id);
   NB.notify(`Принят «${pc.name}»`, 'ok');
   NB.addLog(`Принят клиент: ${pc.name}`, 'success');
@@ -54,7 +55,8 @@ A.openClient = function (id) {
       <h4>Тариф</h4>
       <div class="detail-row"><span>План</span><span><span class="tag" style="--c:${t.color}">${NB.esc(t.name)}</span> · ${t.speed} Мбит/с</span></div>
       <div class="detail-row"><span>Абонплата</span><span>${NB.money(t.price)}/мес</span></div>
-      <div class="detail-row"><span>Ежедневный доход</span><span>${NB.money(Math.round(t.price / NB.INCOME_DIVISOR))}/день</span></div>
+      ${c.features && (c.features.priority || c.features.ddosShield) ? `<div class="detail-row"><span>Доп. услуги</span><span>${c.features.priority?'⭐ Приоритет ':''}${c.features.ddosShield?'🛡 DDoS':''}</span></div>` : ''}
+      <div class="detail-row"><span>Ежедневный доход</span><span>${NB.money(NB.dailyIncomeEstimate ? (NB.tariffs.computePrice({...t, features: c.features||{}}) / NB.INCOME_DIVISOR) : Math.round(t.price / NB.INCOME_DIVISOR))}/день</span></div>
     </div>
     ${myTickets.length ? `<div class="detail-section"><h4>Заявки</h4>${myTickets.map(tk => `<div class="detail-row"><span>${NB.esc(tk.subject)}</span><span class="pill ${tk.status === 'open' ? 'wait' : 'ok'}">${tk.status === 'open' ? 'Открыта' : 'Решена'}</span></div>`).join('')}</div>` : ''}
     <div class="detail-actions">
@@ -105,7 +107,15 @@ A.addTariff = function () {
       const v = NB.tariffs.validate(speed, price);
       if (!v.ok) return NB.toast(v.reason, 'err');
       const palette = ['#ff6b00','#ff9500','#ffb347','#ff3d00','#ffaa33','#e85d00'];
-      NB.state.tariffs.push({ id: NB.state.seq.tariff++, name, desc: String(fd.get('desc') || '').trim(), speed, price, color: palette[NB.state.tariffs.length % palette.length] });
+      const features = {
+        priority: !!fd.get('feat_priority'),
+        ddosShield: !!fd.get('feat_ddosShield')
+      };
+      NB.state.tariffs.push({
+        id: NB.state.seq.tariff++, name, desc: String(fd.get('desc') || '').trim(),
+        speed, price, color: palette[NB.state.tariffs.length % palette.length],
+        features
+      });
       NB.save(); NB.closeModal(); NB.render();
       NB.notify(`Создан «${name}»`, 'ok');
     }
@@ -124,6 +134,10 @@ A.editTariff = function (id) {
       t.desc = String(fd.get('desc') || '').trim();
       t.speed = r.steps[Number(fd.get('speedIdx'))];
       t.price = Number(fd.get('price'));
+      t.features = {
+        priority: !!fd.get('feat_priority'),
+        ddosShield: !!fd.get('feat_ddosShield')
+      };
       const v = NB.tariffs.validate(t.speed, t.price);
       if (!v.ok) return NB.toast(v.reason, 'err');
       NB.save(); NB.closeModal(); NB.render();
@@ -359,8 +373,13 @@ A.showNotifs = function () {
   requestAnimationFrame(() => panel.classList.add('show'));
   setTimeout(() => {
     const close = e => {
-      if (!panel.contains(e.target)) { panel.classList.remove('show'); setTimeout(() => panel.remove(), 220); document.removeEventListener('click', close); }
+      if (!panel.contains(e.target)) {
+        panel.classList.remove('show');
+        setTimeout(() => panel.remove(), 220);
+        document.removeEventListener('click', close);
+      }
     };
+    panel._closeHandler = close;
     document.addEventListener('click', close);
   }, 10);
 };
@@ -369,7 +388,33 @@ A.markRead = function () {
   NB.state.notifications.forEach(n => n.read = true);
   NB.save();
   const p = document.getElementById('notif-panel');
-  if (p) { p.classList.remove('show'); setTimeout(() => p.remove(), 200); }
+  if (p) {
+    if (p._closeHandler) document.removeEventListener('click', p._closeHandler);
+    p.classList.remove('show');
+    setTimeout(() => p.remove(), 200);
+  }
+};
+
+/* ============================================================
+   НАСТРОЙКИ КОМПАНИИ
+   ============================================================ */
+A.saveCompanyName = function () {
+  const input = document.getElementById('company-name-input');
+  if (!input) return;
+  const name = (input.value || 'NetBill').trim().slice(0, 30) || 'NetBill';
+  NB.state.game.companyName = name;
+  NB.save();
+  NB.render();
+  NB.notify(`Название: ${name}`, 'ok');
+};
+
+A.toggleSimulation = function () {
+  const toggle = document.getElementById('sim-mode-toggle');
+  if (!toggle) return;
+  NB.state.game.simulationMode = !!toggle.checked;
+  NB.save();
+  NB.render();
+  NB.notify(NB.state.game.simulationMode ? 'Симуляция включена' : 'Симуляция выключена', 'info');
 };
 
 /* ============================================================
@@ -378,6 +423,8 @@ A.markRead = function () {
 A.map = {
   'export':                   A.exportData,
   'reset-data':               A.resetData,
+  'save-company-name':        A.saveCompanyName,
+  'toggle-simulation':        A.toggleSimulation,
   'advance-day':              A.advanceDay,
   'finish-day':               A.finishDay,
   'show-notifs':              A.showNotifs,

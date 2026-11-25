@@ -21,6 +21,13 @@ NB.$ = (s, r = document) => r.querySelector(s);
 NB.$$ = (s, r = document) => [...r.querySelectorAll(s)];
 NB.esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 NB.money = n => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ₽';
+/* Адаптивная награда: процент от MRR, минимум 1000 */
+NB.rewardMoney = function (mult) {
+  const active = NB.state.clients.filter(c => c.status === 'active');
+  const mrr = active.reduce((s, c) => s + NB.price(c.tariffId), 0);
+  const base = Math.max(1000, Math.round(mrr * (mult || 0.1)));
+  return Math.round(base / 100) * 100;
+};
 NB.fmtDate = iso => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
 NB.fmtDateTime = iso => new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 NB.period = () => new Date().toISOString().slice(0, 7);
@@ -109,6 +116,8 @@ NB.navIcon = function (item) {
 function defaultGame() {
   return {
     cash: 100000, goal: NB.GOAL_CASH, reputation: 100, level: 1,
+    simulationMode: true,                            // ← NEW: по умолчанию включён
+    companyName: 'NetBill',                          // ← NEW
     ap: { current: 3, max: 3 },
     company: { level: 1, xp: 0, xpNext: 100 },
     unlockedTech: [],
@@ -164,10 +173,10 @@ function defaultGame() {
    ============================================================ */
 function seed() {
   const tariffs = [
-    { id:1, name:'Старт',  speed:50,  price:350,  color:'#ff6b00', desc:'Базовый доступ' },
-    { id:2, name:'Оптимальный', speed:100, price:500, color:'#ff9500', desc:'Для дома' },
-    { id:3, name:'Комфорт', speed:200, price:750, color:'#ffb347', desc:'Для семьи' },
-    { id:4, name:'Бизнес', speed:300, price:1200, color:'#ff3d00', desc:'Для офиса' }
+    { id:1, name:'Старт',  speed:50,  price:350,  color:'#ff6b00', desc:'Базовый доступ', features: { priority:false, ddosShield:false } },
+    { id:2, name:'Оптимальный', speed:100, price:500, color:'#ff9500', desc:'Для дома', features: { priority:false, ddosShield:false } },
+    { id:3, name:'Комфорт', speed:200, price:750, color:'#ffb347', desc:'Для семьи', features: { priority:true, ddosShield:false } },
+    { id:4, name:'Бизнес', speed:300, price:1200, color:'#ff3d00', desc:'Для офиса', features: { priority:true, ddosShield:true } }
   ];
   const named = ['Иванов Алексей','Петрова Мария','Сидоров Дмитрий','Кузнецова Анна','ООО «Вектор»','Смирнов Павел','Волкова Ольга','ООО «Логистик»'];
   const clients = Array.from({ length: 8 }, (_, i) => {
@@ -208,7 +217,7 @@ function seed() {
     notifications: [], revenue, growth,
     seq: { tariff:5, client: clients.length+1, invoice: 1, ticket:1, activity:2, notif:1, story:1, emp:1 },
     simDate: today, settings: {},
-    onboarded: { tour: false, views: {} },
+    onboarded: { tour: false, views: {}, onboarding: false },   // ← NEW: onboarding
     game: g,
     story: { seenEvents: [], choices: {}, usedTickets: [] }
   };
@@ -241,8 +250,11 @@ function migrate(s) {
   if (!g.world.competitorQueue) g.world.competitorQueue = [];
   if (!s.story) s.story = { seenEvents: [], choices: {}, usedTickets: [] };
   if (!s.story.usedTickets) s.story.usedTickets = [];
-  if (!s.onboarded) s.onboarded = { tour: false, views: {} };
+  if (!s.onboarded) s.onboarded = { tour: false, views: {}, onboarding: false };
   if (!s.onboarded.views) s.onboarded.views = {};
+  if (typeof s.onboarded.onboarding === 'undefined') s.onboarded.onboarding = false;
+  if (typeof g.simulationMode === 'undefined') g.simulationMode = true;
+  if (!g.companyName) g.companyName = 'NetBill';
 
   /* Новые апгрейды */
   const defaultUp = defaultGame().upgrades;
@@ -365,7 +377,13 @@ NB.addCompanyXp = function (n) {
 NB.dailyIncomeEstimate = function () {
   const active = NB.state.clients.filter(c => c.status === 'active');
   let base = 0;
-  active.forEach(c => { base += NB.price(c.tariffId) / NB.INCOME_DIVISOR; });
+  active.forEach(c => {
+    base += NB.price(c.tariffId) / NB.INCOME_DIVISOR;
+    if (c.features) {
+      if (c.features.priority && NB.tariffs.FEATURES) base += NB.tariffs.FEATURES.priority.price / NB.INCOME_DIVISOR;
+      if (c.features.ddosShield && NB.tariffs.FEATURES) base += NB.tariffs.FEATURES.ddosShield.price / NB.INCOME_DIVISOR;
+    }
+  });
   base = Math.round(base);
   const g = NB.state.game;
   let neon = 0;
@@ -393,7 +411,8 @@ NB.netDailyEstimate = () => {
 
 NB.canAdvanceDay = function () {
   const g = NB.state.game;
-  if (g.stats.won || g.stats.lost) return { ok: false, reason: 'Игра окончена' };   // ← NEW
+  if (!g.simulationMode) return { ok: false, reason: 'Симуляция выключена' };
+  if (g.stats.won || g.stats.lost) return { ok: false, reason: 'Игра окончена' };
   if (g.activeEvent) return { ok: false, reason: 'Событие' };
   if (g.pendingClients.length > 0) return { ok: false, reason: `Клиенты (${g.pendingClients.length})` };
   return { ok: true };
@@ -606,7 +625,7 @@ NB.addVideoNews = function (src, title, text, cooldown) {
    MODAL / FORMS
    ============================================================ */
 let modalHandler = null;
-NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxClass, noSubmit }) => {
+NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxClass, noSubmit, onClose }) => {
   const modal = document.getElementById('modal');
   modal.innerHTML = `<div class="modal-box ${boxClass || ''}"${wide ? ' style="width:min(560px,100%)"' : ''}>
     <h3>${title}</h3>
@@ -623,7 +642,12 @@ NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxC
   modalHandler = onSubmit;
   form.addEventListener('submit', e => { e.preventDefault(); if (modalHandler) modalHandler(new FormData(form), form); });
   const cb = modal.querySelector('[data-close]');
-  if (cb) cb.addEventListener('click', NB.closeModal);
+  if (cb) cb.addEventListener('click', () => {
+    if (onClose) { try { onClose(); } catch(err) { console.warn('[NetBill] onClose error:', err); } }
+    NB.closeModal();
+  });
+  /* Клик по фону — тоже через onClose */
+  modal._onClose = onClose || null;
   setTimeout(() => { const f = form.querySelector('input:not([type=range]),select,textarea,button'); if (f) f.focus(); }, 70);
 };
 NB.closeModal = () => {
@@ -683,9 +707,10 @@ NB.buildShell = (navItems, content) => {
   document.body.dataset.arc = (g.world && g.world.arc) || 'ordinary';
   if (g.world.threat >= 8 && !g.world.flags.worldSaved && !g.stats.won && !g.stats.lost) document.body.classList.add('cynessa-danger');
   else document.body.classList.remove('cynessa-danger');
+  const companyName = NB.esc(g.companyName || 'NetBill');
   return `<div class="app">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-logo">◉</span><span>NetBill</span></div>
+      <div class="brand"><span class="brand-logo">◉</span><span>${companyName}</span></div>
       <nav class="nav">
         ${navItems.map(n => {
           const b = badges[n.id] || 0;
@@ -700,7 +725,7 @@ NB.buildShell = (navItems, content) => {
       <div class="sidebar-foot">
         <div class="user-card">
           <div class="user-ava">ВЛ</div>
-          <div class="user-info"><b>Владелец</b><small>NetBill</small></div>
+          <div class="user-info"><b>Владелец</b><small>${companyName}</small></div>
         </div>
         <button class="btn ghost small bell" data-action="show-notifs">🔔${unread ? ` <span class="notif-badge">${unread}</span>` : ''}</button>
         <button class="btn ghost small" data-action="start-tour">❔ Гид</button>
@@ -744,9 +769,11 @@ NB.simBar = () => {
     ${openTickets > 0 ? `<span class="sim-note warn">✉ ${openTickets}</span>` : ''}
     ${overdueBills > 0 ? `<span class="sim-note warn">🔥 ${overdueBills}</span>` : ''}
     ${threatCount > 0 ? `<span class="sim-note warn" style="border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.08)">⚠ ${threatCount}</span>` : ''}
-    <button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(canAdv.ok ? 'Завершить день' : canAdv.reason)}">
-      ${canAdv.ok ? 'День →' : `⬜ ${canAdv.reason}`}
-    </button>
+    ${g.simulationMode
+      ? `<button class="btn ${canAdv.ok ? 'primary' : 'ghost'} small" data-action="advance-day" ${canAdv.ok ? '' : 'disabled'} title="${NB.esc(canAdv.ok ? 'Завершить день' : canAdv.reason)}">
+          ${canAdv.ok ? 'День →' : `⬜ ${canAdv.reason}`}
+        </button>`
+      : `<span class="sim-note" style="color:var(--muted)">🔒 Симуляция выключена</span>`}
   </div>`;
 };
 

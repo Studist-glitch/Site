@@ -682,7 +682,12 @@ C.showEvent = function (evt) {
     title:'', noSubmit:true, boxClass:'event-modal-box',
     html:`<div class="event-title">${tpl.title}</div>
       <div class="event-desc">${tpl.desc}</div>
-      <div class="event-options">${opts}</div>`
+      <div class="event-options">${opts}</div>`,
+    onClose: () => {
+      c.history.push({ day: g.daily.dayNumber, type: evt.type, label: '— закрыто —', result: 'отменено' });
+      NB.save();
+      setTimeout(() => { if (NB.render) NB.render(); }, 250);
+    }
   });
   setTimeout(() => {
     NB.$$('[data-competitor-opt]').forEach(btn => btn.addEventListener('click', () => {

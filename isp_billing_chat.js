@@ -54,7 +54,8 @@ C.TEMPLATES = {
     stages: {
       initial: {
         replies: [
-          { label: 'Новый роутер (1500₽)', cost: 1500, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Новый роутер', cost: null, leadsTo: 'resolved', reward: { reputation: 2 },
+        costFn: (g, client) => { const t = client ? NB.tariff(client.tariffId) : null; return Math.round((t ? t.price : 500) * 2); } },
           { label: 'Попробуйте сброс', apCost: 1, minigame: 'sequence', leadsTo: 'resolved', reward: { reputation: 1 } },
           { label: 'Это не наша проблема', leadsTo: 'resolved', penalty: { reputation: -3 } }
         ]
@@ -81,20 +82,30 @@ C.TEMPLATES = {
   },
 
   refund_request: {
-    subject: 'Возврат средств', repeatable: true,
-    intro: [{ from: 'client', text: 'Меня не устроило качество. Верните за 3 месяца.' }],
+    subject: 'Возврат средств',
+    intro: (g, client) => {
+      const t = client ? NB.tariff(client.tariffId) : null;
+      const monthly = t ? t.price : 500;
+      const total = monthly * 3;
+      return [
+        { from: 'client', text: `Меня не устроило качество. Верните за 3 месяца.` },
+        { from: 'client', text: `Это ${total}₽ по моему тарифу.` }
+      ];
+    },
     stages: {
       initial: {
         replies: [
-          { label: 'Полный возврат (1500₽)', cost: 1500, leadsTo: 'resolved', reward: { reputation: 4 } },
-          { label: '50% (750₽)', cost: 750, leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Полный возврат (3 мес.)', cost: null, leadsTo: 'resolved', reward: { reputation: 4 },
+            costFn: (g, client) => { const t = client ? NB.tariff(client.tariffId) : null; return (t ? t.price : 500) * 3; } },
+          { label: '50%', cost: null, leadsTo: 'resolved', reward: { reputation: 1 },
+            costFn: (g, client) => { const t = client ? NB.tariff(client.tariffId) : null; return Math.round((t ? t.price : 500) * 1.5); } },
           { label: 'Отказать', leadsTo: 'refuse' }
         ]
       },
       refuse: {
         messages: [{ from: 'client', text: 'Тогда жалоба в Роспотребнадзор!' }],
         replies: [
-          { label: 'Всё же вернём (1500₽)', cost: 1500, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Всё же вернём', cost: null, leadsTo: 'resolved', reward: { reputation: 2 } },
           { label: 'Жалуйтесь', leadsTo: 'resolved', penalty: { reputation: -5 } }
         ]
       }
@@ -114,7 +125,8 @@ C.TEMPLATES = {
       },
       upsold: {
         messages: [{ from: 'client', text: 'Отлично! Оформляйте.' }],
-        replies: [{ label: 'Готово', leadsTo: 'resolved', reward: { cash: 3000, reputation: 2 } }]
+        replies: [{ label: 'Готово', leadsTo: 'resolved', reward: { reputation: 2 },
+          cashFn: (g, client) => { const t = client ? NB.tariff(client.tariffId) : null; return Math.round((t ? t.price : 500) * 4); } }]
       },
       upsold_std: {
         messages: [{ from: 'client', text: 'Хорошо, подойдёт.' }],
@@ -124,8 +136,13 @@ C.TEMPLATES = {
   },
 
   billing_error: {
-    subject: 'Ошибка в счёте', repeatable: true,
-    intro: [{ from: 'client', text: 'В моём счёте ошибка! Я платил за 500 Мбит, а указано 200.' }],
+    subject: 'Ошибка в счёте',
+    intro: (g, client) => {
+      const t = client ? NB.tariff(client.tariffId) : null;
+      const speed = t ? t.speed : 200;
+      const wrong = Math.max(10, Math.round(speed * 0.4));
+      return [{ from: 'client', text: `В моём счёте ошибка! Я платил за ${speed} Мбит, а указано ${wrong}.` }];
+    },
     stages: {
       initial: {
         replies: [
@@ -145,8 +162,13 @@ C.TEMPLATES = {
   },
 
   sla_complaint: {
-    subject: 'Жалоба на скорость', repeatable: true,
-    intro: [{ from: 'client', text: 'Третий день скорость ниже заявленной! Я платил за 500, а получаю 50!' }],
+    subject: 'Жалоба на скорость',
+    intro: (g, client) => {
+      const t = client ? NB.tariff(client.tariffId) : null;
+      const speed = t ? t.speed : 100;
+      const actual = Math.max(10, Math.round(speed * 0.3));
+      return [{ from: 'client', text: `Третий день скорость ниже заявленной! Я платил за ${speed} Мбит, а получаю ${actual}!` }];
+    },
     stages: {
       initial: {
         replies: [
@@ -165,6 +187,147 @@ C.TEMPLATES = {
       refused: {
         messages: [{ from: 'client', text: 'Ну и сервис...' }],
         replies: [{ label: 'До свидания', leadsTo: 'resolved' }]
+      }
+    }
+  },
+
+    /* ---------- ОБЫЧНЫЕ КИБЕР-ИНЦИДЕНТЫ ---------- */
+  router_hacked: {
+    subject: 'Взломан роутер',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Здравствуйте! Заметил, что кто-то подключается к моему Wi-Fi.' },
+      { from: 'client', text: 'В логах — левый MAC. Что делать?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Сменить пароль (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 3 } },
+          { label: 'Прислать техника (1000₽)', cost: 1000, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Это не наша проблема', leadsTo: 'resolved', penalty: { reputation: -2 } }
+        ]
+      }
+    }
+  },
+
+  phishing_client: {
+    subject: 'Фишинг',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Мне пришло письмо от "вашей компании". Просят пароль и данные карты.' },
+      { from: 'client', text: 'Это вы?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Это мошенники! (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 4 } },
+          { label: 'Заблокировать отправителя', leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Проигнорировать', leadsTo: 'resolved', penalty: { reputation: -3 } }
+        ]
+      }
+    }
+  },
+
+  lost_data: {
+    subject: 'Потеря данных',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Я случайно удалил важные файлы. У вас же есть резервные копии?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Восстановить из бэкапа (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 3 } },
+          { label: 'Извините, бэкапов нет', leadsTo: 'resolved', penalty: { reputation: -2 } }
+        ]
+      }
+    }
+  },
+
+  stolen_credentials: {
+    subject: 'Кража пароля',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Мой пароль в открытом доступе! В каком-то дампе.' },
+      { from: 'client', text: 'Это утечка из вашей базы?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Срочно проверю (1 AP)', apCost: 1, leadsTo: 'check' },
+          { label: 'Это не наша утечка', leadsTo: 'resolved', penalty: { reputation: -3 } }
+        ]
+      },
+      check: {
+        messages: [{ from: 'client', text: 'И что?' }],
+        replies: [
+          { label: 'Смените все пароли (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 3 } },
+          { label: 'Мы не виноваты', leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      }
+    }
+  },
+
+  suspicious_login: {
+    subject: 'Странный вход',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'В личном кабинете кто-то заходил с чужого IP. Дважды.' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Проверю логи (1 AP)', apCost: 1, minigame: 'codebreak', leadsTo: 'resolved', reward: { reputation: 3 } },
+          { label: 'Смените пароль', leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Скорее всего сами', leadsTo: 'resolved', penalty: { reputation: -2 } }
+        ]
+      }
+    }
+  },
+
+  lost_wifi: {
+    subject: 'Wi-Fi не работает',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Индикатор горит, а Wi-Fi нет. Что делать?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Перезагрузите роутер', leadsTo: 'reboot' },
+          { label: 'Пришлю техника (500₽)', cost: 500, leadsTo: 'resolved', reward: { reputation: 2 } }
+        ]
+      },
+      reboot: {
+        messages: [{ from: 'client', text: 'Не помогло.' }],
+        replies: [
+          { label: 'Проверю линию (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Техник (500₽)', cost: 500, leadsTo: 'resolved', reward: { reputation: 1 } }
+        ]
+      }
+    }
+  },
+
+  wrong_billing: {
+    subject: 'Списали лишнее',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'С карты списали 750₽, а у меня тариф за 500₽!' },
+      { from: 'client', text: 'Верните разницу.' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Проверю тариф (1 AP)', apCost: 1, leadsTo: 'check' },
+          { label: 'Вернуть сразу (250₽)', cost: 250, leadsTo: 'resolved', reward: { reputation: 3 } }
+        ]
+      },
+      check: {
+        messages: [{ from: 'client', text: 'И?' }],
+        replies: [
+          { label: 'Ошибка наша. Возврат.', cost: 250, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Вы подключили доп. услугу', leadsTo: 'resolved', reward: { reputation: 1 } }
+        ]
       }
     }
   },
@@ -606,10 +769,10 @@ C.TEMPLATES = {
     }
   },
 
-  /* Сообщение от Neon — только после личного знакомства */
+  /* Сообщение от Neon — только после активации Синессы (после галла) */
   neon_message: {
     subject: 'Сообщение через клиента',
-    condition: g => g.world.neon.met && g.world.neon.state === 'active',
+    condition: g => g.world.cynessaActive && g.world.neon.met && g.world.neon.state === 'active',
     intro: [
       { from: 'client', text: 'Мне сказали передать: «Она движется».' },
       { from: 'client', text: 'Кто такой Neon?' }
@@ -738,6 +901,84 @@ C.TEMPLATES = {
         ]
       }
     }
+  },
+
+    /* ---------- НОВЫЕ ОБЫЧНЫЕ ---------- */
+  slow_router: {
+    subject: 'Старый роутер',
+    repeatable: true,
+    intro: [{ from: 'client', text: 'У меня роутер 2015 года. Стоит ли менять?' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Порекомендовать новый (1000₽)', cost: 1000, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Настроить по максимуму (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Это не наша проблема', leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      }
+    }
+  },
+
+  neighbor_cable: {
+    subject: 'Сосед перерезал кабель',
+    repeatable: true,
+    intro: [
+      { from: 'client', text: 'Сосед при ремонте случайно перерезал кабель. Что теперь?' }
+    ],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Срочный ремонт (1500₽)', cost: 1500, leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Отправить техника (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 3 } },
+          { label: 'Это ваши проблемы', leadsTo: 'resolved', penalty: { reputation: -3 } }
+        ]
+      }
+    }
+  },
+
+  family_question: {
+    subject: 'Подключение для родителей',
+    repeatable: true,
+    intro: [{ from: 'client', text: 'Хочу подключить родителей по соседству. Есть скидка для семьи?' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Семейная скидка 10%', leadsTo: 'resolved', reward: { reputation: 2, cash: 300 } },
+          { label: 'По обычному тарифу', leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Это не наша забота', leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      }
+    }
+  },
+
+  business_pitch: {
+    subject: 'Хочу открыть офис',
+    repeatable: true,
+    intro: [{ from: 'client', text: 'Планирую открыть небольшой офис на 5 человек. Что посоветуете?' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Обсудить бизнес-тариф (1 AP)', apCost: 1, leadsTo: 'resolved', reward: { reputation: 2, cash: 2000 } },
+          { label: 'Стандартный офисный тариф', leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'Не наш профиль', leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      }
+    }
+  },
+
+  student_complaint: {
+    subject: 'Студент без денег',
+    repeatable: true,
+    intro: [{ from: 'client', text: 'Я студент. Мне бы подешевле тариф, но скорость нужна для учёбы.' }],
+    stages: {
+      initial: {
+        replies: [
+          { label: 'Скидка для студентов 20%', leadsTo: 'resolved', reward: { reputation: 2 } },
+          { label: 'Предложить бюджетный тариф', leadsTo: 'resolved', reward: { reputation: 1 } },
+          { label: 'У нас нет скидок', leadsTo: 'resolved', penalty: { reputation: -1 } }
+        ]
+      }
+    }
   }
 };
 
@@ -746,6 +987,7 @@ C.TEMPLATES = {
    ============================================================ */
 C.createTicket = function (clientId, forcedKey) {
   const st = NB.state, g = st.game;
+  const client = st.clients.find(c => c.id === clientId);
   if (!st.story) st.story = {};
   if (!st.story.usedTickets) st.story.usedTickets = [];
   const used = st.story.usedTickets;
@@ -768,7 +1010,7 @@ C.createTicket = function (clientId, forcedKey) {
   if (!tpl.repeatable) used.push(tplKey);
 
   /* intro может быть функцией — вызываем с game */
-  const introArr = typeof tpl.intro === 'function' ? tpl.intro(g) : tpl.intro;
+  const introArr = typeof tpl.intro === 'function' ? tpl.intro(g, client) : tpl.intro
   if (!introArr || !introArr.length) return null;
 
   const id = st.seq.ticket++;
@@ -884,9 +1126,11 @@ C.renderChat = function (t) {
 
 C.renderChoice = function (r, idx, t) {
   const g = NB.state.game;
+  const client = NB.client(t.clientId);
+  const effectiveCost = r.costFn ? r.costFn(g, client) : r.cost;
   const meta = [];
   if (r.apCost > 0) meta.push(`<span class="ap">−${r.apCost} AP</span>`);
-  if (r.cost) meta.push(`<span class="free" style="color:#f87171">−${r.cost}₽</span>`);
+  if (effectiveCost) meta.push(`<span class="free" style="color:#f87171">−${effectiveCost}₽</span>`);
   if (r.employeeSkill) {
     const best = NB.employees.bestFor(r.employeeSkill);
     if (best) meta.push(`<span class="emp">👤 ${best.name}</span>`);
@@ -897,7 +1141,7 @@ C.renderChoice = function (r, idx, t) {
 
   const disabled =
     (r.apCost > 0 && g.ap.current < r.apCost) ||
-    (r.cost && g.cash < r.cost) ||
+    (effectiveCost && g.cash < effectiveCost) ||
     (r.employeeSkill && !NB.employees.bestFor(r.employeeSkill));
 
   return `<button class="chat-choice" data-chat-reply="${idx}" ${disabled ? 'disabled' : ''}>
@@ -919,8 +1163,10 @@ C.handleReply = function (ticketId, replyIdx) {
   if (!reply) return;
   const g = NB.state.game;
 
+  const client = NB.client(t.clientId);
+  const effectiveCost = reply.costFn ? reply.costFn(g, client) : reply.cost;
   if (reply.apCost > 0 && g.ap.current < reply.apCost) return NB.toast('Не хватает AP', 'err');
-  if (reply.cost && g.cash < reply.cost) return NB.toast('Недостаточно денег', 'err');
+  if (effectiveCost && g.cash < effectiveCost) return NB.toast('Недостаточно денег', 'err');
   let employee = null;
   if (reply.employeeSkill) {
     employee = NB.employees.bestFor(reply.employeeSkill);
@@ -929,7 +1175,7 @@ C.handleReply = function (ticketId, replyIdx) {
   }
 
   if (reply.apCost > 0) NB.spendAp(reply.apCost);
-  if (reply.cost) g.cash -= reply.cost;
+  if (effectiveCost) { g.cash -= effectiveCost; g.stats.totalExpenses += effectiveCost; }
   if (employee) NB.employees.spendAp(employee.id, 1);
 
   t.chat.push({ from: 'staff', text: reply.label, at: Date.now() });
@@ -980,10 +1226,12 @@ C.resolveTicket = function (t, reply, success, employee) {
   const g = NB.state.game;
   const reward = reply.reward || {};
   const penalty = reply.penalty || {};
+  const client = NB.client(t.clientId);
 
   if (success) {
     if (reward.reputation) g.reputation = Math.min(100, g.reputation + reward.reputation);
-    if (reward.cash) g.cash += reward.cash;
+    const cash = reward.cashFn ? reward.cashFn(g, client) : reward.cash;
+    if (cash) { g.cash += cash; g.stats.totalRevenue += cash; }
     NB.addLog(`Заявка «${t.subject}» решена${employee ? ' (' + employee.name + ')' : ''}`, 'success');
   } else {
     if (penalty.reputation) g.reputation = Math.max(0, g.reputation + penalty.reputation);

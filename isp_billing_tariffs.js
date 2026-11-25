@@ -5,6 +5,20 @@ const T = NB.tariffs = NB.tariffs || {};
 
 T.SPEED_STEPS = [25, 50, 100, 150, 200, 300, 500, 700, 1000, 1500, 2000, 3000, 5000];
 
+T.FEATURES = {
+  priority:    { icon:'⭐', label:'Приоритет в сети',    price: 200, desc:'Клиент не теряет скорость при перегрузке' },
+  ddosShield:  { icon:'🛡', label:'Личная DDoS-защита',  price: 150, desc:'Клиент не теряет деньги при DDoS-атаках' }
+};
+
+T.computePrice = function (tariff) {
+  let price = tariff.price;
+  if (tariff.features) {
+    if (tariff.features.priority) price += T.FEATURES.priority.price;
+    if (tariff.features.ddosShield) price += T.FEATURES.ddosShield.price;
+  }
+  return price;
+};
+
 T.getRange = function () {
   const g = NB.state.game.upgrades;
   const cLvl = NB.state.game.company.level;
@@ -67,6 +81,17 @@ T.formHtml = function (t) {
       <label class="slider-label"><span>Цена</span><b id="price-display">${price} ₽/мес</b></label>
       <input type="range" name="price" min="${b.min}" max="${b.max}" step="10" value="${price}" id="price-slider">
       <div class="slider-hint">Диапазон: <b id="price-range">${b.min}–${b.max} ₽</b></div>
+    </div>
+    <div class="field" style="margin-top:14px">
+      <span>Доп. функции (наценка к цене)</span>
+      <label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface-2);border-radius:8px;cursor:pointer;margin-bottom:6px">
+        <input type="checkbox" name="feat_priority" ${t && t.features && t.features.priority ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary)">
+        <span style="font-size:13px">⭐ Приоритет в сети <b style="color:var(--primary-3)">+${T.FEATURES.priority.price}₽</b></small></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface-2);border-radius:8px;cursor:pointer">
+        <input type="checkbox" name="feat_ddosShield" ${t && t.features && t.features.ddosShield ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary)">
+        <span style="font-size:13px">🛡 Личная DDoS-защита <b style="color:var(--primary-3)">+${T.FEATURES.ddosShield.price}₽</b></span>
+      </label>
     </div>
   `;
 };
