@@ -63,9 +63,9 @@ A.detectPanelTheme = function (panel) {
     if (g.family.wife && g.family.wifeHappiness > 70) return 'story_romance';
     return 'story_solver';
   }
-  if (cls.includes('game-panel')) return 'game_cash';
-  if (g.world.threat >= 6) return 'solver';
-  if (g.world.threat >= 4) return 'dread';
+  if (cls.includes('game-panel')) return 'none';
+  if (g.world.cynessaActive && g.world.threat >= 6) return 'solver';
+  if (g.world.cynessaActive && g.world.threat >= 4) return 'dread';
   return 'none';
 };
 

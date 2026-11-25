@@ -391,6 +391,7 @@ NB.netDailyEstimate = () => {
 
 NB.canAdvanceDay = function () {
   const g = NB.state.game;
+  if (g.stats.won || g.stats.lost) return { ok: false, reason: 'Игра окончена' };   // ← NEW
   if (g.activeEvent) return { ok: false, reason: 'Событие' };
   if (g.pendingClients.length > 0) return { ok: false, reason: `Клиенты (${g.pendingClients.length})` };
   return { ok: true };
@@ -487,6 +488,7 @@ NB.showCynessaEnding = function () {
 };
 
 NB.showEndingScreen = function (type) {
+  if (document.querySelector('.ending-screen')) return;    // ← защита от дубля
   const g = NB.state.game;
   const data = {
     corporate_win: { icon:'🏢', color:'#3b82f6', title:'Корпоративный гигант', desc:'Ты поглотил всех конкурентов. NetBill — единственный провайдер в стране.' },

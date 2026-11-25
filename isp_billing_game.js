@@ -32,9 +32,15 @@ G.UPGRADES = {
   peering:        { icon:'🔗', name:'Пиринг',                 desc:'Прямое соединение с провайдерами.', costs:[30000,65000], upkeep:[50,110], levels:['Местный','Междугородний'], minDay:30, requiresUpgrade:'caching' },
 
   /* ---------- СЕРВИС И БИЗНЕС ---------- */
-  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше новых клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1','+2','+3'], minDay:8 },
-  ddos:           { icon:'🛡', name:'DDoS-защита',            desc:'Отбивает распределённые атаки.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN-фильтр','Автоблок'], minDay:7, requiresFlag:'ddosEncountered' },
-  firewall:       { icon:'🧱', name:'Firewall',               desc:'Защита от взломов.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay:14, requiresFlag:'hackerEncountered' },
+  marketing:      { icon:'📢', name:'Маркетинг',              desc:'Больше новых клиентов.', costs:[10000,22000,45000], upkeep:[20,50,100], levels:['+1 клиент/день','+2 клиента/день','+3 клиента/день'], minDay:8 },
+
+  /* ---------- БЕЗОПАСНОСТЬ ---------- */
+  antivirus:      { icon:'🦠', name:'Антивирус',              desc:'Снижает шанс заражения клиентов-хакеров. −20% атак.', costs:[6000,14000,28000], upkeep:[10,25,55], levels:['Базовый','Продвинутый','Корпоративный'], minDay:5 },
+  firewall:       { icon:'🧱', name:'Firewall',               desc:'Фильтр входящего трафика. −30% попыток взлома.', costs:[12000,30000,60000], upkeep:[20,50,100], levels:['Базовый','Глубокий','ИИ'], minDay:10 },
+  ddos:           { icon:'🛡', name:'DDoS-защита',            desc:'Отбивает распределённые атаки. −15% потерь при DDOS.', costs:[8000,18000,35000], upkeep:[15,40,80], levels:['Базовая','CDN-фильтр','Автоблок'], minDay:7 },
+  backup:         { icon:'💾', name:'Резервные копии',        desc:'Восстанавливает данные после взлома. −50% потерь от хакеров.', costs:[10000,22000], upkeep:[15,35], levels:['Ежедневно','Реалтайм'], minDay:12 },
+  insurance:      { icon:'📋', name:'Кибер-страховка',        desc:'Компенсирует 30% финансовых потерь от атак.', costs:[15000,35000], upkeep:[50,120], levels:['Базовая','Полная'], minDay:20 },
+  
   honeyPot:       { icon:'🍯', name:'Ханипоты',               desc:'Приманки для хакеров.', costs:[28000,65000], upkeep:[35,80], levels:['Ловушки','Ложные сети'], minDay:45, requiresUpgrade:'firewall' },
   support:        { icon:'💬', name:'Служба поддержки',       desc:'Меньше оттока.', costs:[6000,15000,30000], upkeep:[15,40,80], levels:['2 оператора','24/7','Менеджеры'], minDay:11 },
   autoClean:      { icon:'🧹', name:'Автоочистка спама',      desc:'Фильтр спама.', costs:[4000], upkeep:[8], levels:['Скрипт'], minDay:10 },
@@ -94,6 +100,8 @@ G.getUpgradeEffects = function () {
     qosLvl = u.qos||0, cache = u.caching||0, upsLvl = u.ups||0, cdnLvl = u.cdn||0,
     lb = u.loadBalancer||0, hp = u.honeyPot||0, bp = u.backupPower||0, dr = u.droneRepair||0,
     comp = u.compression||0, wf = u.wifi6||0, mplsLvl = u.mpls||0, gponLvl = u.gpon||0,
+    av = u.antivirus||0, fw = u.firewall||0, ddosLvl = u.ddos||0,
+    sf = u.spamFilter||0, bk = u.backup||0, ins = u.insurance||0,
     bq = (u.barracks||0) + (u.armory||0) + (u.trainingGround||0);
   return {
     trafficBonus: (u.bandwidth||0)*3000 + (u.fiber||0)*5000 + (u.satellite||0)*10000
@@ -105,8 +113,15 @@ G.getUpgradeEffects = function () {
       + lb*0.02 + dr*0.02 + wf*0.03 + mplsLvl*0.02 + gponLvl*0.02,
     newClientBonus: (u.marketing||0) + (u.salesBoost||0)*0.5 + cdnLvl*0.3 + mplsLvl*0.5 + wf*0.2,
     autoPayChance: (u.support||0)*0.05,
-    hackReduction: (u.firewall||0)*0.015 + hp*0.03,
-    spamReduction: (u.autoClean||0)*0.05,
+
+    /* Безопасность — новые поля */
+    hackReduction:   av*0.20 + fw*0.10 + hp*0.03,       // % снижения шанса взлома
+    hackLossReduce:  bk*0.25 + ins*0.15,                 // % снижения потерь при взломе
+    spamReduction:   (u.autoClean||0)*0.05 + sf*0.20,    // % снижения спам-потерь
+    ddosReduction:   ddosLvl*0.15,                        // % снижения потерь при DDOS
+    ddosShield:      ddosLvl > 0,                         // активна ли DDoS-защита
+    insurancePayout: ins*0.15,                            // % компенсации от атак
+
     autoCollect: u.autoCollect > 0,
     autoResolveTickets: u.ai || 0,
     solverAttackReduction: (u.ddos||0)*0.05 + (u.firewall||0)*0.03
@@ -618,13 +633,15 @@ G.rollEvent = function () {
 };
 
 G.triggerEvent = function () {
-  NB.state.game.activeEvent = { ...G.rollEvent(), triggeredAt: new Date().toISOString() };
+  const evt = G.rollEvent();
+  if (!evt) return;
+  NB.state.game.activeEvent = { ...evt, triggeredAt: new Date().toISOString() };
   NB.save();
 };
 
 G.showEventModal = function () {
   const evt = NB.state.game.activeEvent; if (!evt) return;
-  const opts = evt.opts.map((o, i) => `<button type="button" class="event-option" data-event-opt="${i}"><span class="event-option-label">${o.label}</span><span class="event-option-hint">${o.hint||''}</span></button>`).join('');
+  const opts = (evt.opts || []).map((o, i) => `<button type="button" class="event-option" data-event-opt="${i}"><span class="event-option-label">${o.label}</span><span class="event-option-hint">${o.hint||''}</span></button>`).join('');
   NB.openModal({ title:'', noSubmit:true, boxClass:'event-modal-box', html:`<div class="event-title">${evt.title}</div><div class="event-desc">${evt.desc}</div><div class="event-options">${opts}</div>` });
   setTimeout(() => { NB.$$('[data-event-opt]').forEach(btn => btn.addEventListener('click', () => G.resolveEvent(Number(btn.dataset.eventOpt)))); }, 30);
 };

@@ -761,6 +761,7 @@ C.createTicket = function (clientId, forcedKey) {
     (rare.length && Math.random() < 0.4 ? NB.pick(rare) : NB.pick(available));
   const tpl = C.TEMPLATES[tplKey];
   if (!tpl) return null;
+  if (tpl.condition && !tpl.condition(g)) return null;    // ← NEW
 
   if (!tpl.repeatable) used.push(tplKey);
 

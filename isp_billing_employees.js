@@ -143,8 +143,15 @@ E.generateEmployee = function (level, forceSpec) {
 };
 
 E.generatePool = function (count) {
+  const g = NB.state.game;
+  const hasBarracks = !!(g.upgrades && g.upgrades.barracks);
+  /* Воины не появляются в пуле, пока нет казарм */
+  const available = Object.keys(SPECS).filter(k => k !== 'warrior' || hasBarracks);
   const pool = [];
-  for (let i = 0; i < count; i++) pool.push(E.generateEmployee(1));
+  for (let i = 0; i < count; i++) {
+    const spec = NB.pick(available);
+    pool.push(E.generateEmployee(1, spec));
+  }
   return pool;
 };
 
@@ -168,6 +175,7 @@ E.hire = function (empId) {
     if (current >= cap) return NB.toast(`Лимит воинов: ${cap}. Улучшите «Добровольцев».`, 'err');
   }
   g.cash -= cost;
+  g.stats.totalExpenses += cost;
   g.employeesPool = g.employeesPool.filter(e => e.id !== empId);
   g.employees.push(pool);
   NB.notify(`Нанят: ${pool.name}`, 'ok');
@@ -202,7 +210,7 @@ E.upgrade = function (empId, free) {
   if (!emp) return false;
   const cost = E.upgradeCost(emp);
   if (!free && g.cash < cost) { NB.toast(`Нужно ${NB.money(cost)}`, 'err'); return false; }
-  if (!free) g.cash -= cost;
+  if (!free) { g.cash -= cost; g.stats.totalExpenses += cost; }   // ← NEW
   emp.level++;
   emp.xp = 0;
   emp.xpNext = Math.round(emp.xpNext * 1.4);
@@ -301,6 +309,7 @@ E.refreshPool = function () {
   const g = NB.state.game;
   if (g.cash < 500) return NB.toast('Нужно 500 ₽', 'err');
   g.cash -= 500;
+  g.stats.totalExpenses += 500;
   g.employeesPool = E.generatePool(4);
   NB.save(); NB.render();
 };
@@ -311,7 +320,9 @@ E.refreshPool = function () {
 E.renderView = function () {
   const g = NB.state.game;
   const hired = g.employees;
-  const pool = g.employeesPool;
+  const hasBarracks = !!(g.upgrades && g.upgrades.barracks);
+  /* Скрываем воинов в пуле, если нет казарм */
+  const pool = (g.employeesPool || []).filter(e => e.spec !== 'warrior' || hasBarracks);
   const totalSalary = hired.reduce((s, e) => s + e.salary, 0);
   const warriors = hired.filter(e => e.spec === 'warrior');
   const warriorCap = (g.upgrades.soldier || 0) * 10;
@@ -387,8 +398,12 @@ E.renderCard = function (e, hired) {
       ${hired
         ? `<button class="btn primary small emp-upgrade-btn" data-action="upgrade-employee" data-id="${e.id}" ${canUpgrade ? '' : 'disabled'} title="Повысить уровень">⬆ ${NB.money(upgradeCost)}</button>
            <button class="btn ghost small" data-action="fire-employee" data-id="${e.id}" style="color:var(--danger)">Уволить</button>`
-        : `<span class="emp-salary">Найм: <b>${NB.money(hireCost)}</b></span>
-           <button class="btn ${canHire ? 'primary' : 'ghost'} small" data-action="hire-employee" data-id="${e.id}" ${canHire ? '' : 'disabled'}>Нанять</button>`}
+        : (() => {
+            const needsBarracks = e.spec === 'warrior' && !NB.state.game.upgrades.barracks;
+            const canHireFinal = canHire && !needsBarracks;
+            return `<span class="emp-salary">Найм: <b>${NB.money(hireCost)}</b>${needsBarracks ? ' <span style="color:#f87171;font-size:10.5px">· нужны казармы</span>' : ''}</span>
+              <button class="btn ${canHireFinal ? 'primary' : 'ghost'} small" data-action="hire-employee" data-id="${e.id}" ${canHireFinal ? '' : 'disabled'}>${needsBarracks ? '🔒 Казармы' : 'Нанять'}</button>`;
+          })()}
     </div>
   </div>`;
 };

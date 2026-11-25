@@ -28,7 +28,7 @@ D.getEmployeeBonuses = function () {
   const b = { support:0, tech:0, security:0, sales:0, ops:0 };
   NB.state.game.employees.forEach(e => {
     if (!e.spec || !(e.spec in b)) return;
-    b[e.spec] += 1 + (e.level || 1) - 1;
+    b[e.spec] += (e.level || 1);
   });
   return b;
 };
@@ -63,14 +63,21 @@ D.processClientRisks = function () {
       const chance = Math.max(0.003, 0.06 - eff.hackReduction - b.security * 0.02);
       if (Math.random() < chance) {
         const guardian = g.employees.find(e => e.ap.current > 0 && (e.skills.includes('protect') || e.skills.includes('hack')));
-        if (guardian && Math.random() < 0.7) { NB.employees.spendAp(guardian.id, 1); NB.addLog(`🛡 ${guardian.name} отбил атаку`, 'success'); }
-        else { const stolen = Math.min(Math.round(g.cash * 0.05), 8000); if (stolen > 0) { g.cash -= stolen; NB.addLog(`⚠ «${c.name}» взломал кассу: −${NB.money(stolen)}`, 'warn'); } }
+        if (guardian && Math.random() < 0.7) {
+          NB.employees.spendAp(guardian.id, 1);
+          NB.addLog(`🛡 ${guardian.name} отбил атаку`, 'success');
+        } else {
+          let stolen = Math.min(Math.round(g.cash * 0.05), 8000);
+          stolen = Math.round(stolen * (1 - eff.hackLossReduce));        // ← NEW: backup/insurance
+          if (stolen > 0) { g.cash -= stolen; NB.addLog(`⚠ «${c.name}» взломал кассу: −${NB.money(stolen)}`, 'warn'); }
+        }
       }
     }
     if (c.risk === 'spammer') {
-      if (Math.random() < Math.max(0.05, 0.15 - eff.spamReduction)) {
-        g.reputation = Math.max(0, g.reputation - 2);
-        NB.addLog(`⚠ «${c.name}» спамит: −2 реп`, 'warn');
+      if (Math.random() < Math.max(0.03, 0.15 - eff.spamReduction)) {   // ← усилено: 0.05 → 0.03
+        const repLoss = Math.max(0, 2 - Math.round(eff.spamReduction * 5));  // ← NEW: защита снижает урон
+        g.reputation = Math.max(0, g.reputation - repLoss);
+        NB.addLog(`⚠ «${c.name}» спамит: −${repLoss} реп`, 'warn');
         if (Math.random() < 0.5) setTimeout(() => D.spawnSpam(), 400);
       }
     }
@@ -164,8 +171,25 @@ D.processFamily = function () {
 
 D.processSolverAttacks = function () {
   const g = NB.state.game;
-  if (g.world.flags.worldSaved || g.world.threat < 3) return;
   const eff = NB.game.getUpgradeEffects();
+
+  /* Обычный DDOS — возможен всегда (от дня 10) */
+  if (g.daily.dayNumber >= 10 && Math.random() < 0.08) {
+    /* Урон зависит от ddosReduction */
+    const baseLoss = Math.min(Math.round(g.cash * 0.03), 3000);
+    const loss = Math.round(baseLoss * (1 - eff.ddosReduction));
+    if (loss > 0) { g.cash -= loss; NB.addLog(`🌐 DDoS-атака: −${NB.money(loss)}`, 'warn'); }
+    const repLoss = eff.ddosShield ? 1 : 3;
+    g.reputation = Math.max(0, g.reputation - repLoss);
+    if (!eff.ddosShield) NB.addLog(`DDoS: −${repLoss} реп`, 'warn');
+    /* Анимация */
+    document.body.classList.add('solver-flash');
+    setTimeout(() => document.body.classList.remove('solver-flash'), 800);
+  }
+
+  /* Ночные атаки Синессы — только после галла */
+  if (!g.world.cynessaActive) return;
+  if (g.world.flags.worldSaved || g.world.threat < 3) return;
   const chance = Math.max(0.05, Math.min(0.6, g.world.threat * 0.06 - eff.solverAttackReduction));
   if (Math.random() > chance) {
     if (eff.scannerWarn && Math.random() < 0.15) NB.addLog('📡 Сканер: угроза была, но защита сработала', 'info');
