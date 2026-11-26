@@ -464,7 +464,7 @@ G.EVENTS = [
         if (Math.random() < 0.6) { NB.state.game.cash += 5000; NB.employees.levelUp(s.id); return `${s.name} поймал хакера. +5 000 ₽`; }
         return `${s.name} провалился. Опыт получен.`;
       }},
-      { label:'ФСБ (-5000₽)', run:()=>{ if(NB.state.game.cash<5000) return 'Нет денег'; NB.state.game.cash-=5000; NB.state.game.world.flags.hackerEncountered=true; return 'Найден'; }},
+      { label:'ФСБ', cost:5000, run:()=>{ NB.state.game.world.flags.hackerEncountered=true; return 'Найден'; }},
       { label:'Игнорировать', run:()=>{ NB.state.game.world.flags.hackerEncountered=true; NB.state.game.reputation=Math.max(0,NB.state.game.reputation-15); return 'База утекла'; }}
     ]
   },
@@ -661,11 +661,11 @@ G.EVENTS = [
   { id:'solver_attack', title:'⚠ Атака', desc:'Жёлтая вспышка. Сеть под ударом.', weight:1.8,
     condition:()=>NB.state.game.world.cynessaActive && NB.state.game.world.threat>=3,
     opts:[
-      { label:'Спрятаться (1 AP)', ap:1, action:()=>{ NB.game.startActionScene({ title:'Спрятаться', desc:'Шаги.', timeLimit:6,
+      { label:'Спрятаться (1 AP)', ap:1, action:()=>{ NB.closeModal(); setTimeout(()=>{ NB.game.startActionScene({ title:'Спрятаться', desc:'Шаги.', timeLimit:6,
         options:[
           { label:'В вентиляцию', chance:0.7, success:()=>NB.notify('Спрятались.','ok'), fail:()=>NB.notify('Нашли.','err') },
           { label:'За серверы', chance:0.5, success:()=>NB.notify('Прошло.','ok'), fail:()=>NB.notify('«Ку-ку».','err') }
-        ]}, ok=>{ if(!ok) NB.effects.shake(600); }); return 'Действие'; }},
+        ]}, ok=>{ if(!ok) NB.effects.shake(600); }); }, 250); return 'Действие'; }},
       { label:'Воины прикрывают', employeeSkill:'combat', action:()=>{ const w = NB.employees.bestFor('combat'); if(!w) return 'Нет воинов'; NB.employees.spendAp(w.id, 1); NB.employees.levelUp(w.id); NB.state.game.reputation = Math.min(100, NB.state.game.reputation + 3); return `${w.name} отбил атаку`; }},
       { label:'Притвориться мёртвым', run:()=>{ if(Math.random()<0.4) return 'Прошло.'; NB.state.game.reputation=Math.max(0,NB.state.game.reputation-10); return 'Почуяли.'; }},
       { label:'Бежать', run:()=>{ if(Math.random()<0.3) return 'Убежали.'; NB.state.game.stats.lost=true; return 'Догнали.'; }}
@@ -685,7 +685,7 @@ G.EVENTS = [
       { label:'Проверить (1 AP)', ap:1, employeeSkill:'forensics', action:()=>{
         const s = NB.employees.bestFor('forensics');
         if (!s) return 'Нужен безопасник с форензикой';
-        NB.employees.spendAp(s.id, 1);
+        /* AP уже списан в resolveEvent — не списываем повторно */
         NB.employees.levelUp(s.id);
         NB.state.game.world.bunker.population = (NB.state.game.world.bunker.population||0) + 2;
         return `${s.name} проверил. Чисты.`;
@@ -745,9 +745,10 @@ G.resolveEvent = function (idx) {
   }
 
   /* Списание */
+  /* Списание */
+  const finalCost = opt.costFn ? opt.costFn(g) : opt.cost;
   if (opt.ap) NB.spendAp(opt.ap);
-  if (opt.cost) g.cash -= opt.cost;
-  else if (effectiveCost) { g.cash -= effectiveCost; g.stats.totalExpenses += effectiveCost; }
+  if (finalCost) { g.cash -= finalCost; g.stats.totalExpenses += finalCost; }
   if (employee) NB.employees.spendAp(employee.id, 1);
 
   let result = '';

@@ -646,8 +646,7 @@ NB.openModal = ({ title, html, submit='Сохранить', onSubmit, wide, boxC
     if (onClose) { try { onClose(); } catch(err) { console.warn('[NetBill] onClose error:', err); } }
     NB.closeModal();
   });
-  /* Клик по фону — тоже через onClose */
-  modal._onClose = onClose || null;
+  modal._onClose = onClose || null;   /* ← для boot.js: клик по фону */
   setTimeout(() => { const f = form.querySelector('input:not([type=range]),select,textarea,button'); if (f) f.focus(); }, 70);
 };
 NB.closeModal = () => {
